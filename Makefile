@@ -11,7 +11,17 @@ VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo d
 COMMIT     ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
-LDFLAGS := -s -w \
+# -s -w strip the symbol table and DWARF. On Darwin that also removes the
+# LC_UUID load command, and dyld refuses to start a Mach-O binary without one
+# ("dyld: missing LC_UUID load command", Abort trap: 6). The size saving is not
+# worth an unrunnable binary, so macOS builds keep their symbols.
+TARGET_GOOS ?= $(shell go env GOOS)
+STRIP_FLAGS := -s -w
+ifeq ($(TARGET_GOOS),darwin)
+	STRIP_FLAGS :=
+endif
+
+LDFLAGS := $(STRIP_FLAGS) \
 	-X '$(MODULE)/internal/version.Version=$(VERSION)' \
 	-X '$(MODULE)/internal/version.Commit=$(COMMIT)' \
 	-X '$(MODULE)/internal/version.BuildDate=$(BUILD_DATE)'

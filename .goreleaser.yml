@@ -20,7 +20,15 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w
+      # -s -w strip the symbol table and DWARF. On a macOS host the Go linker
+      # passes -s to Apple's ld, which drops the LC_UUID load command, and dyld
+      # then refuses to start the binary ("dyld: missing LC_UUID load command",
+      # Abort trap: 6). These builds set CGO_ENABLED=0 and use the internal
+      # linker, which keeps LC_UUID even when stripping, so this is belt and
+      # braces here — but it keeps the release artifact identical to what
+      # `make build` produces on a contributor's Mac, which is where the crash
+      # was actually observed. Other platforms stay stripped.
+      - '{{ if ne .Os "darwin" }}-s -w{{ end }}'
       - -X github.com/sinanganiz/commitography/internal/version.Version={{ .Version }}
       - -X github.com/sinanganiz/commitography/internal/version.Commit={{ .FullCommit }}
       - -X github.com/sinanganiz/commitography/internal/version.BuildDate={{ .Date }}
