@@ -17,8 +17,9 @@ The pipeline is implemented end to end and the test suite is green. `commitograp
 | | Count |
 |---|---|
 | ✅ Done and verified | 26 of 32 tasks |
-| ⚠️ Built, not yet verified | 5 tasks — 0.4, 0.5, 5.3, 5.4, 7.2 |
+| ⚠️ Built, not yet verified | 4 tasks — 0.4, 5.3, 5.4, 7.2 |
 | ❌ Not started | 1 task — 7.3 |
+| 🚫 Removed from scope | 1 task — 0.5 (continuous integration) |
 
 ### Milestone status
 
@@ -28,7 +29,7 @@ The pipeline is implemented end to end and the test suite is green. `commitograp
 | 0.2 Module and dependencies | ✅ | Exactly the three permitted dependencies |
 | 0.3 Version package | ✅ | `--version` verified with `-ldflags` injection |
 | 0.4 Makefile | ⚠️ | All six targets written; verified by running each target's commands directly, since `make` is not installed on the development machine |
-| 0.5 Continuous integration | ⚠️ | Workflow written for all three runners; **never executed** — no push has happened yet |
+| 0.5 Continuous integration | 🚫 | **Removed on request.** The workflow ran once on 2026-09-05: ubuntu passed, macOS failed on a real product bug (see below), windows did not finish. Verification on Linux and macOS is now manual |
 | 1.1 Core data model | ✅ | Round-trip test preserves timezone offsets |
 | 1.2 Preflight | ✅ | Shallow, empty and non-repository paths all exit 2 with the exact messages |
 | 1.3 git log reader | ✅ | Streaming, control-character separators, C-quoted paths, offsets preserved |
@@ -75,6 +76,21 @@ Each is a case where following the text literally was impossible or wrong. All a
 
 7. **`gofmt` scope (Task 0.4).** `make lint` runs `gofmt -l cmd internal` rather than `gofmt -l .`, because `testdata/fixtures/` contains generated repositories whose `.go` files are deliberately not valid Go.
 
+### Open bug: macOS binaries do not run
+
+The single CI run before the workflow was removed caught a real defect, recorded here so it is not lost with the workflow:
+
+```
+dyld: missing LC_UUID load command
+Abort trap: 6   (exit 134)
+```
+
+The binary builds on macOS and then refuses to start. The cause is `-s -w` in the link flags: on Darwin those strip the `LC_UUID` load command, and current versions of dyld reject a Mach-O binary without one. It is not a CI problem — **every macOS binary produced by `make build` and by `.goreleaser.yml` today is unusable**, which blocks exit criteria 1 and 11.
+
+The fix is to drop `-s -w` on Darwin only, in both [`Makefile`](../Makefile) and [`.goreleaser.yml`](../.goreleaser.yml). Not yet applied.
+
+Linux passed the same run end to end, including `make lint`, `make fixtures`, `make test`, `make build` and the smoke test. Windows was still running when the workflow was deleted.
+
 ### Known gaps worth revisiting
 
 - **Nested lockfiles in monorepos.** Task 3.2 mandates literal `doublestar.Match`, so unprefixed defaults such as `pnpm-lock.yaml` are anchored to the repository root and will not match `web/pnpm-lock.yaml`. The specification was followed and the consequence documented in the README, but gitignore-style depth semantics are probably what users expect.
@@ -87,7 +103,7 @@ Each is a case where following the text literally was impossible or wrong. All a
 
 | # | Criterion | Status |
 |---|---|---|
-| 1 | Single-file dashboard on Linux, macOS and Windows | ⚠️ Verified on Windows; the other two await a CI run |
+| 1 | Single-file dashboard on Linux, macOS and Windows | ⚠️ Verified on Windows and Linux; **macOS is broken** by the `LC_UUID` bug above |
 | 2 | Counts and line totals reconcile with independent `git` commands | ✅ |
 | 3 | Identity resolution reconciles with `git shortlog -sn --all` | ✅ |
 | 4 | Default exclusions keep lockfiles and vendored code out | ✅ |
@@ -104,11 +120,14 @@ Criteria 1–7 gate any public announcement. Six of the seven are met; the first
 
 ### Suggested next steps
 
-1. Push the branch so CI runs and criterion 1 closes.
-2. Open `out/index.html` with the network disabled: confirm zero failed requests, check 360/768/1440 px, tab through every control, and export a Wrapped card to PNG. Closes criteria 9 and 10.
-3. Benchmark `--no-blame` against a large public repository such as `torvalds/linux`. Closes criterion 8.
-4. Tag a release once 1–10 hold, and create the `homebrew-tap` and `scoop-bucket` repositories plus the `TAP_GITHUB_TOKEN` secret. Closes criterion 11.
-5. Publish the three reference dashboards and replace the README placeholders. Closes criterion 12 and Task 7.3.
+1. Fix the `LC_UUID` link-flag bug so macOS binaries run at all. Blocks criteria 1 and 11.
+2. Verify a Windows build by hand, since nothing checks the three platforms automatically any more.
+3. Open `out/index.html` with the network disabled: confirm zero failed requests, check 360/768/1440 px, tab through every control, and export a Wrapped card to PNG. Closes criteria 9 and 10.
+4. Benchmark `--no-blame` against a large public repository such as `torvalds/linux`. Closes criterion 8.
+5. Tag a release once 1–10 hold, and create the `homebrew-tap` and `scoop-bucket` repositories plus the `TAP_GITHUB_TOKEN` secret. Closes criterion 11.
+6. Publish the three reference dashboards and replace the README placeholders. Closes criterion 12 and Task 7.3.
+
+Without CI, every cross-platform claim in this document rests on a manual check. Criterion 1 in particular can regress silently.
 
 ---
 
