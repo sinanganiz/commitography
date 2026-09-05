@@ -1,0 +1,126 @@
+version: 2
+
+project_name: commitography
+
+before:
+  hooks:
+    # The frontend is embedded with //go:embed, so it must be built before the
+    # Go compiler runs.
+    - sh -c "cd web && npm ci && npm run build"
+    - go mod tidy
+
+builds:
+  - id: commitography
+    main: ./cmd/commitography
+    binary: commitography
+    env:
+      # Statically linked, so the binary runs on any distribution and inside a
+      # scratch container.
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/sinanganiz/commitography/internal/version.Version={{ .Version }}
+      - -X github.com/sinanganiz/commitography/internal/version.Commit={{ .FullCommit }}
+      - -X github.com/sinanganiz/commitography/internal/version.BuildDate={{ .Date }}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+      - docs/report-schema.json
+
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  version_template: '{{ incpatch .Version }}-next'
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+
+dockers:
+  - image_templates:
+      - 'ghcr.io/sinanganiz/commitography:{{ .Version }}-amd64'
+      - 'ghcr.io/sinanganiz/commitography:latest-amd64'
+    goarch: amd64
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - '--platform=linux/amd64'
+      - '--label=org.opencontainers.image.title={{ .ProjectName }}'
+      - '--label=org.opencontainers.image.version={{ .Version }}'
+      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
+      - '--label=org.opencontainers.image.source=https://github.com/sinanganiz/commitography'
+      - '--label=org.opencontainers.image.licenses=MIT'
+
+  - image_templates:
+      - 'ghcr.io/sinanganiz/commitography:{{ .Version }}-arm64'
+      - 'ghcr.io/sinanganiz/commitography:latest-arm64'
+    goarch: arm64
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - '--platform=linux/arm64'
+      - '--label=org.opencontainers.image.title={{ .ProjectName }}'
+      - '--label=org.opencontainers.image.version={{ .Version }}'
+      - '--label=org.opencontainers.image.revision={{ .FullCommit }}'
+      - '--label=org.opencontainers.image.source=https://github.com/sinanganiz/commitography'
+      - '--label=org.opencontainers.image.licenses=MIT'
+
+docker_manifests:
+  - name_template: 'ghcr.io/sinanganiz/commitography:{{ .Version }}'
+    image_templates:
+      - 'ghcr.io/sinanganiz/commitography:{{ .Version }}-amd64'
+      - 'ghcr.io/sinanganiz/commitography:{{ .Version }}-arm64'
+  - name_template: 'ghcr.io/sinanganiz/commitography:latest'
+    image_templates:
+      - 'ghcr.io/sinanganiz/commitography:latest-amd64'
+      - 'ghcr.io/sinanganiz/commitography:latest-arm64'
+
+brews:
+  - name: commitography
+    repository:
+      owner: sinanganiz
+      name: homebrew-tap
+      token: '{{ .Env.TAP_GITHUB_TOKEN }}'
+    homepage: https://github.com/sinanganiz/commitography
+    description: Turn a git repository's history into a self-contained static dashboard
+    license: MIT
+    dependencies:
+      - name: git
+    test: |
+      system "#{bin}/commitography", "--version"
+
+scoops:
+  - name: commitography
+    repository:
+      owner: sinanganiz
+      name: scoop-bucket
+      token: '{{ .Env.TAP_GITHUB_TOKEN }}'
+    homepage: https://github.com/sinanganiz/commitography
+    description: Turn a git repository's history into a self-contained static dashboard
+    license: MIT

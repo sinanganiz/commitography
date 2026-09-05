@@ -1,0 +1,46 @@
+# Commitography configuration.
+#
+# Every key below is optional. Values shown are the built-in defaults, except
+# for `identities`, `exclude_authors` and `exclude_paths`, which are merged with
+# (appended to) the built-in lists rather than replacing them. To suppress a
+# built-in list entirely, set it to an explicit empty list, e.g. `exclude_paths: []`.
+
+# Merge several git identities belonging to one person. The first email in each
+# list is the canonical identifier.
+identities: []
+#   - name: Jane Doe
+#     emails:
+#       - jane@example.com
+#       - jane.doe@corp.example.com
+
+# Additional authors to exclude, matched case-insensitively against display
+# names and email addresses.
+exclude_authors: []
+
+# Additional paths to exclude from line-based metrics. Glob syntax with `**`.
+exclude_paths: []
+
+# A commit changing more lines than this is flagged as a bulk commit and left
+# out of line-based metrics. It still counts toward commit and temporal metrics.
+outlier_threshold_lines: 10000
+
+# Include merge commits in the analysis.
+count_merges: false
+
+# Which timestamp to attribute a commit to: author | committer
+date_source: author
+
+# Apply the repository's .mailmap when reading history.
+use_mailmap: true
+
+# Replace contributor names with stable pseudonyms and drop emails entirely.
+anonymize: false
+
+# Replace emails with a truncated SHA-256 digest.
+hash_emails: true
+
+# Where the dashboard is written.
+output_dir: ./out
+
+# Visual theme. Only `default` is available.
+theme: default

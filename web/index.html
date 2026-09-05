@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Commitography — development preview</title>
+  </head>
+  <body>
+    <!--
+      This page exists only for `npm run dev`. The shipped dashboard is
+      assembled by internal/render, which inlines the built CSS, the built JS
+      and the report JSON into one self-contained file.
+    -->
+    <div id="commitography-root"></div>
+    <script type="application/json" id="commitography-data">
+      {}
+    </script>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

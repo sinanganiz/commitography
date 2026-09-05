@@ -1,0 +1,15 @@
+# Everything is stored and checked out with LF. testdata/build-fixtures.sh runs
+# under /bin/sh and the Makefile under GNU make on the Linux and macOS runners;
+# both break outright on CRLF line endings.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# The frontend bundle is committed so that `go build ./...` works on a clean
+# checkout without Node, but it is machine-written. Marking it keeps it out of
+# language statistics and out of commitography's own line-based metrics.
+internal/render/assets/** linguist-generated=true
+web/package-lock.json linguist-generated=true

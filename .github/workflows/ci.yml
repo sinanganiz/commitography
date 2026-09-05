@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    defaults:
+      run:
+        # Git Bash on Windows, so one set of commands works on all three
+        # runners and the fixture script has a POSIX shell everywhere.
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Commitography refuses to analyze a shallow clone, and the smoke
+          # test below runs it against this very repository.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Ensure make is available
+        if: runner.os == 'Windows'
+        run: command -v make || choco install make --no-progress -y
+
+      - name: Identify the fixture builder to git
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.com"
+          git config --global init.defaultBranch main
+          git config --global protocol.file.allow always
+
+      - name: Lint
+        run: make lint
+
+      - name: Build fixtures
+        run: make fixtures
+
+      - name: Test
+        run: make test
+
+      - name: Build
+        run: make build
+
+      - name: Smoke test against this repository
+        run: |
+          BIN=./commitography
+          [ -f ./commitography.exe ] && BIN=./commitography.exe
+          "$BIN" . -o ci-out
+
+          test -f ci-out/index.html || { echo "ci-out/index.html was not produced"; exit 1; }
+          test -f ci-out/report.json || { echo "ci-out/report.json was not produced"; exit 1; }
+
+          # The point of the size floor is to catch a page that shipped
+          # without its inlined bundle. Phase 1 caps the frontend at 150 KB
+          # and it currently builds to about 30 KB, so a young repository
+          # cannot reach 100 KB however correct the output is; the floor is
+          # set just under the bundle size instead, and the content checks
+          # below carry the rest of the assertion.
+          size=$(wc -c < ci-out/index.html)
+          echo "index.html is ${size} bytes"
+          if [ "$size" -lt 25600 ]; then
+            echo "index.html is smaller than 25 KB; the frontend bundle is probably not embedded"
+            exit 1
+          fi
+
+          grep -q '<style>' ci-out/index.html || { echo "stylesheet is not inlined"; exit 1; }
+          grep -q 'id="commitography-data"' ci-out/index.html || { echo "report payload is missing"; exit 1; }
+          grep -q 'src="http' ci-out/index.html && { echo "page loads an external resource"; exit 1; }
+          true
+
+      - name: Upload the dashboard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-${{ matrix.os }}
+          path: ci-out/
+          if-no-files-found: ignore

@@ -1,0 +1,475 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sinanganiz/commitography/docs/report-schema.json",
+  "title": "Commitography report",
+  "description": "The analysis artifact written to report.json. Within a schema version, fields are never removed or repurposed, so external tools may depend on this shape.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generatedAt",
+    "toolVersion",
+    "repository",
+    "temporal",
+    "code",
+    "messages",
+    "social",
+    "notables",
+    "warnings"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "enum": [1] },
+    "generatedAt": { "type": "string" },
+    "toolVersion": { "type": "string" },
+    "repository": { "$ref": "#/$defs/repositorySummary" },
+    "temporal": { "$ref": "#/$defs/temporalMetrics" },
+    "code": { "$ref": "#/$defs/codeMetrics" },
+    "messages": { "$ref": "#/$defs/messageMetrics" },
+    "social": { "$ref": "#/$defs/socialMetrics" },
+    "notables": { "$ref": "#/$defs/notables" },
+    "perAuthor": { "$ref": "#/$defs/perAuthor" },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+
+  "$defs": {
+    "intArray": { "type": "array", "items": { "type": "integer" } },
+
+    "nullableString": { "type": ["string", "null"] },
+
+    "exclusionBreakdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["merges", "bots", "total"],
+      "properties": {
+        "merges": { "type": "integer" },
+        "bots": { "type": "integer" },
+        "total": { "type": "integer" }
+      }
+    },
+
+    "repositorySummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "defaultBranch",
+        "headCommit",
+        "firstCommit",
+        "lastCommit",
+        "ageDays",
+        "commitsTotal",
+        "commitsAnalyzed",
+        "commitsExcluded",
+        "contributors",
+        "trackedFiles",
+        "trackedLines",
+        "isShallow"
+      ],
+      "properties": {
+        "name": { "type": "string" },
+        "defaultBranch": { "type": "string" },
+        "headCommit": { "type": "string" },
+        "firstCommit": { "$ref": "#/$defs/nullableString" },
+        "lastCommit": { "$ref": "#/$defs/nullableString" },
+        "ageDays": { "type": "integer" },
+        "commitsTotal": { "type": "integer" },
+        "commitsAnalyzed": { "type": "integer" },
+        "commitsExcluded": { "$ref": "#/$defs/exclusionBreakdown" },
+        "contributors": { "type": "integer" },
+        "trackedFiles": { "type": "integer" },
+        "trackedLines": { "type": "integer" },
+        "isShallow": { "type": "boolean" }
+      }
+    },
+
+    "dateCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["date", "count"],
+      "properties": {
+        "date": { "type": "string" },
+        "count": { "type": "integer" }
+      }
+    },
+
+    "span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["days", "startDate", "endDate"],
+      "properties": {
+        "days": { "type": "integer" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" }
+      }
+    },
+
+    "monthCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["month", "count"],
+      "properties": {
+        "month": { "type": "string" },
+        "count": { "type": "integer" }
+      }
+    },
+
+    "temporalMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hourHistogram",
+        "weekdayHistogram",
+        "hourWeekdayGrid",
+        "braveDeploys",
+        "nightOwlRatio",
+        "busiestDay",
+        "longestStreak",
+        "longestSilence",
+        "commitsPerMonth",
+        "firstCommit",
+        "lastCommit"
+      ],
+      "properties": {
+        "hourHistogram": { "$ref": "#/$defs/intArray" },
+        "weekdayHistogram": { "$ref": "#/$defs/intArray" },
+        "hourWeekdayGrid": { "type": "array", "items": { "$ref": "#/$defs/intArray" } },
+        "braveDeploys": { "type": "integer" },
+        "nightOwlRatio": { "type": "number" },
+        "busiestDay": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/dateCount" }] },
+        "longestStreak": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/span" }] },
+        "longestSilence": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/span" }] },
+        "commitsPerMonth": { "type": "array", "items": { "$ref": "#/$defs/monthCount" } },
+        "firstCommit": { "$ref": "#/$defs/nullableString" },
+        "lastCommit": { "$ref": "#/$defs/nullableString" }
+      }
+    },
+
+    "commitRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hash", "subject", "date", "linesChanged", "added", "deleted", "files"],
+      "properties": {
+        "hash": { "type": "string" },
+        "subject": { "type": "string" },
+        "date": { "type": "string" },
+        "linesChanged": { "type": "integer" },
+        "added": { "type": "integer" },
+        "deleted": { "type": "integer" },
+        "files": { "type": "integer" }
+      }
+    },
+
+    "touchedFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "commits", "added", "deleted", "deletedFromHead"],
+      "properties": {
+        "path": { "type": "string" },
+        "commits": { "type": "integer" },
+        "added": { "type": "integer" },
+        "deleted": { "type": "integer" },
+        "deletedFromHead": { "type": "boolean" }
+      }
+    },
+
+    "fileAge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "lastModified"],
+      "properties": {
+        "path": { "type": "string" },
+        "lastModified": { "type": "string" }
+      }
+    },
+
+    "fileTypeShare": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extension", "changes", "added", "deleted"],
+      "properties": {
+        "extension": { "type": "string" },
+        "changes": { "type": "integer" },
+        "added": { "type": "integer" },
+        "deleted": { "type": "integer" }
+      }
+    },
+
+    "yearLines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["year", "lines"],
+      "properties": {
+        "year": { "type": "integer" },
+        "lines": { "type": "integer" }
+      }
+    },
+
+    "codeMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mostTouchedFiles",
+        "largestCommit",
+        "averageCommitSize",
+        "medianCommitSize",
+        "totalAdded",
+        "totalDeleted",
+        "oldestUntouchedFile",
+        "fileTypeDistribution",
+        "codeAge",
+        "survivingFromFirstYear",
+        "codeAgeSampledFiles",
+        "codeAgeTotalFiles",
+        "trackedFiles",
+        "trackedLines"
+      ],
+      "properties": {
+        "mostTouchedFiles": { "type": "array", "items": { "$ref": "#/$defs/touchedFile" } },
+        "largestCommit": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/commitRef" }] },
+        "averageCommitSize": { "type": "number" },
+        "medianCommitSize": { "type": "number" },
+        "totalAdded": { "type": "integer" },
+        "totalDeleted": { "type": "integer" },
+        "oldestUntouchedFile": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/fileAge" }] },
+        "fileTypeDistribution": { "type": "array", "items": { "$ref": "#/$defs/fileTypeShare" } },
+        "codeAge": { "type": "array", "items": { "$ref": "#/$defs/yearLines" } },
+        "survivingFromFirstYear": {
+          "type": ["number", "null"],
+          "description": "Null when blame was skipped with --no-blame, so the dashboard hides the section rather than showing a misleading zero."
+        },
+        "codeAgeSampledFiles": { "type": "integer" },
+        "codeAgeTotalFiles": { "type": "integer" },
+        "trackedFiles": { "type": "integer" },
+        "trackedLines": { "type": "integer" }
+      }
+    },
+
+    "longestSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hash", "length", "subject"],
+      "properties": {
+        "hash": { "type": "string" },
+        "length": { "type": "integer" },
+        "subject": { "type": "string" }
+      }
+    },
+
+    "wordCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["word", "count"],
+      "properties": {
+        "word": { "type": "string" },
+        "count": { "type": "integer" }
+      }
+    },
+
+    "emojiCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["emoji", "count"],
+      "properties": {
+        "emoji": { "type": "string" },
+        "count": { "type": "integer" }
+      }
+    },
+
+    "messageMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "typeDistribution",
+        "conventionalRatio",
+        "lowConfidence",
+        "shortMessages",
+        "longestSubject",
+        "averageSubjectLength",
+        "emojiCommits",
+        "topEmoji",
+        "revertCount",
+        "typoFixCount",
+        "topWords"
+      ],
+      "properties": {
+        "typeDistribution": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "conventionalRatio": { "type": "number" },
+        "lowConfidence": {
+          "type": "boolean",
+          "description": "True when fewer than 30% of subjects follow Conventional Commits, meaning the classification is a keyword guess."
+        },
+        "shortMessages": { "type": "integer" },
+        "longestSubject": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/longestSubject" }] },
+        "averageSubjectLength": { "type": "number" },
+        "emojiCommits": { "type": "integer" },
+        "topEmoji": { "type": "array", "items": { "$ref": "#/$defs/emojiCount" } },
+        "revertCount": { "type": "integer" },
+        "typoFixCount": { "type": "integer" },
+        "topWords": { "type": "array", "items": { "$ref": "#/$defs/wordCount" } }
+      }
+    },
+
+    "directoryBusFactor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "busFactor", "contributors", "commits"],
+      "properties": {
+        "path": { "type": "string" },
+        "busFactor": { "type": "integer" },
+        "contributors": { "type": "integer" },
+        "commits": { "type": "integer" }
+      }
+    },
+
+    "coupledPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["a", "b", "support", "confidence", "expected"],
+      "properties": {
+        "a": { "type": "string" },
+        "b": { "type": "string" },
+        "support": { "type": "integer" },
+        "confidence": { "type": "number" },
+        "expected": {
+          "type": "boolean",
+          "description": "True when both paths share a basename, such as a file and its test."
+        }
+      }
+    },
+
+    "churnHotspot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "maxCommitsInWindow", "windowStart", "totalCommits", "added", "deleted"],
+      "properties": {
+        "path": { "type": "string" },
+        "maxCommitsInWindow": { "type": "integer" },
+        "windowStart": { "type": "string" },
+        "totalCommits": { "type": "integer" },
+        "added": { "type": "integer" },
+        "deleted": { "type": "integer" }
+      }
+    },
+
+    "knowledgeShare": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "largestShare", "contributors", "commits"],
+      "properties": {
+        "path": { "type": "string" },
+        "largestShare": { "type": "number" },
+        "contributors": { "type": "integer" },
+        "commits": { "type": "integer" },
+        "topContributor": {
+          "type": "string",
+          "description": "Present only when --per-author was passed and anonymization is off."
+        }
+      }
+    },
+
+    "socialMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["busFactor", "directoryBusFactor", "coupling", "churn", "knowledgeConcentration"],
+      "properties": {
+        "busFactor": { "type": "integer" },
+        "directoryBusFactor": { "type": "array", "items": { "$ref": "#/$defs/directoryBusFactor" } },
+        "coupling": { "type": "array", "items": { "$ref": "#/$defs/coupledPair" } },
+        "churn": { "type": "array", "items": { "$ref": "#/$defs/churnHotspot" } },
+        "knowledgeConcentration": { "type": "array", "items": { "$ref": "#/$defs/knowledgeShare" } }
+      }
+    },
+
+    "bulkCommit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hash", "subject", "date", "linesChanged"],
+      "properties": {
+        "hash": { "type": "string" },
+        "subject": { "type": "string" },
+        "date": { "type": "string" },
+        "linesChanged": { "type": "integer" }
+      }
+    },
+
+    "timezoneShare": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offsetMinutes", "commits"],
+      "properties": {
+        "offsetMinutes": { "type": "integer" },
+        "commits": { "type": "integer" }
+      }
+    },
+
+    "notables": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bulkCommits",
+        "latestNightCommit",
+        "earliestMorningCommit",
+        "weekendRatio",
+        "holidayCommits",
+        "firstCommitSubject",
+        "mergeCount",
+        "timezoneSpread"
+      ],
+      "properties": {
+        "bulkCommits": { "type": "array", "items": { "$ref": "#/$defs/bulkCommit" } },
+        "latestNightCommit": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/commitRef" }] },
+        "earliestMorningCommit": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/commitRef" }] },
+        "weekendRatio": { "type": "number" },
+        "holidayCommits": { "type": "integer" },
+        "firstCommitSubject": { "$ref": "#/$defs/nullableString" },
+        "mergeCount": { "type": "integer" },
+        "timezoneSpread": { "type": "array", "items": { "$ref": "#/$defs/timezoneShare" } }
+      }
+    },
+
+    "authorSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identityId",
+        "displayName",
+        "emails",
+        "commits",
+        "added",
+        "deleted",
+        "filesTouched",
+        "hourHistogram",
+        "firstCommit",
+        "lastCommit",
+        "activeDays"
+      ],
+      "properties": {
+        "identityId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "emails": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "Hashed by default and null under --anonymize. Plaintext addresses never appear."
+        },
+        "commits": { "type": "integer" },
+        "added": { "type": "integer" },
+        "deleted": { "type": "integer" },
+        "filesTouched": { "type": "integer" },
+        "hourHistogram": { "$ref": "#/$defs/intArray" },
+        "firstCommit": { "type": "string" },
+        "lastCommit": { "type": "string" },
+        "activeDays": { "type": "integer" }
+      }
+    },
+
+    "perAuthor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authors"],
+      "description": "Present only when --per-author was passed. Ordered by first commit, not by volume.",
+      "properties": {
+        "authors": { "type": "array", "items": { "$ref": "#/$defs/authorSummary" } }
+      }
+    }
+  }
+}
