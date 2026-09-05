@@ -133,13 +133,55 @@ func TestDefaultPatternsMatchAtAnyDepth(t *testing.T) {
 			t.Errorf("%s must not be excluded by default", path)
 		}
 	}
+}
 
-	// Patterns are matched literally with doublestar rather than with
-	// gitignore's "a bare name matches at any depth" rule, so the unprefixed
-	// defaults are anchored to the repository root. A monorepo with nested
-	// lockfiles needs them listed explicitly in .commitography.yml.
-	if pf.Excluded("web/pnpm-lock.yaml") {
-		t.Error("root-anchored default patterns must not match at arbitrary depth")
+// Matching stays literal, but the built-in list carries a `**/` form of every
+// root-anchored default so a monorepo's nested lockfiles and dependency trees
+// are excluded too. Without these, exit criterion 4 held only for repositories
+// with a single package at the root.
+func TestDefaultsCoverNestedMonorepoPaths(t *testing.T) {
+	pf, err := NewPathFilter(config.Default(), t.TempDir())
+	if err != nil {
+		t.Fatalf("NewPathFilter: %v", err)
+	}
+
+	nested := []string{
+		"web/pnpm-lock.yaml",
+		"web/package-lock.json",
+		"packages/api/yarn.lock",
+		"services/worker/go.sum",
+		"crates/core/Cargo.lock",
+		"backend/Gemfile.lock",
+		"php/composer.lock",
+		"py/poetry.lock",
+		"packages/api/node_modules/left-pad/index.js",
+		"services/web/vendor/github.com/x/y.go",
+		"apps/site/dist/bundle.js",
+		"apps/site/build/output.txt",
+		"tools/gen/out/report.txt",
+		"rust/app/target/debug/main",
+		"ios/App/Pods/Alamofire/Source.swift",
+		"deps/third_party/zlib/zlib.c",
+	}
+	for _, path := range nested {
+		if !pf.Excluded(path) {
+			t.Errorf("%s should be excluded: nested dependency paths are still generated content", path)
+		}
+	}
+
+	// The `**/` forms must not turn into a blanket exclusion of anything that
+	// merely contains one of these words.
+	kept := []string{
+		"src/build.go",
+		"web/src/dist.ts",
+		"cmd/out.go",
+		"internal/vendored_test.go",
+		"docs/node_modules.md",
+	}
+	for _, path := range kept {
+		if pf.Excluded(path) {
+			t.Errorf("%s must not be excluded: it is a source file, not a dependency tree", path)
+		}
 	}
 }
 

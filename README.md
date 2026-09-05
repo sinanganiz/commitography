@@ -164,7 +164,7 @@ Unknown keys produce a warning on stderr but never fail the run.
 - **Bots** such as `dependabot[bot]` and `renovate[bot]` are excluded, along with any author whose name ends in `[bot]`.
 - **Generated and vendored paths** — lockfiles, `vendor/`, `node_modules/`, `dist/`, minified bundles, protobuf output, migrations — are excluded from line-based metrics. Without this, machine-written code dominates every number.
 - **`.gitattributes`** entries carrying `linguist-generated` are excluded too. `-linguist-generated` puts a path back in.
-- Path patterns are matched literally with `**` globbing, not with gitignore's "a bare name matches at any depth" rule. In a monorepo, nested lockfiles need listing explicitly.
+- Path patterns are matched literally with `**` globbing, not with gitignore's "a bare name matches at any depth" rule. The built-in defaults ship both forms — `pnpm-lock.yaml` and `**/pnpm-lock.yaml`, `node_modules/**` and `**/node_modules/**` — so a monorepo's nested lockfiles and dependency trees are excluded without configuration. A pattern **you** add is anchored where you write it: use `**/` yourself if you mean any depth.
 
 ---
 
