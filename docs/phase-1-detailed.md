@@ -8,11 +8,29 @@ This document is written to be executed sequentially. Each task lists its exact 
 
 ---
 
+## Status: CLOSED for development — 2026-09-05
+
+**Phase 1 development is complete and the phase is closed.** Nine of the twelve exit criteria are met. The remaining three are not development work: they need a macOS machine, package-manager repositories, and somewhere to host static pages. They are carried forward as the release checklist below rather than holding the phase open.
+
+**This closure does not mean the three open criteria were met.** They were not. Nothing here should be read as clearance to announce the project publicly — the plan's own rule is that criteria 1 through 7 gate any announcement, and criterion 1 is not verified.
+
+### Release checklist — carried forward
+
+| # | Criterion | What it needs | Blocked on |
+|---|---|---|---|
+| 1 | Runs on macOS | Execute the built binary once: `commitography --version` is enough to prove dyld accepts it | Access to macOS hardware |
+| 11 | Installable from two package managers | Tag a release and run goreleaser | `homebrew-tap` and `scoop-bucket` repositories, a `TAP_GITHUB_TOKEN` secret, and goreleaser installed. The `{{ if ne .Os "darwin" }}` ldflag template has never been validated by `goreleaser check` |
+| 12 | Three reference dashboards live | Generate, host, and link three public-repository dashboards; replace the two `TODO` blocks in `README.md` (lines 10 and 95) | A choice of three repositories and static hosting |
+
+Criterion 1 is the one that matters most: it is the only open item that could hide a genuine product defect rather than an unfinished errand, and the `LC_UUID` bug is proof that this platform can break silently. Verify it before tagging anything.
+
+---
+
 ## Implementation Status
 
 **Last updated:** 2026-09-05 · **Branch:** `main`
 
-The pipeline is implemented end to end and the test suite is green. `commitography ./repo -o out/` produces a working single-file dashboard today. The dashboard and the Wrapped page have now been audited in a real browser, and the performance requirement has been measured against a 171,000-commit repository. What remains is the public-facing release work and the one platform this machine cannot execute.
+The pipeline is implemented end to end and the test suite is green. `commitography ./repo -o out/` produces a working single-file dashboard today. The dashboard and the Wrapped page have been audited in a real browser, and the performance requirement has been measured against a 171,000-commit repository.
 
 | | Count |
 |---|---|
@@ -154,14 +172,13 @@ Criteria 1–7 gate any public announcement. Six of the seven are met outright; 
 
 The sharded and single-stream readers were diffed field by field over the full CPython report: the only differences were `generatedAt`, `toolVersion`, and the file changes recovered by departure 9 (`+3/-2` in `Lib/functools.py`, and the two warnings that no longer occur).
 
-### Suggested next steps
+### After closure
 
-1. Run the built binary once on real macOS hardware — `commitography --version` is enough to prove `LC_UUID` is present and dyld accepts it. Closes criterion 1 and unblocks 11.
-2. Tag a release, and create the `homebrew-tap` and `scoop-bucket` repositories plus the `TAP_GITHUB_TOKEN` secret. Closes criterion 11 and Task 7.2, which has still never been executed.
-3. Publish the three reference dashboards and replace the README placeholders. Closes criterion 12 and Task 7.3.
-4. Opportunistic: one `-race` run of `./internal/collect` wherever a C toolchain exists, to confirm the sharded reader by detector rather than by argument.
+Development on Phase 1 has stopped. The three open criteria are tracked in the release checklist at the top of this document, in the order they should be tackled: macOS verification first, then the release, then the reference dashboards.
 
-Without CI, every cross-platform claim in this document rests on a manual check. Criterion 1 in particular can regress silently — and the `LC_UUID` bug is exactly the kind of regression that only appears on the platform nobody can run.
+One item is worth doing whenever the opportunity appears rather than being scheduled: a single `-race` run of `./internal/collect` wherever a C toolchain exists, to confirm the sharded reader by detector rather than by argument.
+
+Without CI, every cross-platform claim in this document rests on a manual check. Criterion 1 in particular can regress silently — and the `LC_UUID` bug is exactly the kind of regression that only appears on the platform nobody can run. If Phase 2 reintroduces automation, that check is the first thing worth automating.
 
 ---
 

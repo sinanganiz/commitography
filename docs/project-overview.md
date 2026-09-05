@@ -132,6 +132,8 @@ open out/index.html
 
 No server, no database, no configuration required. This is the flagship experience and the entirety of the initial release. Detailed breakdown in `phase-1-detailed.md`.
 
+**Closed for development on 2026-09-05.** Nine of twelve exit criteria are met. Three remain open and are tracked as a release checklist at the top of `phase-1-detailed.md`: running the binary on macOS, publishing release artifacts, and hosting the three reference dashboards. None is development work, and none has been waived — the project is not ready to be announced until at least the macOS check is done.
+
 ### Phase 2 — CI/CD integration
 
 Templates and documentation for GitHub Actions, GitLab CI, and Bitbucket Pipelines. Scheduled runs publishing to Pages or build artifacts, plus incremental caching so repeated runs are cheap. Scope described in `phase-2.md`.
