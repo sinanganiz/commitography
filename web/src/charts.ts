@@ -19,9 +19,11 @@ let figureSeq = 0;
  * Wraps a visualization together with the same numbers in a table.
  *
  * Colour never carries meaning on its own here: the table is the authoritative
- * reading of every chart, and a per-figure toggle reveals it. The table is
- * hidden with a class rather than `display: none` so screen readers can still
- * reach it when the toggle is off.
+ * reading of every chart, and a per-figure toggle reveals it. The table uses the
+ * `hidden` attribute, so it leaves the accessibility tree along with the layout
+ * while collapsed; the toggle carries `aria-expanded` and `aria-controls` so it
+ * announces as the disclosure it is. Printing overrides `hidden` in CSS, so a
+ * printed page still carries every number.
  */
 export function figure(graphic: SVGElement, options: FigureOptions): HTMLElement {
   const id = `fig-${++figureSeq}`;

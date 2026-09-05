@@ -429,8 +429,17 @@ code {
   margin-bottom: 0.6rem;
 }
 
+/* De-emphasized by surface and border rather than by opacity. Fading the whole
+   row dropped its muted text to 3.06:1, under the WCAG AA floor of 4.5:1; the
+   meaning is carried by the "expected pair" tag, so only the decorative meter
+   is actually dimmed. */
 .coupling-expected {
-  opacity: 0.62;
+  background: transparent;
+  border-style: dashed;
+}
+
+.coupling-expected .meter {
+  opacity: 0.55;
 }
 
 .coupling-paths {
@@ -571,6 +580,10 @@ code {
 }
 
 .wrapped-card {
+  /* The card is the containing block for its own counter. Without this every
+     card's counter resolves against the viewport and all of them stack in one
+     corner. */
+  position: relative;
   scroll-snap-align: start;
   min-height: 100dvh;
   display: flex;
