@@ -8,6 +8,110 @@ This document is written to be executed sequentially. Each task lists its exact 
 
 ---
 
+## Implementation Status
+
+**Last updated:** 2026-09-05 · **Branch:** `phase-1-mvp`
+
+The pipeline is implemented end to end and the test suite is green. `commitography ./repo -o out/` produces a working single-file dashboard today. What remains is verification that cannot be done from a development machine alone (CI, browser, large repositories) and the public-facing release work.
+
+| | Count |
+|---|---|
+| ✅ Done and verified | 26 of 32 tasks |
+| ⚠️ Built, not yet verified | 5 tasks — 0.4, 0.5, 5.3, 5.4, 7.2 |
+| ❌ Not started | 1 task — 7.3 |
+
+### Milestone status
+
+| Task | Status | Notes |
+|---|---|---|
+| 0.1 Repository structure | ✅ | Tree as specified, plus `internal/cli/`, `internal/gitcmd/`, `Dockerfile`, `.gitattributes` |
+| 0.2 Module and dependencies | ✅ | Exactly the three permitted dependencies |
+| 0.3 Version package | ✅ | `--version` verified with `-ldflags` injection |
+| 0.4 Makefile | ⚠️ | All six targets written; verified by running each target's commands directly, since `make` is not installed on the development machine |
+| 0.5 Continuous integration | ⚠️ | Workflow written for all three runners; **never executed** — no push has happened yet |
+| 1.1 Core data model | ✅ | Round-trip test preserves timezone offsets |
+| 1.2 Preflight | ✅ | Shallow, empty and non-repository paths all exit 2 with the exact messages |
+| 1.3 git log reader | ✅ | Streaming, control-character separators, C-quoted paths, offsets preserved |
+| 1.4 History writer | ✅ | Atomic write, compact JSON, schema-version rejection |
+| 1.5 Test fixtures | ✅ | All nine, plus a `coupling/` fixture; deterministic across runs |
+| 1.6 Collection test | ✅ | Reconciles against `git rev-list`, `git log --numstat` and `git shortlog` |
+| 2.1 Configuration | ✅ | Resolution order, list merging, `exclude_paths: []`, unknown-key warnings |
+| 3.1 Identity resolution | ✅ | Reconciles with `git shortlog -sn --all` on the mailmap fixture |
+| 3.2 Path exclusion | ✅ | Defaults, `.gitattributes`, negation, case-folding on Windows |
+| 3.3 Merge and bulk handling | ✅ | `ExcludedMerges == 5`, bulk flagged, bots kept out of every metric |
+| 4.1 Report schema | ✅ | `docs/report-schema.json` committed and validated in tests |
+| 4.2 Temporal metrics | ✅ | Hand-computed expectations for every metric, including local-vs-UTC streaks |
+| 4.3 Code metrics | ✅ | Deterministic blame sample; byte-identical output across runs |
+| 4.4 Message metrics | ✅ | Three-plus subjects per heuristic rule, rule ordering asserted |
+| 4.5 Social metrics | ✅ | Bus factor 1 and 2 cases, coupling support/confidence thresholds |
+| 4.6 Notables | ✅ | Every field populated or explicitly null |
+| 4.7 Per-author section | ✅ | Absent without the flag; ordered by arrival, not volume |
+| 4.8 Privacy transforms | ✅ | No email-shaped string by default; no real name under `--anonymize` |
+| 5.1 Frontend toolchain | ✅ | 30.6 KB against the 150 KB cap; no framework, no charting library |
+| 5.2 Single-file output | ✅ | Exactly `index.html` + `report.json`; `</script>` break-out test passes |
+| 5.3 Dashboard sections | ⚠️ | All 13 sections and every accessibility feature built; **breakpoints, keyboard order and contrast ratios not yet audited in a browser** |
+| 5.4 Repo Wrapped | ⚠️ | Page generates and the year guard works; **PNG export not yet exercised in a browser** |
+| 6.1 Command surface | ✅ | All 14 flags, exit codes 0/1/2 |
+| 6.2 Progress reporting | ✅ | Never on stdout; `--quiet` is silent |
+| 7.1 README | ✅ | All 11 required sections; screenshot and demo links are placeholders pending 7.3 |
+| 7.2 Release automation | ⚠️ | `.goreleaser.yml` and `Dockerfile` configured; **never executed**, and the tap/bucket repositories do not exist |
+| 7.3 Reference outputs | ❌ | Not started — needs hosting and a choice of three public repositories |
+
+### Deliberate departures from this plan
+
+Each is a case where following the text literally was impossible or wrong. All are marked in the code at the point of departure.
+
+1. **`mostTouchedFiles` field collision (Task 4.3).** The table specifies both `deleted` (a deleted-line count, beside `added`) and `deleted: true` (a boolean flag for files gone from the working tree). One key cannot carry both. `deleted` keeps the line count; the flag ships as `deletedFromHead`.
+
+2. **CI size floor (Task 0.5, step 7).** The 100 KB assertion on `index.html` conflicts with the 150 KB bundle cap in Task 5.1. The bundle builds to 30.6 KB, so a young repository cannot reach 100 KB however correct the output is — this repository's own dashboard is 34 KB. CI asserts >25 KB plus content checks (`<style>` present, payload present, no external `src="http"`), which is what the size check was actually guarding against.
+
+3. **`noise/` fixture composition (Tasks 3.2 and 3.3).** Task 3.2 requires the 40,000-line lockfile to contribute zero lines, while Task 3.3 requires "the lockfile-dominated commit" to be flagged bulk. Since bulk detection runs *after* path exclusion, an excluded lockfile alone yields zero lines and cannot be bulk. The fixture commit therefore also carries a 12,000-line non-excluded data table, so both criteria hold at once and both are genuinely tested.
+
+4. **Payload escaping type (Task 5.2).** `html/template` treats the contents of any `<script>` element as JavaScript regardless of its `type` attribute, so a `template.HTML` payload gets re-encoded as a string literal. The report is passed as `template.JS`; break-out safety comes from explicitly escaping `<`, `>`, `&`, U+2028 and U+2029 before insertion.
+
+5. **Streaming mechanism (Task 1.3, rule 1).** `bufio.Reader.ReadString(0x01)` is used instead of `bufio.Scanner` with a 10 MB buffer. It satisfies the same requirement — output is never held in memory as a single string — without a per-record ceiling that a commit touching tens of thousands of files could exceed.
+
+6. **Vite output directory (Task 5.1).** The bundle is emitted to `internal/render/assets/` rather than `web/dist/`, because `//go:embed` cannot reach outside its own package directory. The built bundle is committed so `go build ./...` succeeds on a clean checkout without Node, as Task 0.2 requires; `.gitattributes` marks it `linguist-generated`.
+
+7. **`gofmt` scope (Task 0.4).** `make lint` runs `gofmt -l cmd internal` rather than `gofmt -l .`, because `testdata/fixtures/` contains generated repositories whose `.go` files are deliberately not valid Go.
+
+### Known gaps worth revisiting
+
+- **Nested lockfiles in monorepos.** Task 3.2 mandates literal `doublestar.Match`, so unprefixed defaults such as `pnpm-lock.yaml` are anchored to the repository root and will not match `web/pnpm-lock.yaml`. The specification was followed and the consequence documented in the README, but gitignore-style depth semantics are probably what users expect.
+- **Nested `.gitattributes`.** Only the repository-root file is parsed. Walking the tree for nested ones would cost a full scan on every run.
+- **Binary detection for blame.** Task 4.3 step 3 mentions `git ls-files --eol`; the implementation uses only the NUL-byte sniff, which is the more reliable of the two signals.
+- **Overlapping exclusion reasons.** A merge commit authored by a bot is counted under both `merges` and `bots`, so the two can sum to more than `total`. `total` is computed independently and is authoritative.
+- **Progress threshold.** Task 6.2 specifies progress "for runs exceeding 2 seconds"; the implementation emits it for every non-quiet run.
+
+### Exit criteria
+
+| # | Criterion | Status |
+|---|---|---|
+| 1 | Single-file dashboard on Linux, macOS and Windows | ⚠️ Verified on Windows; the other two await a CI run |
+| 2 | Counts and line totals reconcile with independent `git` commands | ✅ |
+| 3 | Identity resolution reconciles with `git shortlog -sn --all` | ✅ |
+| 4 | Default exclusions keep lockfiles and vendored code out | ✅ |
+| 5 | Shallow clones detected and refused with the specified message | ✅ |
+| 6 | `report.json` validates against the committed JSON Schema | ✅ |
+| 7 | No plaintext emails; `--anonymize` leaks no real names | ✅ |
+| 8 | 100,000 commits in under 60s with `--no-blame` | ❌ Not measured |
+| 9 | Works offline and meets the Task 5.3 accessibility requirements | ⚠️ Offline behaviour asserted in tests; accessibility not audited |
+| 10 | `--wrapped` produces a shareable page with client-side PNG export | ⚠️ Page verified; PNG export not exercised in a browser |
+| 11 | Release artifacts published, installable from two package managers | ❌ |
+| 12 | Three public reference dashboards live and linked | ❌ |
+
+Criteria 1–7 gate any public announcement. Six of the seven are met; the first needs only a CI run on the other two platforms.
+
+### Suggested next steps
+
+1. Push the branch so CI runs and criterion 1 closes.
+2. Open `out/index.html` with the network disabled: confirm zero failed requests, check 360/768/1440 px, tab through every control, and export a Wrapped card to PNG. Closes criteria 9 and 10.
+3. Benchmark `--no-blame` against a large public repository such as `torvalds/linux`. Closes criterion 8.
+4. Tag a release once 1–10 hold, and create the `homebrew-tap` and `scoop-bucket` repositories plus the `TAP_GITHUB_TOKEN` secret. Closes criterion 11.
+5. Publish the three reference dashboards and replace the README placeholders. Closes criterion 12 and Task 7.3.
+
+---
+
 ## Conventions Used In This Document
 
 - **MUST / MUST NOT / SHOULD** carry RFC 2119 meaning.
