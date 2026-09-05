@@ -104,7 +104,9 @@ These stages are strictly separated:
 
 ### Reading git history
 
-History is read in a **single pass** using one `git log` invocation with a custom record format, rather than many separate git commands. On large repositories this is the difference between seconds and minutes.
+History is read in a **single pass** using `git log` with a custom record format, rather than many separate git commands. On large repositories this is the difference between seconds and minutes.
+
+One diff per commit is the invariant; a git invocation per commit is the pathology being avoided. Because `git log --numstat` computes those diffs on a single thread and is what actually bounds a large run, a repository above roughly five thousand commits has its commit list split across a handful of concurrent `git log` processes and reassembled in order. The pass over history is still single; it simply uses the cores that are there. See departure 8 in `phase-1-detailed.md`.
 
 Commitography shells out to the `git` binary rather than linking a git library. Any environment analyzing a repository already has git installed, and this keeps the dependency surface minimal.
 

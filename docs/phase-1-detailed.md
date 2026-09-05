@@ -10,14 +10,14 @@ This document is written to be executed sequentially. Each task lists its exact 
 
 ## Implementation Status
 
-**Last updated:** 2026-09-05 · **Branch:** `phase-1-mvp`
+**Last updated:** 2026-09-05 · **Branch:** `main`
 
-The pipeline is implemented end to end and the test suite is green. `commitography ./repo -o out/` produces a working single-file dashboard today. What remains is verification that cannot be done from a development machine alone (CI, browser, large repositories) and the public-facing release work.
+The pipeline is implemented end to end and the test suite is green. `commitography ./repo -o out/` produces a working single-file dashboard today. The dashboard and the Wrapped page have now been audited in a real browser, and the performance requirement has been measured against a 171,000-commit repository. What remains is the public-facing release work and the one platform this machine cannot execute.
 
 | | Count |
 |---|---|
-| ✅ Done and verified | 26 of 32 tasks |
-| ⚠️ Built, not yet verified | 4 tasks — 0.4, 5.3, 5.4, 7.2 |
+| ✅ Done and verified | 28 of 32 tasks |
+| ⚠️ Built, not yet verified | 2 tasks — 0.4, 7.2 |
 | ❌ Not started | 1 task — 7.3 |
 | 🚫 Removed from scope | 1 task — 0.5 (continuous integration) |
 
@@ -28,17 +28,17 @@ The pipeline is implemented end to end and the test suite is green. `commitograp
 | 0.1 Repository structure | ✅ | Tree as specified, plus `internal/cli/`, `internal/gitcmd/`, `Dockerfile`, `.gitattributes` |
 | 0.2 Module and dependencies | ✅ | Exactly the three permitted dependencies |
 | 0.3 Version package | ✅ | `--version` verified with `-ldflags` injection |
-| 0.4 Makefile | ⚠️ | All six targets written; verified by running each target's commands directly, since `make` is not installed on the development machine |
+| 0.4 Makefile | ⚠️ | All six targets written; verified by running each target's commands directly, since `make` is not installed on the development machine. `-s -w` is now dropped on Darwin (see below) |
 | 0.5 Continuous integration | 🚫 | **Removed on request.** The workflow ran once on 2026-09-05: ubuntu passed, macOS failed on a real product bug (see below), windows did not finish. Verification on Linux and macOS is now manual |
 | 1.1 Core data model | ✅ | Round-trip test preserves timezone offsets |
 | 1.2 Preflight | ✅ | Shallow, empty and non-repository paths all exit 2 with the exact messages |
-| 1.3 git log reader | ✅ | Streaming, control-character separators, C-quoted paths, offsets preserved |
+| 1.3 git log reader | ✅ | Streaming, control-character separators, C-quoted paths, offsets preserved. Large histories are now read by several concurrent `git log` processes (departure 8) and a subject containing the record separator no longer loses its commit's file changes (departure 9) |
 | 1.4 History writer | ✅ | Atomic write, compact JSON, schema-version rejection |
 | 1.5 Test fixtures | ✅ | All nine, plus a `coupling/` fixture; deterministic across runs |
 | 1.6 Collection test | ✅ | Reconciles against `git rev-list`, `git log --numstat` and `git shortlog` |
 | 2.1 Configuration | ✅ | Resolution order, list merging, `exclude_paths: []`, unknown-key warnings |
 | 3.1 Identity resolution | ✅ | Reconciles with `git shortlog -sn --all` on the mailmap fixture |
-| 3.2 Path exclusion | ✅ | Defaults, `.gitattributes`, negation, case-folding on Windows |
+| 3.2 Path exclusion | ✅ | Defaults, `.gitattributes`, negation, case-folding on Windows. Defaults now also carry `**/` forms so nested monorepo lockfiles and dependency trees are excluded (departure 10) |
 | 3.3 Merge and bulk handling | ✅ | `ExcludedMerges == 5`, bulk flagged, bots kept out of every metric |
 | 4.1 Report schema | ✅ | `docs/report-schema.json` committed and validated in tests |
 | 4.2 Temporal metrics | ✅ | Hand-computed expectations for every metric, including local-vs-UTC streaks |
@@ -50,12 +50,12 @@ The pipeline is implemented end to end and the test suite is green. `commitograp
 | 4.8 Privacy transforms | ✅ | No email-shaped string by default; no real name under `--anonymize` |
 | 5.1 Frontend toolchain | ✅ | 30.6 KB against the 150 KB cap; no framework, no charting library |
 | 5.2 Single-file output | ✅ | Exactly `index.html` + `report.json`; `</script>` break-out test passes |
-| 5.3 Dashboard sections | ⚠️ | All 13 sections and every accessibility feature built; **breakpoints, keyboard order and contrast ratios not yet audited in a browser** |
-| 5.4 Repo Wrapped | ⚠️ | Page generates and the year guard works; **PNG export not yet exercised in a browser** |
+| 5.3 Dashboard sections | ✅ | Audited in headless Chrome 152 at 360/768/1440 px: no horizontal page overflow, every interactive control reachable by Tab in DOM order, every chart carries `title`/`desc`/`role="img"`, and all text meets WCAG AA in both themes. Two defects found and fixed (see below) |
+| 5.4 Repo Wrapped | ✅ | Eight cards render; arrow-key navigation moves between them; the export control produces a real 78–110 KB PNG with a valid signature, entirely offline. One layout defect found and fixed (see below) |
 | 6.1 Command surface | ✅ | All 14 flags, exit codes 0/1/2 |
 | 6.2 Progress reporting | ✅ | Never on stdout; `--quiet` is silent |
 | 7.1 README | ✅ | All 11 required sections; screenshot and demo links are placeholders pending 7.3 |
-| 7.2 Release automation | ⚠️ | `.goreleaser.yml` and `Dockerfile` configured; **never executed**, and the tap/bucket repositories do not exist |
+| 7.2 Release automation | ⚠️ | `.goreleaser.yml` and `Dockerfile` configured; **never executed**, and the tap/bucket repositories do not exist. The new `{{ if ne .Os "darwin" }}` ldflag template is standard goreleaser syntax but is **not machine-validated** — goreleaser is not installed on the development machine, so `goreleaser check` has not been run |
 | 7.3 Reference outputs | ❌ | Not started — needs hosting and a choice of three public repositories |
 
 ### Deliberate departures from this plan
@@ -76,58 +76,92 @@ Each is a case where following the text literally was impossible or wrong. All a
 
 7. **`gofmt` scope (Task 0.4).** `make lint` runs `gofmt -l cmd internal` rather than `gofmt -l .`, because `testdata/fixtures/` contains generated repositories whose `.go` files are deliberately not valid Go.
 
-### Open bug: macOS binaries do not run
+8. **Sharded history read (Task 1.3, "a single git invocation").** Above 5,000 commits the history is read by up to 16 concurrent `git log --no-walk --stdin` processes over contiguous slices of `git rev-list --all --date-order`, reassembled in that order.
 
-The single CI run before the workflow was removed caught a real defect, recorded here so it is not lost with the workflow:
+   Profiling the 171,000-commit CPython repository showed the Go process using about 6 seconds of CPU while the whole run took 130 seconds: 97% of samples were threads blocked on git's pipe, and `git log --numstat` alone accounted for 115 seconds. git computes one diff per commit on a single thread, so no amount of Go optimization could reach the 60-second requirement — the only lever is running several git processes.
+
+   The rule being bent exists to forbid a git invocation *per commit*, which is the actual pathology; the sharded read preserves the one-diff-per-commit property and is still a single pass. Cost is one extra `rev-list` (1.1 s on CPython, no diff work). `TestShardedReadMatchesSingleStream` asserts the sharded and single-stream readers return identical commits, in identical order, on four fixtures. Repositories below the threshold, and any repository whose commits `rev-list` cannot enumerate, still take the original single-invocation path.
+
+9. **Rejoining split records (Task 1.3, rule 2).** The plan assumes the `0x01` record separator "cannot occur in a commit subject". git permits any byte in a commit message, and CPython contains one such subject (`4e45512d`). The record splits in two: the header parses, but its numstat block lands in an orphan chunk that was counted as a parse failure and discarded, silently losing that commit's file changes and printing a warning on every run of that repository. A chunk that does not begin with an object name followed by the field separator is now treated as the tail of the previous record and rejoined, subject and numstat both.
+
+10. **`**/` forms in the default exclusions (Task 3.2, rule 1).** Matching remains literal `doublestar.Match` as the rule requires, but every root-anchored default is now paired with a `**/` form. Anchored patterns alone meant `web/pnpm-lock.yaml` and `packages/api/node_modules/**` were analyzed as ordinary source, so exit criterion 4 held only for repositories with a single package at the root. Only the default list changed; a pattern the user writes is still anchored exactly where they write it.
+
+### Fixed: macOS binaries did not run
+
+The single CI run before the workflow was removed caught a real defect:
 
 ```
 dyld: missing LC_UUID load command
 Abort trap: 6   (exit 134)
 ```
 
-The binary builds on macOS and then refuses to start. The cause is `-s -w` in the link flags: on Darwin those strip the `LC_UUID` load command, and current versions of dyld reject a Mach-O binary without one. It is not a CI problem — **every macOS binary produced by `make build` and by `.goreleaser.yml` today is unusable**, which blocks exit criteria 1 and 11.
+`-s -w` is now dropped on Darwin in both [`Makefile`](../Makefile) (via `TARGET_GOOS`, which reads `go env GOOS` so cross-compilation is respected) and [`.goreleaser.yml`](../.goreleaser.yml) (via `{{ if ne .Os "darwin" }}`). Linux and Windows binaries stay stripped.
 
-The fix is to drop `-s -w` on Darwin only, in both [`Makefile`](../Makefile) and [`.goreleaser.yml`](../.goreleaser.yml). Not yet applied.
+**What was verified, and what was not.** Cross-compiling from the Windows development machine with `CGO_ENABLED=0`, a `-s -w` darwin/arm64 binary *does* carry `LC_UUID`: with the internal linker those flags only remove DWARF and shrink the symbol table (8,827 symbols to 93). So the failure is not reproducible on the cross-compiled path, and the original claim that *every* macOS artifact was unusable was too broad — goreleaser builds with `CGO_ENABLED=0` and would have produced a binary with `LC_UUID`.
 
-Linux passed the same run end to end, including `make lint`, `make fixtures`, `make test`, `make build` and the smoke test. Windows was still running when the workflow was deleted.
+The failure belongs to the path CI actually took: `make build` on a macOS host, where cgo is on by default and the Go linker hands `-s` to Apple's `ld`, which drops the load command. That path cannot be exercised from this machine. The flags are dropped on both paths anyway — the size saving is not worth an unrunnable binary, and keeping the two build routes identical means the release artifact matches what a contributor builds locally.
+
+**Criterion 1 therefore remains unverified on macOS.** It needs one run of the built binary on real macOS hardware.
+
+Linux passed the same CI run end to end, including `make lint`, `make fixtures`, `make test`, `make build` and the smoke test. Windows was still running when the workflow was deleted; the Windows path is exercised continuously by the development machine itself.
+
+### Browser audit (Tasks 5.3 and 5.4)
+
+Audited in headless Chrome 152 against dashboards generated from six fixtures — `basic` with `--per-author`, plus `shallow --allow-shallow` for the warning banner, `noise` for bulk commits, `coupling`, `merges` and the project's own repository for the low-confidence flag — so that every section and both themes were actually exercised. Contrast was measured on rendered text, compositing each element's own alpha with every ancestor's `opacity` against its effective background. Style combinations no fixture produces (expected-pair coupling rows, tags, emoji chips) were injected into a real page and measured there rather than left untested.
+
+Three defects were found and fixed:
+
+1. **Wrapped card counters stacked.** `.wrapped-progress` is `position: absolute`, but `.wrapped-card` was not a positioned ancestor, so all eight counters resolved against the viewport and rendered on top of each other in one corner. `.wrapped-card` is now `position: relative`.
+2. **Expected coupling pairs failed WCAG AA.** `.coupling-expected { opacity: 0.62 }` faded the whole row, dropping its already-muted text to 3.06:1 in light and 3.44:1 in dark against a 4.5:1 requirement. De-emphasis now comes from a transparent background and a dashed border; only the decorative meter, which is `aria-hidden`, is still dimmed. The "expected pair" tag carries the meaning as text.
+3. **Misleading comment in `charts.ts`.** It claimed the data table was hidden with a class "so screen readers can still reach it", while the code uses the `hidden` attribute, which removes it from the accessibility tree. The pattern itself is correct — a disclosure with `aria-expanded` and `aria-controls`, revealed on demand and forced visible in print — so the comment was corrected rather than the code.
+
+Verified and passing: zero network requests with the network disabled (only the `file://` document itself), no uncaught errors, no horizontal page overflow at 360/768/1440 px, all seven interactive controls reachable by Tab in DOM order, `title`/`desc`/`role="img"` on every chart, the show-data toggle revealing its table and updating `aria-expanded`, the theme toggle flipping without touching any storage API, and the Wrapped export producing valid 78–110 KB PNGs offline across four different cards.
 
 ### Known gaps worth revisiting
 
-- **Nested lockfiles in monorepos.** Task 3.2 mandates literal `doublestar.Match`, so unprefixed defaults such as `pnpm-lock.yaml` are anchored to the repository root and will not match `web/pnpm-lock.yaml`. The specification was followed and the consequence documented in the README, but gitignore-style depth semantics are probably what users expect.
 - **Nested `.gitattributes`.** Only the repository-root file is parsed. Walking the tree for nested ones would cost a full scan on every run.
 - **Binary detection for blame.** Task 4.3 step 3 mentions `git ls-files --eol`; the implementation uses only the NUL-byte sniff, which is the more reliable of the two signals.
 - **Overlapping exclusion reasons.** A merge commit authored by a bot is counted under both `merges` and `bots`, so the two can sum to more than `total`. `total` is computed independently and is authoritative.
 - **Progress threshold.** Task 6.2 specifies progress "for runs exceeding 2 seconds"; the implementation emits it for every non-quiet run.
+- **Path filtering is now the largest Go-side cost.** Doubling the default pattern list to add the `**/` forms moved the CPython run from 29.2 s to 34.5 s. Results are memoized per distinct path, so the cost scales with distinct paths rather than commits. Well inside budget, but if the list grows further, matching literal basenames with a map before falling back to globbing would remove most of it.
+- **The sharded reader is not race-verified.** It is safe by construction — each goroutine writes only its own result slot, and warnings are buffered per shard and replayed after the join, because `OnWarning` belongs to the caller and is not required to be concurrency-safe. But `-race` needs cgo and no C compiler is installed on the development machine, so it was stress-tested (`-count=5` across four fixtures and four shard counts) rather than verified with the detector. Worth one `-race` run wherever a C toolchain is available.
 
 ### Exit criteria
 
 | # | Criterion | Status |
 |---|---|---|
-| 1 | Single-file dashboard on Linux, macOS and Windows | ⚠️ Verified on Windows and Linux; **macOS is broken** by the `LC_UUID` bug above |
+| 1 | Single-file dashboard on Linux, macOS and Windows | ⚠️ Verified on Windows and Linux. The `LC_UUID` link-flag fix is applied and all twelve release targets cross-compile, but **no macOS binary has been executed** — see above |
 | 2 | Counts and line totals reconcile with independent `git` commands | ✅ |
 | 3 | Identity resolution reconciles with `git shortlog -sn --all` | ✅ |
-| 4 | Default exclusions keep lockfiles and vendored code out | ✅ |
+| 4 | Default exclusions keep lockfiles and vendored code out | ✅ Now including nested monorepo paths (departure 10) |
 | 5 | Shallow clones detected and refused with the specified message | ✅ |
 | 6 | `report.json` validates against the committed JSON Schema | ✅ |
 | 7 | No plaintext emails; `--anonymize` leaks no real names | ✅ |
-| 8 | 100,000 commits in under 60s with `--no-blame` | ❌ Not measured |
-| 9 | Works offline and meets the Task 5.3 accessibility requirements | ⚠️ Offline behaviour asserted in tests; accessibility not audited |
-| 10 | `--wrapped` produces a shareable page with client-side PNG export | ⚠️ Page verified; PNG export not exercised in a browser |
+| 8 | 100,000 commits in under 60s with `--no-blame` | ✅ **99,754 commits in 12.9 s**; the full 171,014-commit CPython history in 34.5 s (was 164.4 s) |
+| 9 | Works offline and meets the Task 5.3 accessibility requirements | ✅ Audited in Chrome 152; two defects found and fixed |
+| 10 | `--wrapped` produces a shareable page with client-side PNG export | ✅ Export produces valid PNGs offline; one layout defect found and fixed |
 | 11 | Release artifacts published, installable from two package managers | ❌ |
 | 12 | Three public reference dashboards live and linked | ❌ |
 
-Criteria 1–7 gate any public announcement. Six of the seven are met; the first needs only a CI run on the other two platforms.
+Criteria 1–7 gate any public announcement. Six of the seven are met outright; criterion 1 needs one run of the built binary on real macOS hardware, which no machine available to this project can currently provide.
+
+**Performance measurements** were taken on the Windows development machine (16 cores) against a full clone of `python/cpython` at 171,014 commits, with `--no-blame`, timing the whole command including rendering:
+
+| Run | Commits | Before | After |
+|---|---|---|---|
+| Full history | 171,014 | 164.4 s | 34.5 s |
+| `--until=2016-01-01` | 99,754 | — | 12.9 s |
+
+The sharded and single-stream readers were diffed field by field over the full CPython report: the only differences were `generatedAt`, `toolVersion`, and the file changes recovered by departure 9 (`+3/-2` in `Lib/functools.py`, and the two warnings that no longer occur).
 
 ### Suggested next steps
 
-1. Fix the `LC_UUID` link-flag bug so macOS binaries run at all. Blocks criteria 1 and 11.
-2. Verify a Windows build by hand, since nothing checks the three platforms automatically any more.
-3. Open `out/index.html` with the network disabled: confirm zero failed requests, check 360/768/1440 px, tab through every control, and export a Wrapped card to PNG. Closes criteria 9 and 10.
-4. Benchmark `--no-blame` against a large public repository such as `torvalds/linux`. Closes criterion 8.
-5. Tag a release once 1–10 hold, and create the `homebrew-tap` and `scoop-bucket` repositories plus the `TAP_GITHUB_TOKEN` secret. Closes criterion 11.
-6. Publish the three reference dashboards and replace the README placeholders. Closes criterion 12 and Task 7.3.
+1. Run the built binary once on real macOS hardware — `commitography --version` is enough to prove `LC_UUID` is present and dyld accepts it. Closes criterion 1 and unblocks 11.
+2. Tag a release, and create the `homebrew-tap` and `scoop-bucket` repositories plus the `TAP_GITHUB_TOKEN` secret. Closes criterion 11 and Task 7.2, which has still never been executed.
+3. Publish the three reference dashboards and replace the README placeholders. Closes criterion 12 and Task 7.3.
+4. Opportunistic: one `-race` run of `./internal/collect` wherever a C toolchain exists, to confirm the sharded reader by detector rather than by argument.
 
-Without CI, every cross-platform claim in this document rests on a manual check. Criterion 1 in particular can regress silently.
+Without CI, every cross-platform claim in this document rests on a manual check. Criterion 1 in particular can regress silently — and the `LC_UUID` bug is exactly the kind of regression that only appears on the platform nobody can run.
 
 ---
 
