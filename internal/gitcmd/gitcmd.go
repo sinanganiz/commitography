@@ -5,6 +5,7 @@ package gitcmd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -23,17 +24,34 @@ func Args(repoPath string, args ...string) []string {
 
 // Command builds an *exec.Cmd for a git invocation against repoPath.
 func Command(repoPath string, args ...string) *exec.Cmd {
-	return exec.Command("git", Args(repoPath, args...)...)
+	return CommandContext(context.Background(), repoPath, args...)
+}
+
+// CommandContext builds a cancellable *exec.Cmd for a git invocation against
+// repoPath.
+func CommandContext(ctx context.Context, repoPath string, args ...string) *exec.Cmd {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return exec.CommandContext(ctx, "git", Args(repoPath, args...)...)
 }
 
 // Run executes git and returns trimmed stdout, wrapping git's own stderr in the
 // error so the caller can surface something actionable.
 func Run(repoPath string, args ...string) (string, error) {
-	cmd := Command(repoPath, args...)
+	return RunContext(context.Background(), repoPath, args...)
+}
+
+// RunContext executes git with cancellation support and returns trimmed stdout.
+func RunContext(ctx context.Context, repoPath string, args ...string) (string, error) {
+	cmd := CommandContext(ctx, repoPath, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		if ctx != nil && ctx.Err() != nil {
+			return "", ctx.Err()
+		}
 		msg := strings.TrimSpace(stderr.String())
 		if msg == "" {
 			return "", err
@@ -45,7 +63,13 @@ func Run(repoPath string, args ...string) (string, error) {
 
 // Lines runs git and splits stdout into non-empty lines.
 func Lines(repoPath string, args ...string) ([]string, error) {
-	out, err := Run(repoPath, args...)
+	return LinesContext(context.Background(), repoPath, args...)
+}
+
+// LinesContext runs git with cancellation support and splits stdout into
+// non-empty lines.
+func LinesContext(ctx context.Context, repoPath string, args ...string) ([]string, error) {
+	out, err := RunContext(ctx, repoPath, args...)
 	if err != nil {
 		return nil, err
 	}

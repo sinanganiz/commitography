@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -48,13 +49,18 @@ var gitVersionRe = regexp.MustCompile(`(\d+)\.(\d+)(?:\.(\d+))?`)
 // metadata. Checks run in a fixed order and fail fast, so the first error a
 // user sees is the root cause rather than a downstream symptom.
 func Preflight(repoPath string) (model.RepositoryInfo, error) {
+	return PreflightContext(context.Background(), repoPath)
+}
+
+// PreflightContext validates a repository with cancellable Git commands.
+func PreflightContext(ctx context.Context, repoPath string) (model.RepositoryInfo, error) {
 	var info model.RepositoryInfo
 
 	// 1. git availability.
 	if _, err := exec.LookPath("git"); err != nil {
 		return info, ErrGitNotFound
 	}
-	raw, err := runGit("", "--version")
+	raw, err := runGitContext(ctx, "", "--version")
 	if err != nil {
 		return info, ErrGitNotFound
 	}
@@ -70,7 +76,7 @@ func Preflight(repoPath string) (model.RepositoryInfo, error) {
 	}
 
 	// 3. Path is a repository.
-	if _, err := runGit(repoPath, "rev-parse", "--git-dir"); err != nil {
+	if _, err := runGitContext(ctx, repoPath, "rev-parse", "--git-dir"); err != nil {
 		return info, fmt.Errorf("%s is not a git repository", repoPath)
 	}
 
@@ -81,14 +87,14 @@ func Preflight(repoPath string) (model.RepositoryInfo, error) {
 	info.Path = abs
 
 	// 4. Shallow check.
-	shallow, err := runGit(repoPath, "rev-parse", "--is-shallow-repository")
+	shallow, err := runGitContext(ctx, repoPath, "rev-parse", "--is-shallow-repository")
 	if err != nil {
 		return info, err
 	}
 	info.IsShallow = shallow == "true"
 
 	// 5. Graft check.
-	gitDir, err := runGit(repoPath, "rev-parse", "--absolute-git-dir")
+	gitDir, err := runGitContext(ctx, repoPath, "rev-parse", "--absolute-git-dir")
 	if err != nil {
 		return info, err
 	}
@@ -96,14 +102,14 @@ func Preflight(repoPath string) (model.RepositoryInfo, error) {
 		fileExists(filepath.Join(gitDir, "info", "grafts"))
 
 	// 6. Empty repository check.
-	head, err := runGit(repoPath, "rev-parse", "--verify", "HEAD")
+	head, err := runGitContext(ctx, repoPath, "rev-parse", "--verify", "HEAD")
 	if err != nil {
 		return info, errors.New("repository has no commits")
 	}
 
 	// 7. Head and default branch.
 	info.HeadCommit = head
-	if branch, err := runGit(repoPath, "symbolic-ref", "--short", "HEAD"); err == nil {
+	if branch, err := runGitContext(ctx, repoPath, "symbolic-ref", "--short", "HEAD"); err == nil {
 		info.DefaultBranch = branch
 	}
 

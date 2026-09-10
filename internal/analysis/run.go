@@ -76,6 +76,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		UseMailmap: cfg.UseMailmap,
 		Since:      opts.Since,
 		Until:      opts.Until,
+		Context:    ctx,
 		OnWarning:  collectWarn,
 	})
 	if err != nil {
@@ -105,6 +106,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	}
 
 	input := aggregate.Input{
+		Context:    ctx,
 		RepoPath:   repoPath,
 		Repository: history.Repository,
 		Config:     cfg,

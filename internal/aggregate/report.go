@@ -3,6 +3,7 @@
 package aggregate
 
 import (
+	"context"
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/config"
@@ -62,6 +63,7 @@ type RepositorySummary struct {
 // Input is everything the aggregation stage needs. It is assembled by the CLI
 // once collection and filtering have run.
 type Input struct {
+	Context    context.Context
 	RepoPath   string
 	Repository model.RepositoryInfo
 	Config     config.Config
@@ -88,6 +90,13 @@ func (in Input) progress(stage, detail string) {
 	if in.Progress != nil {
 		in.Progress(stage, detail)
 	}
+}
+
+func (in Input) context() context.Context {
+	if in.Context == nil {
+		return context.Background()
+	}
+	return in.Context
 }
 
 // analyzed returns the commits that count toward commit and temporal metrics:
@@ -145,7 +154,10 @@ func Build(in Input) (*Report, error) {
 	r.Temporal = buildTemporal(in, analyzed)
 
 	in.progress("metrics", "code")
-	code, codeWarnings := buildCode(in, analyzed, lineScoped)
+	code, codeWarnings, err := buildCode(in, analyzed, lineScoped)
+	if err != nil {
+		return nil, err
+	}
 	r.Code = code
 	r.Warnings = append(r.Warnings, codeWarnings...)
 

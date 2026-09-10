@@ -2,6 +2,8 @@ package aggregate
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -107,7 +109,7 @@ type fileStat struct {
 	lastModified time.Time
 }
 
-func buildCode(in Input, analyzed, lineScoped []model.Commit) (CodeMetrics, []string) {
+func buildCode(in Input, analyzed, lineScoped []model.Commit) (CodeMetrics, []string, error) {
 	var warnings []string
 	m := CodeMetrics{
 		MostTouchedFiles:     []TouchedFile{},
@@ -159,8 +161,11 @@ func buildCode(in Input, analyzed, lineScoped []model.Commit) (CodeMetrics, []st
 	m.LargestCommit = largestCommit(in, lineScoped)
 	m.FileTypeDistribution = topFileTypes(extStats)
 
-	tracked, err := trackedFiles(in.RepoPath)
+	tracked, err := trackedFilesContext(in.context(), in.RepoPath)
 	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return m, warnings, err
+		}
 		warnings = append(warnings, fmt.Sprintf("could not list tracked files: %v", err))
 	}
 	m.TrackedFiles = len(tracked)
@@ -182,14 +187,17 @@ func buildCode(in Input, analyzed, lineScoped []model.Commit) (CodeMetrics, []st
 	m.TrackedLines = countLines(in.RepoPath, textFiles)
 
 	if in.NoBlame {
-		return m, warnings
+		return m, warnings, nil
 	}
 
 	sample := sampleFiles(textFiles, blameSampleSize)
 	m.CodeAgeSampledFiles = len(sample)
 	in.progress("blame", fmt.Sprintf("%d of %d files", len(sample), len(textFiles)))
 
-	ages, blameWarnings := blameYears(in.RepoPath, sample)
+	ages, blameWarnings, err := blameYears(in.context(), in.RepoPath, sample)
+	if err != nil {
+		return m, warnings, err
+	}
 	warnings = append(warnings, blameWarnings...)
 	m.CodeAge = ages
 
@@ -205,7 +213,7 @@ func buildCode(in Input, analyzed, lineScoped []model.Commit) (CodeMetrics, []st
 		m.SurvivingFromFirstYear = &ratio
 	}
 
-	return m, warnings
+	return m, warnings, nil
 }
 
 // topTouchedFiles ranks paths by how many commits touched them. Files since
@@ -296,7 +304,11 @@ func largestCommit(in Input, commits []model.Commit) *CommitRef {
 }
 
 func trackedFiles(repoPath string) ([]string, error) {
-	return gitcmd.Lines(repoPath, "ls-tree", "-r", "--name-only", "HEAD")
+	return trackedFilesContext(context.Background(), repoPath)
+}
+
+func trackedFilesContext(ctx context.Context, repoPath string) ([]string, error) {
+	return gitcmd.LinesContext(ctx, repoPath, "ls-tree", "-r", "--name-only", "HEAD")
 }
 
 // textCandidates removes files blame cannot say anything useful about: those
@@ -351,13 +363,19 @@ func sampleFiles(paths []string, limit int) []string {
 
 // blameYears aggregates blamed lines by the author-date year of the commit that
 // last touched each line.
-func blameYears(repoPath string, paths []string) ([]YearLines, []string) {
+func blameYears(ctx context.Context, repoPath string, paths []string) ([]YearLines, []string, error) {
 	var warnings []string
 	years := map[int]int{}
 
 	for _, p := range paths {
-		out, err := gitcmd.Run(repoPath, "blame", "--line-porcelain", "-w", "-M", "HEAD", "--", p)
+		if err := ctx.Err(); err != nil {
+			return nil, warnings, err
+		}
+		out, err := gitcmd.RunContext(ctx, repoPath, "blame", "--line-porcelain", "-w", "-M", "HEAD", "--", p)
 		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return nil, warnings, err
+			}
 			warnings = append(warnings, fmt.Sprintf("blame failed for %s", p))
 			continue
 		}
@@ -379,7 +397,7 @@ func blameYears(repoPath string, paths []string) ([]YearLines, []string) {
 		out = append(out, YearLines{Year: year, Lines: lines})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Year < out[j].Year })
-	return out, warnings
+	return out, warnings, nil
 }
 
 func totalLines(ages []YearLines) int {

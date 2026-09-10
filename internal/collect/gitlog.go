@@ -2,6 +2,7 @@ package collect
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"runtime"
@@ -52,6 +53,7 @@ type Options struct {
 	UseMailmap bool
 	Since      string // passed through to git log --since, empty means no bound
 	Until      string // passed through to git log --until, empty means no bound
+	Context    context.Context
 
 	// OnWarning, when set, receives non-fatal diagnostics such as parse
 	// failures. It may be called before Collect returns.
@@ -62,6 +64,13 @@ func (o Options) warn(format string, args ...any) {
 	if o.OnWarning != nil {
 		o.OnWarning(fmt.Sprintf(format, args...))
 	}
+}
+
+func (o Options) context() context.Context {
+	if o.Context == nil {
+		return context.Background()
+	}
+	return o.Context
 }
 
 // Collect reads the full history.
@@ -80,7 +89,7 @@ func (o Options) warn(format string, args ...any) {
 // actual pathology; the sharded read keeps the one-diff-per-commit property.
 // Small repositories still take the single-invocation path.
 func Collect(opts Options) (*model.History, error) {
-	info, err := Preflight(opts.RepoPath)
+	info, err := PreflightContext(opts.context(), opts.RepoPath)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +160,7 @@ func revList(opts Options) ([]string, error) {
 	if opts.Until != "" {
 		args = append(args, "--until="+opts.Until)
 	}
-	return gitcmd.Lines(opts.RepoPath, args...)
+	return gitcmd.LinesContext(opts.context(), opts.RepoPath, args...)
 }
 
 // logArgs builds the `git log` arguments shared by both readers. When hashes
@@ -179,7 +188,7 @@ func logArgs(opts Options, fromStdin bool) []string {
 // collectStream runs one git log and parses its output. When hashes is non-nil
 // they are fed on stdin and only those commits are read.
 func collectStream(opts Options, hashes []string) (commits []model.Commit, failed, total int, err error) {
-	cmd := gitCommand(opts.RepoPath, logArgs(opts, hashes != nil)...)
+	cmd := gitCommandContext(opts.context(), opts.RepoPath, logArgs(opts, hashes != nil)...)
 	if hashes != nil {
 		cmd.Stdin = strings.NewReader(strings.Join(hashes, "\n") + "\n")
 	}
@@ -199,6 +208,9 @@ func collectStream(opts Options, hashes []string) (commits []model.Commit, faile
 	// Drain anything left so git never blocks on a full pipe, then reap.
 	_, _ = io.Copy(io.Discard, stdout)
 	waitErr := cmd.Wait()
+	if ctxErr := opts.context().Err(); ctxErr != nil {
+		return nil, 0, 0, ctxErr
+	}
 
 	if parseErr != nil {
 		return nil, 0, 0, parseErr
