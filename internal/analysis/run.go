@@ -44,12 +44,12 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		return nil, err
 	}
 
-	config.Warn = func(format string, args ...any) {
+	configWarn := func(format string, args ...any) {
 		if opts.OnWarning != nil {
 			opts.OnWarning(fmt.Sprintf(format, args...))
 		}
 	}
-	cfg, err := config.Load(opts.ConfigPath, repoPath)
+	cfg, err := config.LoadWithWarn(opts.ConfigPath, repoPath, configWarn)
 	if err != nil {
 		return nil, &UsageError{Err: err}
 	}

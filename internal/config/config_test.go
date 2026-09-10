@@ -160,6 +160,24 @@ func TestUnknownKeyWarnsButDoesNotFail(t *testing.T) {
 	}
 }
 
+func TestLoadWithWarnUsesCallLocalSink(t *testing.T) {
+	dir := writeConfig(t, "unknown_key: true\n")
+	var first, second []string
+	if _, err := LoadWithWarn("", dir, func(format string, args ...any) {
+		first = append(first, format)
+	}); err != nil {
+		t.Fatalf("first LoadWithWarn: %v", err)
+	}
+	if _, err := LoadWithWarn("", dir, func(format string, args ...any) {
+		second = append(second, format)
+	}); err != nil {
+		t.Fatalf("second LoadWithWarn: %v", err)
+	}
+	if len(first) != 1 || len(second) != 1 {
+		t.Fatalf("call-local warnings = %d and %d, want one each", len(first), len(second))
+	}
+}
+
 func TestIsBotIdentity(t *testing.T) {
 	cases := []struct {
 		name, email string

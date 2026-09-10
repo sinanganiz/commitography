@@ -189,7 +189,17 @@ var knownKeys = map[string]bool{
 // repository-local file rather than merging with it. Command-line flags are
 // applied by the caller afterwards.
 func Load(explicitPath string, repoPath string) (Config, error) {
+	return LoadWithWarn(explicitPath, repoPath, Warn)
+}
+
+// LoadWithWarn resolves configuration using a call-local warning sink. It is
+// the concurrency-safe entry point for adapters that run more than one
+// analysis in a process.
+func LoadWithWarn(explicitPath string, repoPath string, warn func(string, ...any)) (Config, error) {
 	cfg := Default()
+	if warn == nil {
+		warn = func(string, ...any) {}
+	}
 
 	path := explicitPath
 	if path == "" {
@@ -207,7 +217,7 @@ func Load(explicitPath string, repoPath string) (Config, error) {
 		return cfg, fmt.Errorf("reading %s: %w", path, err)
 	}
 
-	warnUnknownKeys(path, data)
+	warnUnknownKeys(path, data, warn)
 
 	var fc fileConfig
 	if err := yaml.Unmarshal(data, &fc); err != nil {
@@ -269,7 +279,7 @@ func (fc fileConfig) applyTo(cfg *Config) {
 
 // warnUnknownKeys reports top-level keys commitography does not recognize.
 // A typo in a configuration file should be visible without being fatal.
-func warnUnknownKeys(path string, data []byte) {
+func warnUnknownKeys(path string, data []byte, warn func(string, ...any)) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return
@@ -284,7 +294,7 @@ func warnUnknownKeys(path string, data []byte) {
 	for i := 0; i+1 < len(root.Content); i += 2 {
 		key := root.Content[i].Value
 		if !knownKeys[key] {
-			Warn("%s:%d: unknown configuration key %q, ignored", path, root.Content[i].Line, key)
+			warn("%s:%d: unknown configuration key %q, ignored", path, root.Content[i].Line, key)
 		}
 	}
 }
