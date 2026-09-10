@@ -73,6 +73,7 @@ Repository-level by default; per-contributor breakdowns are opt-in behind
 	f.BoolVarP(&opts.Quiet, "quiet", "q", false, "Suppress progress output")
 	f.BoolVarP(&opts.Verbose, "verbose", "v", false, "Emit debug logging to stderr")
 	f.BoolVar(&showVersion, "version", false, "Print version and exit")
+	cmd.AddCommand(newServeCommand())
 
 	return cmd
 }

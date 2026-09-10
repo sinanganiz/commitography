@@ -7,7 +7,7 @@ analysis implementation.
 
 | Package | Status |
 |---|---|
-| WP-2.1 `serve` command and listener | Not started |
+| WP-2.1 `serve` command and listener | Complete |
 | WP-2.2 Embedded asset server | Not started |
 | WP-2.3 Job state and bounded history | Not started |
 | WP-2.4 Worker lifecycle and cancellation | Not started |
