@@ -4,6 +4,11 @@
 
 **Prerequisite:** Phase 1 exit criteria fully met. Phase 2 work does not begin before the MVP is released and has received real-world usage feedback.
 
+**Phase 1.5 relationship:** The Local Web Dashboard and Runner is an
+independent local experience. It does not satisfy Phase 2 exit criteria and
+does not require the Phase 2 cache. Phase 2 may later provide an optional cache
+interface consumed by both the CLI and the local runner.
+
 ---
 
 ## 1. Purpose

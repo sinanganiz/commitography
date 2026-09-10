@@ -88,6 +88,45 @@ A year in review, as a shareable page of full-screen cards:
 commitography ./repo --wrapped 2026
 ```
 
+### Planned local web dashboard
+
+The approved Phase 1.5 plan adds a local web runner for users who prefer a
+dashboard while an analysis is running:
+
+```bash
+commitography serve --open
+```
+
+The server listens on `127.0.0.1:8080` by default. It accepts a repository path
+inside the current working directory, or inside a path supplied with one or
+more `--allowed-root` flags:
+
+```bash
+commitography serve --open --allowed-root /work
+```
+
+When implemented, the browser will receive progress updates, let you cancel
+the active analysis and open the completed report in the same application. A
+normal browser cannot
+open an arbitrary host filesystem picker, so native usage enters the path as
+text. Docker usage enters the path visible inside the container, not the host
+path:
+
+```bash
+docker run --rm \
+  --publish 127.0.0.1:8080:8080 \
+  --mount type=bind,source="$PWD",target=/repos,readonly \
+  ghcr.io/sinanganiz/commitography:latest \
+  serve --listen 0.0.0.0:8080 --allowed-root /repos
+```
+
+The existing Docker default remains the batch CLI mode. The local web runner is
+single-user, keeps the ten most recent jobs in memory and does not provide
+remote repository access or a persistent server database. See
+[`docs/phase-1.5.md`](docs/phase-1.5.md) for the scope and
+[`docs/phase-1.5-detailed.md`](docs/phase-1.5-detailed.md) for the work
+packages.
+
 ---
 
 ## Live demos

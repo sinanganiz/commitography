@@ -4,6 +4,12 @@
 
 **Prerequisite:** Phase 2 complete and in real use. Phase 3 is the largest increase in operational surface area in the project and should not begin while earlier phases are still changing shape.
 
+**Phase 1.5 relationship:** Phase 1.5 is a single-user localhost runner, not a
+server-mode implementation. It has no repository catalog, remote credentials,
+scheduler, persistent reports or organization rollups. Phase 3 may reuse its
+analysis and API contracts, but it must replace the in-memory job manager with
+the persistence and operational controls defined below.
+
 ---
 
 ## 1. Purpose

@@ -114,14 +114,18 @@ Commitography shells out to the `git` binary rather than linking a git library. 
 
 - No backend service.
 - No database server.
-- SQLite is used from Phase 2 onward purely as a local incremental cache file, not as an application database.
+- Phase 1.5 keeps job state in memory and does not require a cache.
+- Phase 2 provides the planned incremental cache described by its own scope and work-package documents.
+- Phase 3 may use persistent storage for repositories, reports, scheduling state and accounts.
 - The published artifact is JSON.
 
 ---
 
 ## 6. Phases
 
-Commitography ships in three phases. Each phase is a thin layer around the phase before it; the core analysis engine is written once in Phase 1 and reused unchanged.
+Commitography is organized into four delivery stages. Each stage is a thin
+layer around the stage before it; the core analysis engine is written once and
+reused by the CLI, the local runner and later integrations.
 
 ### Phase 1 — Local CLI (MVP)
 
@@ -133,6 +137,19 @@ open out/index.html
 No server, no database, no configuration required. This is the flagship experience and the entirety of the initial release. Detailed breakdown in `phase-1-detailed.md`.
 
 **Closed for development on 2026-09-05.** Nine of twelve exit criteria are met. Three remain open and are tracked as a release checklist at the top of `phase-1-detailed.md`: running the binary on macOS, publishing release artifacts, and hosting the three reference dashboards. None is development work, and none has been waived — the project is not ready to be announced until at least the macOS check is done.
+
+### Phase 1.5 — Local Web Dashboard and Runner
+
+```bash
+commitography serve --open
+```
+
+The planned Phase 1.5 feature wraps the Phase 1 analysis engine in a local,
+single-user web application. It will provide repository path validation, one
+active asynchronous job, estimated progress, cancellation, a bounded
+in-memory job history and the completed report in the same UI. It does not
+provide remote repository management, persistent server storage, accounts or
+scheduling. The detailed scope is in `phase-1.5.md`.
 
 ### Phase 2 — CI/CD integration
 
@@ -166,9 +183,9 @@ These decisions are locked and apply across all phases.
 |---|---|
 | Core | Go |
 | Git access | `git` binary via subprocess |
-| Frontend | TypeScript, custom SVG rendering |
-| Distribution | Single static binary with embedded frontend (`embed.FS`) |
-| Intermediate cache | SQLite, single file, Phase 2 onward |
+| Frontend | TypeScript; Phase 1 custom SVG, Phase 1.5 React/MUI shell and custom SVG |
+| Distribution | Single binary with embedded frontend (`embed.FS`) for CLI and local server |
+| Intermediate cache | Optional Phase 2 cache; not required by Phase 1.5 |
 
 **Why Go:** cross-compilation to every supported platform from a single machine, `embed.FS` for shipping the frontend inside the binary, and a distribution ecosystem (Homebrew, Scoop, `go install`) that developer-tool users already expect.
 
