@@ -1,16 +1,14 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/sinanganiz/commitography/internal/aggregate"
+	"github.com/sinanganiz/commitography/internal/analysis"
 	"github.com/sinanganiz/commitography/internal/collect"
-	"github.com/sinanganiz/commitography/internal/config"
-	"github.com/sinanganiz/commitography/internal/filter"
-	"github.com/sinanganiz/commitography/internal/identity"
 	"github.com/sinanganiz/commitography/internal/render"
 )
 
@@ -75,99 +73,47 @@ func Run(opts Options) error {
 	}
 
 	progress := NewProgress(opts.Quiet, opts.Verbose)
-	// Configuration warnings belong on the same stream as everything else.
-	config.Warn = func(format string, args ...any) { progress.Warn(format, args...) }
 
-	repoPath, err := filepath.Abs(opts.RepoPath)
+	analysisOpts := analysis.Options{
+		RepoPath:       opts.RepoPath,
+		ConfigPath:     opts.ConfigPath,
+		Since:          opts.Since,
+		Until:          opts.Until,
+		PerAuthor:      opts.PerAuthor,
+		Anonymize:      opts.Anonymize,
+		NoBlame:        opts.NoBlame,
+		AllowShallow:   opts.AllowShallow,
+		CountMerges:    opts.CountMerges,
+		CountMergesSet: opts.countMergesSet,
+		Year:           opts.Wrapped,
+		OnWarning:      func(message string) { progress.Warn("%s", message) },
+	}
+	result, err := analysis.Run(context.Background(), analysisOpts, func(event analysis.ProgressEvent) {
+		progress.Stage(cliStage(event.Stage), event.Detail)
+	})
 	if err != nil {
-		return usageErrorf("resolving %s: %v", opts.RepoPath, err)
+		return adaptAnalysisError(err)
 	}
 
-	info, err := collect.Preflight(repoPath)
-	if err != nil {
-		return &UsageError{err}
-	}
-	if info.IsShallow && !opts.AllowShallow {
-		return &UsageError{&collect.ShallowError{Path: repoPath}}
-	}
-
-	cfg, err := config.Load(opts.ConfigPath, repoPath)
-	if err != nil {
-		return &UsageError{err}
-	}
-	applyFlags(&cfg, opts)
-	if err := cfg.Validate(); err != nil {
-		return &UsageError{err}
-	}
-
-	outputDir := cfg.OutputDir
+	outputDir := result.Config.OutputDir
 	if opts.outputDirSet {
 		outputDir = opts.OutputDir
 	}
 
-	var warnings []string
-	collectWarn := func(msg string) {
-		warnings = append(warnings, msg)
-		progress.Warn("%s", msg)
-	}
-
-	progress.Stage("Reading history", "…")
-	history, err := collect.Collect(collect.Options{
-		RepoPath:   repoPath,
-		UseMailmap: cfg.UseMailmap,
-		Since:      opts.Since,
-		Until:      opts.Until,
-		OnWarning:  collectWarn,
-	})
-	if err != nil {
-		return err
-	}
-	progress.Stage("Reading history", fmt.Sprintf("%d commits", len(history.Commits)))
-
-	resolver := identity.NewResolver(cfg, history.Commits)
-	progress.Stage("Resolving identities", fmt.Sprintf("%d contributors", len(resolver.Identities())))
-
-	pathFilter, err := filter.NewPathFilter(cfg, repoPath)
-	if err != nil {
-		return &UsageError{err}
-	}
-
-	filtered := filter.Apply(history.Commits, cfg, resolver, pathFilter)
-	progress.Stage("Filtering", fmt.Sprintf("%d excluded", filtered.TotalCommits-filtered.AnalyzedCommits))
-
-	in := aggregate.Input{
-		RepoPath:   repoPath,
-		Repository: history.Repository,
-		Config:     cfg,
-		Filtered:   filtered,
-		Resolver:   resolver,
-		PathFilter: pathFilter,
-		NoBlame:    opts.NoBlame,
-		PerAuthor:  opts.PerAuthor,
-		Warnings:   warnings,
-		Progress: func(stage, detail string) {
-			switch stage {
-			case "blame":
-				progress.Stage("Sampling blame", detail)
-			default:
-				progress.Stage("Computing metrics", detail)
-			}
-		},
-	}
-
 	if opts.Wrapped != 0 {
-		return runWrapped(in, outputDir, opts, progress)
-	}
-
-	report, err := aggregate.Build(in)
-	if err != nil {
-		return err
+		path := filepath.Join(outputDir, render.WrappedFileName(opts.Wrapped))
+		progress.Stage("Rendering", path)
+		if err := render.RenderWrapped(result.Report, outputDir, opts.Wrapped, result.PreviousYearCommits); err != nil {
+			return err
+		}
+		progress.Done(path)
+		return nil
 	}
 
 	if opts.JSONOnly {
 		path := filepath.Join(outputDir, render.ReportFile)
 		progress.Stage("Rendering", path)
-		if err := render.WriteReportJSON(report, path); err != nil {
+		if err := render.WriteReportJSON(result.Report, path); err != nil {
 			return err
 		}
 		progress.Done(path)
@@ -175,73 +121,41 @@ func Run(opts Options) error {
 	}
 
 	progress.Stage("Rendering", filepath.Join(outputDir, render.IndexFile))
-	if err := render.Render(report, outputDir); err != nil {
+	if err := render.Render(result.Report, outputDir); err != nil {
 		return err
 	}
 	progress.Done(filepath.Join(outputDir, render.IndexFile))
 	return nil
 }
 
-// runWrapped narrows the analysis to a single calendar year and writes the
-// year-in-review page.
-func runWrapped(in aggregate.Input, outputDir string, opts Options, progress *Progress) error {
-	year := opts.Wrapped
-
-	inYear := countInYear(in, year)
-	if inYear < minWrappedCommits {
-		return usageErrorf(
-			"not enough commits in %d to generate a wrapped report (found %d, need at least %d)",
-			year, inYear, minWrappedCommits)
+func adaptAnalysisError(err error) error {
+	var usage *analysis.UsageError
+	if errors.As(err, &usage) {
+		return &UsageError{err}
 	}
-
-	in.Year = year
-	report, err := aggregate.Build(in)
-	if err != nil {
-		return err
+	var year *analysis.YearError
+	if errors.As(err, &year) {
+		return &UsageError{err}
 	}
-
-	var previous *int
-	if n := countInYear(in, year-1); n > 0 {
-		previous = &n
-	}
-
-	path := filepath.Join(outputDir, render.WrappedFileName(year))
-	progress.Stage("Rendering", path)
-	if err := render.RenderWrapped(report, outputDir, year, previous); err != nil {
-		return err
-	}
-	progress.Done(path)
-	return nil
+	return err
 }
 
-// countInYear counts analyzed commits whose author-local date falls in a year.
-func countInYear(in aggregate.Input, year int) int {
-	count := 0
-	for _, c := range in.Filtered.Commits {
-		if c.Excluded {
-			continue
-		}
-		if filter.CommitDate(c, in.Config).Year() == year {
-			count++
-		}
-	}
-	return count
-}
-
-// applyFlags folds command-line overrides over the loaded configuration. Flags
-// always win, which is the last step of the documented resolution order.
-//
-// --per-author has no configuration counterpart; it is carried on
-// aggregate.Input instead.
-func applyFlags(cfg *config.Config, opts Options) {
-	if opts.Anonymize {
-		cfg.Anonymize = true
-	}
-	if opts.countMergesSet {
-		cfg.CountMerges = opts.CountMerges
-	}
-	if opts.outputDirSet {
-		cfg.OutputDir = opts.OutputDir
+func cliStage(stage string) string {
+	switch stage {
+	case analysis.StagePreflight:
+		return "Validating repository"
+	case analysis.StageCollecting:
+		return "Reading history"
+	case analysis.StageIdentity:
+		return "Resolving identities"
+	case analysis.StageFiltering:
+		return "Filtering"
+	case analysis.StageCode:
+		return "Computing metrics"
+	case analysis.StageFinalizing:
+		return "Finalizing"
+	default:
+		return "Computing metrics"
 	}
 }
 

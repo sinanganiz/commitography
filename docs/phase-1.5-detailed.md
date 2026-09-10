@@ -89,11 +89,14 @@ type Options struct {
     ConfigPath   string
     Since        string
     Until        string
+    Year         int
     PerAuthor    bool
     Anonymize    bool
     NoBlame      bool
     AllowShallow bool
     CountMerges  bool
+    CountMergesSet bool
+    OnWarning    func(string)
 }
 
 type ProgressEvent struct {
@@ -108,7 +111,15 @@ type ProgressEvent struct {
 
 type ProgressSink func(ProgressEvent)
 
-func Run(ctx context.Context, opts Options, sink ProgressSink) (*aggregate.Report, error)
+type Result struct {
+    Report              *aggregate.Report
+    Repository          model.RepositoryInfo
+    Config              config.Config
+    Warnings            []string
+    PreviousYearCommits *int
+}
+
+func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error)
 ```
 
 The exact package path and additional diagnostic fields may be refined during
