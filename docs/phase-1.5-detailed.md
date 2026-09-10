@@ -60,7 +60,7 @@ work package starts.
 | Milestone | File | Depends on | Packages | Status |
 |---|---|---|---:|---|
 | M0 - Contracts and documentation | `phase-1.5/m0-contracts.md` | - | 4 | Complete |
-| M1 - Shared analysis engine | `phase-1.5/m1-analysis-engine.md` | M0 | 7 | In progress |
+| M1 - Shared analysis engine | `phase-1.5/m1-analysis-engine.md` | M0 | 7 | Complete |
 | M2 - Job manager and HTTP server | `phase-1.5/m2-job-server.md` | M1 | 7 | Not started |
 | M3 - API and local security | `phase-1.5/m3-api-security.md` | M2 | 7 | Not started |
 | M4 - React and MUI application | `phase-1.5/m4-react-frontend.md` | M0, M3 | 8 | Not started |

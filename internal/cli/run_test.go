@@ -1,13 +1,19 @@
 package cli
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/sinanganiz/commitography/internal/aggregate"
+	"github.com/sinanganiz/commitography/internal/analysis"
 	"github.com/sinanganiz/commitography/internal/collect"
 	"github.com/sinanganiz/commitography/internal/render"
 )
@@ -73,6 +79,39 @@ func TestRunProducesDashboard(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(opts.OutputDir, render.ReportFile)); err != nil {
 		t.Errorf("report.json was not written: %v", err)
+	}
+}
+
+func TestCLIAndAnalysisServiceProduceTheSameReport(t *testing.T) {
+	opts := baseOptions(t, "basic")
+	opts.outputDirSet = true
+	if err := Run(opts); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(opts.OutputDir, render.ReportFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cliReport aggregate.Report
+	if err := json.Unmarshal(data, &cliReport); err != nil {
+		t.Fatalf("decode CLI report: %v", err)
+	}
+
+	serviceResult, err := analysis.Run(context.Background(), analysis.Options{
+		RepoPath: opts.RepoPath,
+		NoBlame:  true,
+	}, nil)
+	if err != nil {
+		t.Fatalf("analysis.Run: %v", err)
+	}
+
+	// Generation time is intentionally different because the CLI renders after
+	// the service returns. All measured values must remain identical.
+	cliReport.GeneratedAt = time.Time{}
+	serviceResult.Report.GeneratedAt = time.Time{}
+	if !reflect.DeepEqual(cliReport, *serviceResult.Report) {
+		t.Fatal("CLI and analysis service reports differ")
 	}
 }
 
