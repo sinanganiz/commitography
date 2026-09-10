@@ -12,7 +12,7 @@ goal is reuse, not a second implementation of Git analysis.
 | WP-1.3 Context-aware Git commands | Complete |
 | WP-1.4 Structured progress events | Complete |
 | WP-1.5 Warning and output isolation | Complete |
-| WP-1.6 Repository consistency check | Not started |
+| WP-1.6 Repository consistency check | Complete |
 | WP-1.7 CLI parity tests and adapter | Not started |
 
 ---

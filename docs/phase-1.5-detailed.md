@@ -90,6 +90,7 @@ type Options struct {
     Since        string
     Until        string
     Year         int
+    CheckConsistency bool
     PerAuthor    bool
     Anonymize    bool
     NoBlame      bool
@@ -117,6 +118,9 @@ type Result struct {
     Config              config.Config
     Warnings            []string
     PreviousYearCommits *int
+    EndRepository       *model.RepositoryInfo
+    Stale               bool
+    StaleReason         string
 }
 
 func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error)

@@ -15,18 +15,19 @@ import (
 // adapter. Output directories and rendering flags deliberately do not belong
 // here: the analysis service returns a report and does not write files.
 type Options struct {
-	RepoPath       string
-	ConfigPath     string
-	Since          string
-	Until          string
-	Year           int
-	PerAuthor      bool
-	Anonymize      bool
-	NoBlame        bool
-	AllowShallow   bool
-	CountMerges    bool
-	CountMergesSet bool
-	OnWarning      func(string)
+	RepoPath         string
+	ConfigPath       string
+	Since            string
+	Until            string
+	Year             int
+	CheckConsistency bool
+	PerAuthor        bool
+	Anonymize        bool
+	NoBlame          bool
+	AllowShallow     bool
+	CountMerges      bool
+	CountMergesSet   bool
+	OnWarning        func(string)
 }
 
 // Progress stages are stable identifiers for CLI and web progress adapters.
@@ -92,4 +93,7 @@ type Result struct {
 	Config              config.Config
 	Warnings            []string
 	PreviousYearCommits *int
+	EndRepository       *model.RepositoryInfo
+	Stale               bool
+	StaleReason         string
 }

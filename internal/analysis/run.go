@@ -162,13 +162,40 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	}
 	emit.emit(StageFinalizing, "analysis complete")
 
-	return &Result{
+	result := &Result{
 		Report:              report,
 		Repository:          history.Repository,
 		Config:              cfg,
 		Warnings:            append([]string(nil), report.Warnings...),
 		PreviousYearCommits: previousYearCommits,
-	}, nil
+	}
+	if opts.CheckConsistency {
+		if err := contextError(ctx); err != nil {
+			return nil, err
+		}
+		end, err := collect.PreflightContext(ctx, repoPath)
+		if err != nil {
+			result.Stale = true
+			result.StaleReason = fmt.Sprintf("repository could not be revalidated after analysis: %v", err)
+		} else {
+			result.EndRepository = &end
+			result.Stale, result.StaleReason = repositoryChanged(history.Repository, end)
+		}
+	}
+	return result, nil
+}
+
+func repositoryChanged(start, end model.RepositoryInfo) (bool, string) {
+	if start.HeadCommit != end.HeadCommit {
+		return true, "repository HEAD changed during analysis"
+	}
+	if start.DefaultBranch != end.DefaultBranch {
+		return true, "repository checkout changed during analysis"
+	}
+	if start.IsShallow != end.IsShallow || start.HasGrafts != end.HasGrafts {
+		return true, "repository history metadata changed during analysis"
+	}
+	return false, ""
 }
 
 type eventEmitter struct {
