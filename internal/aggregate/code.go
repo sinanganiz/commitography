@@ -192,9 +192,11 @@ func buildCode(in Input, analyzed, lineScoped []model.Commit) (CodeMetrics, []st
 
 	sample := sampleFiles(textFiles, blameSampleSize)
 	m.CodeAgeSampledFiles = len(sample)
-	in.progress("blame", fmt.Sprintf("%d of %d files", len(sample), len(textFiles)))
+	in.progress("blame", fmt.Sprintf("%d of %d files", len(sample), len(textFiles)), 0, len(sample))
 
-	ages, blameWarnings, err := blameYears(in.context(), in.RepoPath, sample)
+	ages, blameWarnings, err := blameYears(in.context(), in.RepoPath, sample, func(current, total int) {
+		in.progress("blame", fmt.Sprintf("%d of %d files", current, total), current, total)
+	})
 	if err != nil {
 		return m, warnings, err
 	}
@@ -363,11 +365,11 @@ func sampleFiles(paths []string, limit int) []string {
 
 // blameYears aggregates blamed lines by the author-date year of the commit that
 // last touched each line.
-func blameYears(ctx context.Context, repoPath string, paths []string) ([]YearLines, []string, error) {
+func blameYears(ctx context.Context, repoPath string, paths []string, progress func(current, total int)) ([]YearLines, []string, error) {
 	var warnings []string
 	years := map[int]int{}
 
-	for _, p := range paths {
+	for index, p := range paths {
 		if err := ctx.Err(); err != nil {
 			return nil, warnings, err
 		}
@@ -377,6 +379,9 @@ func blameYears(ctx context.Context, repoPath string, paths []string) ([]YearLin
 				return nil, warnings, err
 			}
 			warnings = append(warnings, fmt.Sprintf("blame failed for %s", p))
+			if progress != nil {
+				progress(index+1, len(paths))
+			}
 			continue
 		}
 		for _, line := range strings.Split(out, "\n") {
@@ -389,6 +394,9 @@ func blameYears(ctx context.Context, repoPath string, paths []string) ([]YearLin
 				continue
 			}
 			years[time.Unix(seconds, 0).UTC().Year()]++
+		}
+		if progress != nil {
+			progress(index+1, len(paths))
 		}
 	}
 

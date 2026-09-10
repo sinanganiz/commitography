@@ -21,7 +21,7 @@ func TestParseLogRejoinsSubjectContainingRecordSeparator(t *testing.T) {
 	var warnings []string
 	opts := Options{OnWarning: func(msg string) { warnings = append(warnings, msg) }}
 
-	commits, failed, total, err := parseLog(strings.NewReader(stream), opts)
+	commits, failed, total, err := parseLog(strings.NewReader(stream), opts, 0)
 	if err != nil {
 		t.Fatalf("parseLog: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestParseLogReportsHeaderlessStream(t *testing.T) {
 	var warnings []string
 	opts := Options{OnWarning: func(msg string) { warnings = append(warnings, msg) }}
 
-	commits, failed, total, err := parseLog(strings.NewReader("\x01not a header at all\n"), opts)
+	commits, failed, total, err := parseLog(strings.NewReader("\x01not a header at all\n"), opts, 0)
 	if err != nil {
 		t.Fatalf("parseLog: %v", err)
 	}
@@ -74,6 +74,25 @@ func TestParseLogReportsHeaderlessStream(t *testing.T) {
 	}
 	if len(warnings) != 1 {
 		t.Errorf("warnings = %q, want exactly one", warnings)
+	}
+}
+
+func TestParseLogReportsProgress(t *testing.T) {
+	const hash = "4e45512de2d76e0366c5e7ac5d02119419bfc9ea"
+	stream := "\x01" + hash +
+		"\x1fName\x1fname@example.com" +
+		"\x1f2020-01-01T00:00:00Z\x1f2020-01-01T00:00:00Z" +
+		"\x1f\x1fsubject\n"
+
+	var current, total int
+	opts := Options{OnProgress: func(got, expected int) {
+		current, total = got, expected
+	}}
+	if _, _, _, err := parseLog(strings.NewReader(stream), opts, 7); err != nil {
+		t.Fatalf("parseLog: %v", err)
+	}
+	if current != 1 || total != 7 {
+		t.Errorf("progress = %d/%d, want 1/7", current, total)
 	}
 }
 

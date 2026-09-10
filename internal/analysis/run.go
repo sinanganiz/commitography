@@ -78,6 +78,11 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		Until:      opts.Until,
 		Context:    ctx,
 		OnWarning:  collectWarn,
+		OnProgress: func(current, total int) {
+			if total > 0 {
+				emit.emitCount(StageCollecting, fmt.Sprintf("%d of %d commits", current, total), current, total)
+			}
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -85,18 +90,19 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	if err := contextError(ctx); err != nil {
 		return nil, err
 	}
-	emit.emit(StageCollecting, fmt.Sprintf("%d commits", len(history.Commits)))
+	emit.emitCount(StageCollecting, fmt.Sprintf("%d commits", len(history.Commits)), len(history.Commits), len(history.Commits))
 
 	emit.emit(StageIdentity, "resolving identities")
 	resolver := identity.NewResolver(cfg, history.Commits)
-	emit.emit(StageIdentity, fmt.Sprintf("%d contributors", len(resolver.Identities())))
+	identities := resolver.Identities()
+	emit.emitCount(StageIdentity, fmt.Sprintf("%d contributors", len(identities)), len(identities), len(identities))
 
 	pathFilter, err := filter.NewPathFilter(cfg, repoPath)
 	if err != nil {
 		return nil, &UsageError{Err: err}
 	}
 	filtered := filter.Apply(history.Commits, cfg, resolver, pathFilter)
-	emit.emit(StageFiltering, fmt.Sprintf("%d excluded", filtered.TotalCommits-filtered.AnalyzedCommits))
+	emit.emitCount(StageFiltering, fmt.Sprintf("%d excluded", filtered.TotalCommits-filtered.AnalyzedCommits), filtered.TotalCommits-filtered.AnalyzedCommits, filtered.TotalCommits)
 
 	if opts.Year != 0 {
 		inYear := countInYear(filtered.Commits, opts.Year, cfg)
@@ -117,7 +123,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		PerAuthor:  opts.PerAuthor,
 		Year:       opts.Year,
 		Warnings:   warnings,
-		Progress: func(stage, detail string) {
+		Progress: func(stage, detail string, current, total int) {
 			mapped := StageCode
 			if stage == "metrics" {
 				switch detail {
@@ -135,7 +141,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 			} else if stage == "blame" {
 				mapped = StageCode
 			}
-			emit.emit(mapped, detail)
+			emit.emitProgress(mapped, detail, current, total)
 		},
 	}
 
@@ -171,9 +177,73 @@ type eventEmitter struct {
 }
 
 func (e *eventEmitter) emit(stage, detail string) {
+	e.emitProgress(stage, detail, 0, 0)
+}
+
+func (e *eventEmitter) emitCount(stage, detail string, current, total int) {
+	e.emitProgress(stage, detail, current, total)
+}
+
+func (e *eventEmitter) emitProgress(stage, detail string, current, total int) {
 	e.seq++
 	if e.sink != nil {
-		e.sink(ProgressEvent{Sequence: e.seq, Stage: stage, Detail: detail})
+		fraction, estimated := progressFraction(stage, current, total)
+		e.sink(ProgressEvent{
+			Sequence:  e.seq,
+			Stage:     stage,
+			Detail:    detail,
+			Fraction:  fraction,
+			Current:   current,
+			Total:     total,
+			Estimated: estimated,
+		})
+	}
+}
+
+func progressFraction(stage string, current, total int) (*float64, bool) {
+	start, end, ok := progressWindow(stage)
+	if !ok {
+		return nil, true
+	}
+	if stage == StageFinalizing {
+		value := end
+		return &value, false
+	}
+	value := start
+	if total > 0 && current >= 0 {
+		ratio := float64(current) / float64(total)
+		if ratio > 1 {
+			ratio = 1
+		}
+		value = start + (end-start)*ratio
+	}
+	return &value, true
+}
+
+func progressWindow(stage string) (start, end float64, ok bool) {
+	switch stage {
+	case StagePreflight:
+		return 0.00, 0.05, true
+	case StageCollecting:
+		return 0.05, 0.55, true
+	case StageIdentity:
+		return 0.55, 0.60, true
+	case StageFiltering:
+		return 0.60, 0.65, true
+	case StageTemporal:
+		return 0.65, 0.70, true
+	case StageCode:
+		return 0.70, 0.85, true
+	case StageMessages:
+		return 0.85, 0.90, true
+	case StageSocial:
+		return 0.90, 0.95, true
+	case StageNotables:
+		return 0.95, 0.98, true
+	case StageFinalizing:
+		return 0.98, 1.00, true
+	default:
+		return 0, 0, false
 	}
 }
 

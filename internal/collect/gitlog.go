@@ -58,6 +58,9 @@ type Options struct {
 	// OnWarning, when set, receives non-fatal diagnostics such as parse
 	// failures. It may be called before Collect returns.
 	OnWarning func(string)
+	// OnProgress receives parsed-record progress. Total is zero when the commit
+	// list could not be enumerated before streaming began.
+	OnProgress func(current, total int)
 }
 
 func (o Options) warn(format string, args ...any) {
@@ -71,6 +74,12 @@ func (o Options) context() context.Context {
 		return context.Background()
 	}
 	return o.Context
+}
+
+func (o Options) progress(current, total int) {
+	if o.OnProgress != nil {
+		o.OnProgress(current, total)
+	}
 }
 
 // Collect reads the full history.
@@ -129,7 +138,12 @@ func readHistory(opts Options) (commits []model.Commit, failed, total int, err e
 	if shards := shardCount(len(hashes)); shards > 1 {
 		return collectSharded(opts, hashes, shards)
 	}
-	return collectStream(opts, nil)
+	// The rev-list pass gives the streaming parser an exact denominator even
+	// though the small-history path still uses one git log process.
+	local := opts
+	local.OnProgress = opts.OnProgress
+	localExpected := len(hashes)
+	return collectStreamWithTotal(local, nil, localExpected)
 }
 
 // shardCount decides how many git processes to run for a given history size.
@@ -188,6 +202,11 @@ func logArgs(opts Options, fromStdin bool) []string {
 // collectStream runs one git log and parses its output. When hashes is non-nil
 // they are fed on stdin and only those commits are read.
 func collectStream(opts Options, hashes []string) (commits []model.Commit, failed, total int, err error) {
+	expected := len(hashes)
+	return collectStreamWithTotal(opts, hashes, expected)
+}
+
+func collectStreamWithTotal(opts Options, hashes []string, expected int) (commits []model.Commit, failed, total int, err error) {
 	cmd := gitCommandContext(opts.context(), opts.RepoPath, logArgs(opts, hashes != nil)...)
 	if hashes != nil {
 		cmd.Stdin = strings.NewReader(strings.Join(hashes, "\n") + "\n")
@@ -203,7 +222,7 @@ func collectStream(opts Options, hashes []string) (commits []model.Commit, faile
 		return nil, 0, 0, fmt.Errorf("starting git log: %w", err)
 	}
 
-	commits, failed, total, parseErr := parseLog(stdout, opts)
+	commits, failed, total, parseErr := parseLog(stdout, opts, expected)
 
 	// Drain anything left so git never blocks on a full pipe, then reap.
 	_, _ = io.Copy(io.Discard, stdout)
@@ -232,6 +251,7 @@ func collectSharded(opts Options, hashes []string, shards int) (commits []model.
 	type result struct {
 		commits       []model.Commit
 		failed, total int
+		progress      int
 		warnings      []string
 		err           error
 	}
@@ -260,13 +280,17 @@ func collectSharded(opts Options, hashes []string, shards int) (commits []model.
 			local.OnWarning = func(msg string) {
 				results[idx].warnings = append(results[idx].warnings, msg)
 			}
-			c, f, t, err := collectStream(local, chunk)
+			local.OnProgress = func(current, _ int) {
+				results[idx].progress = current
+			}
+			c, f, t, err := collectStreamWithTotal(local, chunk, len(chunk))
 			results[idx].commits, results[idx].failed, results[idx].total, results[idx].err = c, f, t, err
 		}(i, hashes[start:end])
 	}
 	wg.Wait()
 
 	commits = make([]model.Commit, 0, len(hashes))
+	progress := 0
 	for _, r := range results {
 		if r.err != nil {
 			return nil, 0, 0, r.err
@@ -279,6 +303,8 @@ func collectSharded(opts Options, hashes []string, shards int) (commits []model.
 		commits = append(commits, r.commits...)
 		failed += r.failed
 		total += r.total
+		progress += r.progress
+		opts.progress(progress, len(hashes))
 	}
 	return commits, failed, total, nil
 }
@@ -287,7 +313,7 @@ func collectSharded(opts Options, hashes []string, shards int) (commits []model.
 // never held in memory as a single string; only one record is materialized at a
 // time, so a repository with a million commits costs no more than its largest
 // commit.
-func parseLog(r io.Reader, opts Options) (commits []model.Commit, failed, total int, err error) {
+func parseLog(r io.Reader, opts Options, expected int) (commits []model.Commit, failed, total int, err error) {
 	br := bufio.NewReaderSize(r, 1<<20)
 	for {
 		chunk, readErr := br.ReadString(recordSep)
@@ -297,6 +323,7 @@ func parseLog(r io.Reader, opts Options) (commits []model.Commit, failed, total 
 			switch {
 			case isRecordStart(chunk):
 				total++
+				opts.progress(total, expected)
 				c, parseErr := parseRecord(chunk)
 				if parseErr != nil {
 					failed++
@@ -314,6 +341,7 @@ func parseLog(r io.Reader, opts Options) (commits []model.Commit, failed, total 
 				rejoinSplitRecord(&commits[len(commits)-1], chunk)
 			default:
 				total++
+				opts.progress(total, expected)
 				failed++
 				opts.warn("skipping unparsable commit record: no record header")
 			}

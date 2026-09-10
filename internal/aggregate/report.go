@@ -83,12 +83,12 @@ type Input struct {
 	// Warnings carries diagnostics raised by earlier stages.
 	Warnings []string
 	// Progress, when set, is called as each stage begins.
-	Progress func(stage, detail string)
+	Progress func(stage, detail string, current, total int)
 }
 
-func (in Input) progress(stage, detail string) {
+func (in Input) progress(stage, detail string, current, total int) {
 	if in.Progress != nil {
-		in.Progress(stage, detail)
+		in.Progress(stage, detail, current, total)
 	}
 }
 
@@ -150,10 +150,10 @@ func Build(in Input) (*Report, error) {
 		r.Warnings = []string{}
 	}
 
-	in.progress("metrics", "temporal")
+	in.progress("metrics", "temporal", 0, 0)
 	r.Temporal = buildTemporal(in, analyzed)
 
-	in.progress("metrics", "code")
+	in.progress("metrics", "code", 0, 0)
 	code, codeWarnings, err := buildCode(in, analyzed, lineScoped)
 	if err != nil {
 		return nil, err
@@ -161,15 +161,15 @@ func Build(in Input) (*Report, error) {
 	r.Code = code
 	r.Warnings = append(r.Warnings, codeWarnings...)
 
-	in.progress("metrics", "messages")
+	in.progress("metrics", "messages", 0, 0)
 	r.Messages = buildMessages(analyzed)
 
-	in.progress("metrics", "social")
+	in.progress("metrics", "social", 0, 0)
 	social, socialWarnings := buildSocial(in, lineScoped)
 	r.Social = social
 	r.Warnings = append(r.Warnings, socialWarnings...)
 
-	in.progress("metrics", "notables")
+	in.progress("metrics", "notables", 0, 0)
 	r.Notables = buildNotables(in, analyzed)
 
 	if in.PerAuthor {
