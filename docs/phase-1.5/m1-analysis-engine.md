@@ -7,7 +7,7 @@ goal is reuse, not a second implementation of Git analysis.
 
 | Package | Status |
 |---|---|
-| WP-1.1 Analysis service types and options | Not started |
+| WP-1.1 Analysis service types and options | Complete |
 | WP-1.2 Extract the CLI pipeline | Not started |
 | WP-1.3 Context-aware Git commands | Not started |
 | WP-1.4 Structured progress events | Not started |
