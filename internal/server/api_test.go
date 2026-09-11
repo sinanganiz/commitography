@@ -15,7 +15,8 @@ import (
 )
 
 func TestAPICapabilitiesAndJobList(t *testing.T) {
-	handler := NewApp(jobs.New(jobs.Options{})).Handler()
+	app := NewApp(jobs.New(jobs.Options{}))
+	handler := app.Handler()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/capabilities", nil)
 	res := httptest.NewRecorder()
@@ -32,6 +33,7 @@ func TestAPICapabilitiesAndJobList(t *testing.T) {
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/api/v1/jobs", nil)
+	req.AddCookie(app.sessionCookie())
 	res = httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
 	if res.Code != http.StatusOK {
@@ -47,7 +49,8 @@ func TestAPICapabilitiesAndJobList(t *testing.T) {
 }
 
 func TestAPILifecycleRoutesAreVersioned(t *testing.T) {
-	handler := NewApp(jobs.New(jobs.Options{})).Handler()
+	app := NewApp(jobs.New(jobs.Options{}))
+	handler := app.Handler()
 	for _, tc := range []struct {
 		method string
 		path   string
@@ -57,6 +60,7 @@ func TestAPILifecycleRoutesAreVersioned(t *testing.T) {
 		{method: http.MethodGet, path: "/api/v2/jobs", status: http.StatusNotFound},
 	} {
 		req := httptest.NewRequest(tc.method, tc.path, nil)
+		req.AddCookie(app.sessionCookie())
 		res := httptest.NewRecorder()
 		handler.ServeHTTP(res, req)
 		if res.Code != tc.status {
@@ -71,9 +75,11 @@ func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
 			return &analysis.Result{}, nil
 		},
 	})
-	handler := NewApp(manager).Handler()
+	app := NewApp(manager)
+	handler := app.Handler()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(`{"repoPath":"/repos/project","options":{"noBlame":true}}`))
+	req.AddCookie(app.sessionCookie())
 	req.Header.Set("Content-Type", "application/json")
 	res := httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
@@ -97,6 +103,7 @@ func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
 	}
 
 	req = httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(`{"repoPath":"/repos/project","outputDir":"/tmp/out"}`))
+	req.AddCookie(app.sessionCookie())
 	req.Header.Set("Content-Type", "application/json")
 	res = httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
@@ -111,15 +118,17 @@ func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
 			return &analysis.Result{Report: &aggregate.Report{}}, nil
 		},
 	})
-	handler := NewApp(manager).Handler()
-	id := createAPIJob(t, handler)
+	app := NewApp(manager)
+	handler := app.Handler()
+	id := createAPIJob(t, app)
 
-	status := waitForStatus(t, handler, id, jobs.StatusSucceeded)
+	status := waitForStatus(t, app, id, jobs.StatusSucceeded)
 	if status.Status != jobs.StatusSucceeded {
 		t.Fatalf("status = %+v", status)
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/jobs/"+id+"/report", nil)
+	req.AddCookie(app.sessionCookie())
 	res := httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
 	if res.Code != http.StatusOK {
@@ -127,6 +136,7 @@ func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
 	}
 
 	req = httptest.NewRequest(http.MethodDelete, "/api/v1/jobs/"+id, nil)
+	req.AddCookie(app.sessionCookie())
 	res = httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
 	if res.Code != http.StatusNoContent {
@@ -143,8 +153,9 @@ func TestAPICancelTransitionsJob(t *testing.T) {
 			return nil, ctx.Err()
 		},
 	})
-	handler := NewApp(manager).Handler()
-	id := createAPIJob(t, handler)
+	app := NewApp(manager)
+	handler := app.Handler()
+	id := createAPIJob(t, app)
 	select {
 	case <-started:
 	case <-time.After(2 * time.Second):
@@ -152,17 +163,52 @@ func TestAPICancelTransitionsJob(t *testing.T) {
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs/"+id+"/cancel", nil)
+	req.AddCookie(app.sessionCookie())
 	res := httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
 	if res.Code != http.StatusAccepted {
 		t.Fatalf("cancel status = %d, want 202", res.Code)
 	}
-	waitForStatus(t, handler, id, jobs.StatusCancelled)
+	waitForStatus(t, app, id, jobs.StatusCancelled)
 }
 
-func createAPIJob(t *testing.T, handler http.Handler) string {
-	t.Helper()
+func TestSessionBootstrapAndOriginProtection(t *testing.T) {
+	app := NewApp(jobs.New(jobs.Options{
+		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
+			return &analysis.Result{}, nil
+		},
+	}))
+	handler := app.Handler()
+
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(`{"repoPath":"/repos/project"}`))
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	if res.Code != http.StatusUnauthorized {
+		t.Fatalf("missing session status = %d, want 401", res.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/capabilities", nil)
+	res = httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	if res.Code != http.StatusOK || !strings.Contains(res.Header().Get("Set-Cookie"), "SameSite=Strict") {
+		t.Fatalf("bootstrap response = %d, cookie = %q", res.Code, res.Header().Get("Set-Cookie"))
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(`{"repoPath":"/repos/project"}`))
+	req.AddCookie(app.sessionCookie())
+	req.Header.Set("Origin", "http://evil.example")
+	res = httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	if res.Code != http.StatusForbidden {
+		t.Fatalf("cross-origin status = %d, want 403", res.Code)
+	}
+}
+
+func createAPIJob(t *testing.T, app *App) string {
+	t.Helper()
+	handler := app.Handler()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(`{"repoPath":"/repos/project"}`))
+	req.AddCookie(app.sessionCookie())
 	res := httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
 	if res.Code != http.StatusAccepted {
@@ -175,11 +221,13 @@ func createAPIJob(t *testing.T, handler http.Handler) string {
 	return created.ID
 }
 
-func waitForStatus(t *testing.T, handler http.Handler, id string, want jobs.Status) jobStatusResponse {
+func waitForStatus(t *testing.T, app *App, id string, want jobs.Status) jobStatusResponse {
 	t.Helper()
+	handler := app.Handler()
 	deadline := time.After(2 * time.Second)
 	for {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/jobs/"+id, nil)
+		req.AddCookie(app.sessionCookie())
 		res := httptest.NewRecorder()
 		handler.ServeHTTP(res, req)
 		if res.Code != http.StatusOK {
