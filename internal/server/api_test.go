@@ -145,6 +145,82 @@ func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
 	}
 }
 
+func TestAPICreatePassesOptionsToAnalysis(t *testing.T) {
+	received := make(chan analysis.Options, 1)
+	manager := jobs.New(jobs.Options{
+		Runner: func(_ context.Context, opts analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
+			received <- opts
+			return &analysis.Result{}, nil
+		},
+	})
+	app := testApp(t, manager)
+	body := jobBody(t, `,"options":{"noBlame":true,"perAuthor":true,"anonymize":true,"countMerges":true,"since":"2025-01-01","until":"2025-12-31"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(body))
+	req.AddCookie(app.sessionCookie())
+	res := httptest.NewRecorder()
+	app.Handler().ServeHTTP(res, req)
+	if res.Code != http.StatusAccepted {
+		t.Fatalf("create status = %d: %s", res.Code, res.Body.String())
+	}
+
+	var opts analysis.Options
+	select {
+	case opts = <-received:
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker did not start")
+	}
+	if !opts.NoBlame || !opts.PerAuthor || !opts.Anonymize || opts.Since != "2025-01-01" || opts.Until != "2025-12-31" {
+		t.Errorf("analysis options = %+v", opts)
+	}
+	// A requested merge count must override the repository config, exactly as
+	// the CLI --count-merges flag does.
+	if !opts.CountMerges || !opts.CountMergesSet {
+		t.Errorf("countMerges reached analysis as CountMerges=%v CountMergesSet=%v, want both true", opts.CountMerges, opts.CountMergesSet)
+	}
+}
+
+func TestAPIStatusUsesContractProgressFields(t *testing.T) {
+	fraction := 0.42
+	manager := jobs.New(jobs.Options{
+		Runner: func(_ context.Context, _ analysis.Options, sink analysis.ProgressSink) (*analysis.Result, error) {
+			sink(analysis.ProgressEvent{
+				Sequence:  1,
+				Stage:     analysis.StageCollecting,
+				Detail:    "4200 of 10000 commits",
+				Fraction:  &fraction,
+				Current:   4200,
+				Total:     10000,
+				Estimated: true,
+			})
+			return &analysis.Result{Report: &aggregate.Report{}}, nil
+		},
+	})
+	app := testApp(t, manager)
+	id := createAPIJob(t, app)
+	waitForStatus(t, app, id, jobs.StatusSucceeded)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/jobs/"+id, nil)
+	req.AddCookie(app.sessionCookie())
+	res := httptest.NewRecorder()
+	app.Handler().ServeHTTP(res, req)
+	// Go's decoder matches field names case-insensitively, so the contract is
+	// checked against the raw keys rather than a round-trip through the struct.
+	var raw struct {
+		Progress map[string]json.RawMessage `json:"progress"`
+	}
+	if err := json.Unmarshal(res.Body.Bytes(), &raw); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"sequence", "stage", "detail", "fraction", "current", "total", "estimated"} {
+		if _, ok := raw.Progress[key]; !ok {
+			t.Errorf("progress is missing %q: %s", key, res.Body.String())
+		}
+	}
+	if len(raw.Progress) != 7 {
+		t.Errorf("progress has %d keys, want 7: %s", len(raw.Progress), res.Body.String())
+	}
+}
+
 func TestAPICancelTransitionsJob(t *testing.T) {
 	started := make(chan struct{}, 1)
 	manager := jobs.New(jobs.Options{

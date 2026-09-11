@@ -45,15 +45,16 @@ const (
 )
 
 // ProgressEvent describes one observable point in an analysis. Fraction is
-// nil when the current stage cannot provide a useful estimate.
+// nil when the current stage cannot provide a useful estimate. The JSON names
+// are the Phase 1.5 job status contract consumed by the web application.
 type ProgressEvent struct {
-	Sequence  uint64
-	Stage     string
-	Detail    string
-	Fraction  *float64
-	Current   int
-	Total     int
-	Estimated bool
+	Sequence  uint64   `json:"sequence"`
+	Stage     string   `json:"stage"`
+	Detail    string   `json:"detail"`
+	Fraction  *float64 `json:"fraction"`
+	Current   int      `json:"current"`
+	Total     int      `json:"total"`
+	Estimated bool     `json:"estimated"`
 }
 
 // ProgressSink receives progress events from an analysis run.

@@ -151,6 +151,8 @@ func (a *App) createJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// countMerges mirrors the CLI flag: true overrides the repository config,
+	// false leaves the repository's count_merges setting in charge.
 	options := analysis.Options{
 		RepoPath:         canonicalPath,
 		NoBlame:          request.Options.NoBlame,
@@ -158,6 +160,7 @@ func (a *App) createJob(w http.ResponseWriter, r *http.Request) {
 		Anonymize:        request.Options.Anonymize,
 		AllowShallow:     request.Options.AllowShallow,
 		CountMerges:      request.Options.CountMerges,
+		CountMergesSet:   request.Options.CountMerges,
 		Since:            request.Options.Since,
 		Until:            request.Options.Until,
 		CheckConsistency: true,
