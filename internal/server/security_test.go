@@ -40,3 +40,31 @@ func TestPathErrorDoesNotEchoFilesystemPath(t *testing.T) {
 		t.Fatalf("response leaked repository path: %s", res.Body.String())
 	}
 }
+
+func TestAPIMethodAndUnknownJobMatrix(t *testing.T) {
+	app := NewApp(jobs.New(jobs.Options{}))
+	handler := app.Handler()
+	cases := []struct {
+		method string
+		path   string
+		status int
+	}{
+		{method: http.MethodPost, path: "/api/v1/capabilities", status: http.StatusMethodNotAllowed},
+		{method: http.MethodPut, path: "/api/v1/jobs", status: http.StatusMethodNotAllowed},
+		{method: http.MethodGet, path: "/api/v1/jobs/unknown", status: http.StatusNotFound},
+		{method: http.MethodGet, path: "/api/v1/jobs/unknown/report", status: http.StatusNotFound},
+		{method: http.MethodDelete, path: "/api/v1/jobs/unknown", status: http.StatusNotFound},
+	}
+	for _, tc := range cases {
+		req := httptest.NewRequest(tc.method, tc.path, nil)
+		req.AddCookie(app.sessionCookie())
+		res := httptest.NewRecorder()
+		handler.ServeHTTP(res, req)
+		if res.Code != tc.status {
+			t.Errorf("%s %s status = %d, want %d", tc.method, tc.path, res.Code, tc.status)
+		}
+		if res.Header().Get("Cache-Control") != "no-store" {
+			t.Errorf("%s %s missing no-store header", tc.method, tc.path)
+		}
+	}
+}
