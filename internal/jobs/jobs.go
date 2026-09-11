@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -29,6 +30,9 @@ const (
 	StatusStale     Status = "stale"
 
 	maxRecentJobs = 10
+	// maxJobWarnings bounds the diagnostics retained per job so a noisy
+	// repository cannot grow process memory without limit.
+	maxJobWarnings = 100
 )
 
 var (
@@ -60,6 +64,7 @@ type Snapshot struct {
 	FinishedAt   *time.Time
 	Elapsed      time.Duration
 	Progress     *analysis.ProgressEvent
+	Warnings     []string
 	WarningCount int
 	Failure      *Failure
 	Result       *analysis.Result
@@ -162,6 +167,13 @@ func (m *Manager) Start(repoPath string, options analysis.Options) (Snapshot, er
 	m.mu.Unlock()
 
 	options.RepoPath = repoPath
+	callerWarning := options.OnWarning
+	options.OnWarning = func(message string) {
+		_ = m.AddWarning(snapshot.ID, message)
+		if callerWarning != nil {
+			callerWarning(message)
+		}
+	}
 	go m.run(snapshot.ID, ctx, options)
 	return snapshot, nil
 }
@@ -284,6 +296,36 @@ func (m *Manager) UpdateProgress(id string, event analysis.ProgressEvent) error 
 	return nil
 }
 
+// AddWarning records a diagnostic raised while a job is queued or running, so
+// status polling can show warnings before the report exists.
+func (m *Manager) AddWarning(id, message string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	entry, err := m.lookupLocked(id)
+	if err != nil {
+		return err
+	}
+	if entry.snapshot.Status != StatusQueued && entry.snapshot.Status != StatusRunning {
+		return ErrInvalidState
+	}
+	appendWarnings(&entry.snapshot, message)
+	return nil
+}
+
+// appendWarnings adds messages that are not already recorded, up to the
+// per-job bound, and keeps WarningCount equal to the retained list.
+func appendWarnings(snapshot *Snapshot, messages ...string) {
+	for _, message := range messages {
+		if len(snapshot.Warnings) >= maxJobWarnings {
+			break
+		}
+		if !slices.Contains(snapshot.Warnings, message) {
+			snapshot.Warnings = append(snapshot.Warnings, message)
+		}
+	}
+	snapshot.WarningCount = len(snapshot.Warnings)
+}
+
 // Complete stores an analysis result and releases the active slot. Stale
 // results are retained for diagnosis but are never reported as current.
 func (m *Manager) Complete(id string, result *analysis.Result, finishedAt time.Time) error {
@@ -301,8 +343,10 @@ func (m *Manager) Complete(id string, result *analysis.Result, finishedAt time.T
 	}
 	entry.snapshot.FinishedAt = timePtr(finishedAt)
 	entry.snapshot.Result = result
+	// Warnings raised during the run are kept and the report's own warnings,
+	// such as blame diagnostics, are merged in, so the count never drops.
 	if result != nil && result.Report != nil {
-		entry.snapshot.WarningCount = len(result.Report.Warnings)
+		appendWarnings(&entry.snapshot, result.Report.Warnings...)
 	}
 	if result != nil && result.Stale {
 		entry.snapshot.Status = StatusStale
@@ -470,6 +514,7 @@ func cloneSnapshot(in Snapshot) Snapshot {
 		value := *in.Failure
 		out.Failure = &value
 	}
+	out.Warnings = slices.Clone(in.Warnings)
 	return out
 }
 

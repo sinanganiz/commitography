@@ -234,6 +234,12 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 			methodNotAllowed(w, http.MethodPost)
 			return
 		}
+		// Cancellation is idempotent: repeating it for a job that has already
+		// stopped reports the terminal state instead of a conflict.
+		if snapshot, err := a.Jobs.Get(id); err == nil && snapshot.Status == jobs.StatusCancelled {
+			writeJSON(w, http.StatusOK, statusResponse(snapshot))
+			return
+		}
 		if err := a.Jobs.Cancel(id); err != nil {
 			if errors.Is(err, jobs.ErrJobNotFound) {
 				writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
@@ -252,10 +258,7 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func statusResponse(snapshot jobs.Snapshot) jobStatusResponse {
-	warnings := []string{}
-	if snapshot.Result != nil && snapshot.Result.Report != nil {
-		warnings = append(warnings, snapshot.Result.Report.Warnings...)
-	}
+	warnings := append([]string{}, snapshot.Warnings...)
 	return jobStatusResponse{
 		ID:                  snapshot.ID,
 		Status:              snapshot.Status,

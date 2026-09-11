@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -224,5 +225,78 @@ func TestCancelAllRequestsWorkerCancellation(t *testing.T) {
 			t.Fatalf("job status = %s, want cancelled", current.Status)
 		case <-time.After(10 * time.Millisecond):
 		}
+	}
+}
+
+func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
+	release := make(chan struct{})
+	warned := make(chan struct{})
+	manager := New(Options{
+		Runner: func(_ context.Context, opts analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
+			opts.OnWarning("config: unknown key")
+			opts.OnWarning("history: skipped commit")
+			opts.OnWarning("history: skipped commit")
+			close(warned)
+			<-release
+			report := &aggregate.Report{Warnings: []string{"history: skipped commit", "blame: sampled"}}
+			return &analysis.Result{Report: report}, nil
+		},
+	})
+	job, err := manager.Start("/repos/project", analysis.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	<-warned
+
+	running, err := manager.Get(job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if running.WarningCount != 2 || len(running.Warnings) != 2 {
+		t.Fatalf("running warnings = %d %q, want two distinct messages", running.WarningCount, running.Warnings)
+	}
+	// Snapshots are copies: mutating one must not reach the manager.
+	running.Warnings[0] = "mutated"
+
+	close(release)
+	var done Snapshot
+	for i := 0; i < 200; i++ {
+		done, _ = manager.Get(job.ID)
+		if done.Status == StatusSucceeded {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	want := []string{"config: unknown key", "history: skipped commit", "blame: sampled"}
+	if done.Status != StatusSucceeded || done.WarningCount != len(want) {
+		t.Fatalf("done = %s with %d warnings %q", done.Status, done.WarningCount, done.Warnings)
+	}
+	for i, message := range want {
+		if done.Warnings[i] != message {
+			t.Errorf("warning %d = %q, want %q", i, done.Warnings[i], message)
+		}
+	}
+}
+
+func TestWarningsAreBounded(t *testing.T) {
+	manager := New(Options{})
+	job, err := manager.Create("/repos/project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < maxJobWarnings+20; i++ {
+		if err := manager.AddWarning(job.ID, fmt.Sprintf("warning %d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, _ := manager.Get(job.ID)
+	if got.WarningCount != maxJobWarnings || len(got.Warnings) != maxJobWarnings {
+		t.Fatalf("retained %d warnings (count %d), want %d", len(got.Warnings), got.WarningCount, maxJobWarnings)
+	}
+	if err := manager.Fail(job.ID, Failure{Code: "test"}, time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.AddWarning(job.ID, "late"); !errors.Is(err, ErrInvalidState) {
+		t.Fatalf("warning after completion error = %v, want ErrInvalidState", err)
 	}
 }

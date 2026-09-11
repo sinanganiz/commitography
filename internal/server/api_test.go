@@ -247,6 +247,41 @@ func TestAPICancelTransitionsJob(t *testing.T) {
 		t.Fatalf("cancel status = %d, want 202", res.Code)
 	}
 	waitForStatus(t, app, id, jobs.StatusCancelled)
+
+	// A repeated cancel is idempotent and reports the terminal state.
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/jobs/"+id+"/cancel", nil)
+	req.AddCookie(app.sessionCookie())
+	res = httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	if res.Code != http.StatusOK {
+		t.Fatalf("repeated cancel status = %d, want 200: %s", res.Code, res.Body.String())
+	}
+	var status jobStatusResponse
+	if err := json.Unmarshal(res.Body.Bytes(), &status); err != nil {
+		t.Fatal(err)
+	}
+	if status.Status != jobs.StatusCancelled {
+		t.Fatalf("repeated cancel status body = %+v", status)
+	}
+}
+
+func TestAPICancelRejectsCompletedJob(t *testing.T) {
+	manager := jobs.New(jobs.Options{
+		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
+			return &analysis.Result{Report: &aggregate.Report{}}, nil
+		},
+	})
+	app := testApp(t, manager)
+	id := createAPIJob(t, app)
+	waitForStatus(t, app, id, jobs.StatusSucceeded)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs/"+id+"/cancel", nil)
+	req.AddCookie(app.sessionCookie())
+	res := httptest.NewRecorder()
+	app.Handler().ServeHTTP(res, req)
+	if res.Code != http.StatusConflict {
+		t.Fatalf("cancel after success status = %d, want 409", res.Code)
+	}
 }
 
 func TestSessionBootstrapAndOriginProtection(t *testing.T) {
