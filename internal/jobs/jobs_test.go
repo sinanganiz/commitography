@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -82,5 +83,48 @@ func TestManagerEvictsOldestTerminalJob(t *testing.T) {
 	}
 	if got := len(manager.List()); got != 2 {
 		t.Fatalf("history length = %d, want 2", got)
+	}
+}
+
+func TestStartRunsWorkerAndCancellationReleasesSlot(t *testing.T) {
+	started := make(chan struct{}, 1)
+	manager := New(Options{
+		Runner: func(ctx context.Context, _ analysis.Options, sink analysis.ProgressSink) (*analysis.Result, error) {
+			sink(analysis.ProgressEvent{Sequence: 1, Stage: analysis.StageCollecting})
+			started <- struct{}{}
+			<-ctx.Done()
+			return nil, ctx.Err()
+		},
+	})
+
+	job, err := manager.Start("/repos/cancellable", analysis.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker did not start")
+	}
+	if err := manager.Cancel(job.ID); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.After(2 * time.Second)
+	for {
+		current, err := manager.Get(job.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if current.Status == StatusCancelled {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("job status = %s, want cancelled", current.Status)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	if _, err := manager.Create("/repos/after-cancel"); err != nil {
+		t.Fatalf("new job after cancellation: %v", err)
 	}
 }

@@ -3,6 +3,7 @@
 package jobs
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -65,10 +66,14 @@ type Snapshot struct {
 // Options configures a Manager. Test hooks are intentionally small and do not
 // alter production behavior.
 type Options struct {
-	Limit int
-	NewID func() (string, error)
-	Now   func() time.Time
+	Limit  int
+	NewID  func() (string, error)
+	Now    func() time.Time
+	Runner Runner
 }
+
+// Runner is the shared analysis operation executed by a worker.
+type Runner func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error)
 
 // Manager owns at most one active job and a bounded terminal history.
 type Manager struct {
@@ -76,12 +81,14 @@ type Manager struct {
 	limit    int
 	newID    func() (string, error)
 	now      func() time.Time
+	runner   Runner
 	jobs     map[string]*job
 	activeID string
 }
 
 type job struct {
 	snapshot Snapshot
+	cancel   context.CancelFunc
 }
 
 // New constructs a bounded in-memory job manager.
@@ -98,11 +105,16 @@ func New(options Options) *Manager {
 	if now == nil {
 		now = time.Now
 	}
+	runner := options.Runner
+	if runner == nil {
+		runner = analysis.Run
+	}
 	return &Manager{
-		limit: limit,
-		newID: newID,
-		now:   now,
-		jobs:  make(map[string]*job),
+		limit:  limit,
+		newID:  newID,
+		now:    now,
+		runner: runner,
+		jobs:   make(map[string]*job),
 	}
 }
 
@@ -132,6 +144,87 @@ func (m *Manager) Create(repoPath string) (Snapshot, error) {
 	m.jobs[id] = entry
 	m.activeID = id
 	return cloneSnapshot(entry.snapshot), nil
+}
+
+// Start creates a job and runs the configured analysis asynchronously. The
+// returned snapshot is the state observed immediately after reservation.
+func (m *Manager) Start(repoPath string, options analysis.Options) (Snapshot, error) {
+	snapshot, err := m.Create(repoPath)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	m.mu.Lock()
+	entry := m.jobs[snapshot.ID]
+	entry.cancel = cancel
+	m.mu.Unlock()
+
+	options.RepoPath = repoPath
+	go m.run(snapshot.ID, ctx, options)
+	return snapshot, nil
+}
+
+func (m *Manager) run(id string, ctx context.Context, options analysis.Options) {
+	if err := m.MarkRunning(id, m.now()); err != nil {
+		return
+	}
+	result, err := m.runner(ctx, options, func(event analysis.ProgressEvent) {
+		_ = m.UpdateProgress(id, event)
+	})
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			_ = m.Cancelled(id, m.now())
+			return
+		}
+		_ = m.Fail(id, Failure{Code: "analysis_failed", Message: err.Error()}, m.now())
+		return
+	}
+	_ = m.Complete(id, result, m.now())
+}
+
+// Cancel requests cancellation of an active job. The job remains running until
+// its context-aware Git work exits, then transitions to cancelled.
+func (m *Manager) Cancel(id string) error {
+	m.mu.RLock()
+	entry, ok := m.jobs[id]
+	if !ok {
+		m.mu.RUnlock()
+		return ErrJobNotFound
+	}
+	if entry.snapshot.Status != StatusQueued && entry.snapshot.Status != StatusRunning {
+		m.mu.RUnlock()
+		return ErrInvalidState
+	}
+	cancel := entry.cancel
+	m.mu.RUnlock()
+	if cancel == nil {
+		return ErrInvalidState
+	}
+	cancel()
+	return nil
+}
+
+// Cancelled marks a job cancelled after its worker has observed context
+// cancellation and exited.
+func (m *Manager) Cancelled(id string, finishedAt time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	entry, err := m.lookupLocked(id)
+	if err != nil {
+		return err
+	}
+	if entry.snapshot.Status != StatusQueued && entry.snapshot.Status != StatusRunning {
+		return ErrInvalidState
+	}
+	if finishedAt.IsZero() {
+		finishedAt = m.now()
+	}
+	entry.snapshot.Status = StatusCancelled
+	entry.snapshot.FinishedAt = timePtr(finishedAt)
+	m.activeID = ""
+	entry.cancel = nil
+	m.evictLocked()
+	return nil
 }
 
 // MarkRunning transitions a queued job to running.
@@ -199,6 +292,7 @@ func (m *Manager) Complete(id string, result *analysis.Result, finishedAt time.T
 		entry.snapshot.Status = StatusSucceeded
 	}
 	m.activeID = ""
+	entry.cancel = nil
 	m.evictLocked()
 	return nil
 }
@@ -221,6 +315,7 @@ func (m *Manager) Fail(id string, failure Failure, finishedAt time.Time) error {
 	entry.snapshot.FinishedAt = timePtr(finishedAt)
 	entry.snapshot.Failure = &failure
 	m.activeID = ""
+	entry.cancel = nil
 	m.evictLocked()
 	return nil
 }
