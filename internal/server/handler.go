@@ -40,15 +40,30 @@ func NewHandler() http.Handler {
 type App struct {
 	Jobs         *jobs.Manager
 	sessionToken string
+	allowedRoots []string
 }
 
 // NewApp constructs an application around a job manager. A default manager is
 // created when manager is nil.
 func NewApp(manager *jobs.Manager) *App {
+	app, err := NewAppWithAllowedRoots(manager, nil)
+	if err != nil {
+		panic(err)
+	}
+	return app
+}
+
+// NewAppWithAllowedRoots constructs an application with canonical filesystem
+// roots used to validate repository requests.
+func NewAppWithAllowedRoots(manager *jobs.Manager, roots []string) (*App, error) {
 	if manager == nil {
 		manager = jobs.New(jobs.Options{})
 	}
-	return &App{Jobs: manager, sessionToken: newSessionToken()}
+	allowedRoots, err := canonicalRoots(roots)
+	if err != nil {
+		return nil, err
+	}
+	return &App{Jobs: manager, sessionToken: newSessionToken(), allowedRoots: allowedRoots}, nil
 }
 
 // Handler returns the application and versioned API routes.

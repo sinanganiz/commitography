@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -75,10 +76,10 @@ func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
 			return &analysis.Result{}, nil
 		},
 	})
-	app := NewApp(manager)
+	app := testApp(t, manager)
 	handler := app.Handler()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(`{"repoPath":"/repos/project","options":{"noBlame":true}}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(jobBody(t, `,"options":{"noBlame":true}`)))
 	req.AddCookie(app.sessionCookie())
 	req.Header.Set("Content-Type", "application/json")
 	res := httptest.NewRecorder()
@@ -102,7 +103,7 @@ func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 
-	req = httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(`{"repoPath":"/repos/project","outputDir":"/tmp/out"}`))
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(jobBody(t, `,"outputDir":"/tmp/out"`)))
 	req.AddCookie(app.sessionCookie())
 	req.Header.Set("Content-Type", "application/json")
 	res = httptest.NewRecorder()
@@ -118,7 +119,7 @@ func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
 			return &analysis.Result{Report: &aggregate.Report{}}, nil
 		},
 	})
-	app := NewApp(manager)
+	app := testApp(t, manager)
 	handler := app.Handler()
 	id := createAPIJob(t, app)
 
@@ -153,7 +154,7 @@ func TestAPICancelTransitionsJob(t *testing.T) {
 			return nil, ctx.Err()
 		},
 	})
-	app := NewApp(manager)
+	app := testApp(t, manager)
 	handler := app.Handler()
 	id := createAPIJob(t, app)
 	select {
@@ -173,14 +174,14 @@ func TestAPICancelTransitionsJob(t *testing.T) {
 }
 
 func TestSessionBootstrapAndOriginProtection(t *testing.T) {
-	app := NewApp(jobs.New(jobs.Options{
+	app := testApp(t, jobs.New(jobs.Options{
 		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
 			return &analysis.Result{}, nil
 		},
 	}))
 	handler := app.Handler()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(`{"repoPath":"/repos/project"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(jobBody(t, "")))
 	res := httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
 	if res.Code != http.StatusUnauthorized {
@@ -194,7 +195,7 @@ func TestSessionBootstrapAndOriginProtection(t *testing.T) {
 		t.Fatalf("bootstrap response = %d, cookie = %q", res.Code, res.Header().Get("Set-Cookie"))
 	}
 
-	req = httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(`{"repoPath":"/repos/project"}`))
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(jobBody(t, "")))
 	req.AddCookie(app.sessionCookie())
 	req.Header.Set("Origin", "http://evil.example")
 	res = httptest.NewRecorder()
@@ -207,7 +208,7 @@ func TestSessionBootstrapAndOriginProtection(t *testing.T) {
 func createAPIJob(t *testing.T, app *App) string {
 	t.Helper()
 	handler := app.Handler()
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(`{"repoPath":"/repos/project"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(jobBody(t, "")))
 	req.AddCookie(app.sessionCookie())
 	res := httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
@@ -219,6 +220,37 @@ func createAPIJob(t *testing.T, app *App) string {
 		t.Fatal(err)
 	}
 	return created.ID
+}
+
+func testApp(t *testing.T, manager *jobs.Manager) *App {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := NewAppWithAllowedRoots(manager, []string{root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return app
+}
+
+func jobBody(t *testing.T, suffix string) string {
+	t.Helper()
+	path, err := json.Marshal(testRepoPath(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return `{"repoPath":` + string(path) + suffix + `}`
+}
+
+func testRepoPath(t *testing.T) string {
+	t.Helper()
+	path, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return path
 }
 
 func waitForStatus(t *testing.T, app *App, id string, want jobs.Status) jobStatusResponse {

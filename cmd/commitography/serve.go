@@ -13,9 +13,6 @@ import (
 
 func newServeCommand() *cobra.Command {
 	var options server.Options
-	app := server.NewApp(nil)
-	options.Handler = app.Handler()
-	options.OnShutdown = app.Jobs.CancelAll
 
 	cmd := &cobra.Command{
 		Use:           "serve",
@@ -23,6 +20,12 @@ func newServeCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			app, err := server.NewAppWithAllowedRoots(nil, options.AllowedRoots)
+			if err != nil {
+				return err
+			}
+			options.Handler = app.Handler()
+			options.OnShutdown = app.Jobs.CancelAll
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
 			return server.Serve(ctx, options)

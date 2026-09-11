@@ -136,9 +136,23 @@ func (a *App) createJob(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, http.StatusBadRequest, "invalid_repository_path", "repoPath is required")
 		return
 	}
+	canonicalPath, err := a.validateRepositoryPath(request.RepoPath, request.Options.AllowShallow)
+	if err != nil {
+		var pathErr *pathValidationError
+		if errors.As(err, &pathErr) {
+			status := http.StatusBadRequest
+			if pathErr.Forbidden {
+				status = http.StatusForbidden
+			}
+			writeAPIError(w, status, pathErr.Code, pathErr.Message)
+			return
+		}
+		writeAPIError(w, http.StatusBadRequest, "invalid_repository", err.Error())
+		return
+	}
 
 	options := analysis.Options{
-		RepoPath:         request.RepoPath,
+		RepoPath:         canonicalPath,
 		NoBlame:          request.Options.NoBlame,
 		PerAuthor:        request.Options.PerAuthor,
 		Anonymize:        request.Options.Anonymize,
@@ -148,7 +162,7 @@ func (a *App) createJob(w http.ResponseWriter, r *http.Request) {
 		Until:            request.Options.Until,
 		CheckConsistency: true,
 	}
-	snapshot, err := a.Jobs.Start(request.RepoPath, options)
+	snapshot, err := a.Jobs.Start(canonicalPath, options)
 	if err != nil {
 		if errors.Is(err, jobs.ErrActiveJob) {
 			writeAPIError(w, http.StatusConflict, "active_job", "another analysis job is already active")
