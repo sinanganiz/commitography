@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sinanganiz/commitography/internal/aggregate"
 	"github.com/sinanganiz/commitography/internal/analysis"
 )
 
@@ -160,5 +161,32 @@ func TestProgressSequenceIsMonotonicAndSnapshotsProjectElapsed(t *testing.T) {
 	}
 	if snapshot.Elapsed <= 0 {
 		t.Fatalf("elapsed = %s, want positive duration", snapshot.Elapsed)
+	}
+}
+
+func TestOnlySucceededJobsExposeReports(t *testing.T) {
+	manager := New(Options{NewID: func() (string, error) { return "report-job", nil }})
+	job, err := manager.Create("/repos/report")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.Fail(job.ID, Failure{Code: "test"}, time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Report(job.ID); !errors.Is(err, ErrInvalidState) {
+		t.Fatalf("failed report error = %v, want ErrInvalidState", err)
+	}
+
+	manager = New(Options{NewID: func() (string, error) { return "success-job", nil }})
+	job, err = manager.Create("/repos/report")
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := &analysis.Result{Report: &aggregate.Report{}}
+	if err := manager.Complete(job.ID, result, time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	if report, err := manager.Report(job.ID); err != nil || report == nil {
+		t.Fatalf("successful report = %v, %v", report, err)
 	}
 }

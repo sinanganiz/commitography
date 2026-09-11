@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sinanganiz/commitography/internal/aggregate"
 	"github.com/sinanganiz/commitography/internal/analysis"
 )
 
@@ -177,7 +178,7 @@ func (m *Manager) run(id string, ctx context.Context, options analysis.Options) 
 			_ = m.Cancelled(id, m.now())
 			return
 		}
-		_ = m.Fail(id, Failure{Code: "analysis_failed", Message: err.Error()}, m.now())
+		_ = m.Fail(id, FailureFromError(err), m.now())
 		return
 	}
 	_ = m.Complete(id, result, m.now())
@@ -319,6 +320,38 @@ func (m *Manager) Fail(id string, failure Failure, finishedAt time.Time) error {
 	entry.cancel = nil
 	m.evictLocked()
 	return nil
+}
+
+// FailureFromError classifies an analysis error without exposing package
+// internals in the job status contract.
+func FailureFromError(err error) Failure {
+	if err == nil {
+		return Failure{Code: "analysis_failed", Message: "analysis failed"}
+	}
+	var usage *analysis.UsageError
+	if errors.As(err, &usage) {
+		return Failure{Code: "invalid_analysis_request", Message: err.Error()}
+	}
+	var year *analysis.YearError
+	if errors.As(err, &year) {
+		return Failure{Code: "invalid_wrapped_year", Message: err.Error()}
+	}
+	return Failure{Code: "analysis_failed", Message: err.Error()}
+}
+
+// Report returns the completed report only for a succeeded job. Stale and
+// failed jobs retain diagnostics but cannot be rendered as current reports.
+func (m *Manager) Report(id string) (*aggregate.Report, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	entry, err := m.lookupLocked(id)
+	if err != nil {
+		return nil, err
+	}
+	if entry.snapshot.Status != StatusSucceeded || entry.snapshot.Result == nil || entry.snapshot.Result.Report == nil {
+		return nil, ErrInvalidState
+	}
+	return entry.snapshot.Result.Report, nil
 }
 
 // Get returns a snapshot of a retained job.
