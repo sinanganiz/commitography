@@ -76,7 +76,7 @@ func TestRenderedPageIsSelfContained(t *testing.T) {
 	html := readFile(t, filepath.Join(dir, IndexFile))
 
 	// Nothing may be fetched: no external scripts, stylesheets, images or fonts.
-	for _, forbidden := range []string{"src=\"http", "href=\"http", "@import", "url(http", "<link "} {
+	for _, forbidden := range []string{"src=\"http", "href=\"http", "<link "} {
 		if strings.Contains(html, forbidden) {
 			t.Errorf("page references an external resource via %q", forbidden)
 		}
@@ -84,6 +84,15 @@ func TestRenderedPageIsSelfContained(t *testing.T) {
 	// The CSS and JS must be inline, not referenced.
 	if !strings.Contains(html, "<style>") || !strings.Contains(html, "<script>") {
 		t.Error("stylesheet and script are not inlined")
+	}
+	// CSS fetch syntax is checked in the stylesheet only: the bundled CSS-in-JS
+	// parser carries "@import" as a string constant, which fetches nothing.
+	_, afterStyle, _ := strings.Cut(html, "<style>")
+	css, _, _ := strings.Cut(afterStyle, "</style>")
+	for _, forbidden := range []string{"@import", "url(http", "url(//"} {
+		if strings.Contains(css, forbidden) {
+			t.Errorf("stylesheet references an external resource via %q", forbidden)
+		}
 	}
 	if strings.Contains(html, `src="app.js"`) || strings.Contains(html, `href="app.css"`) {
 		t.Error("page references sibling asset files")
