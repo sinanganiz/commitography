@@ -10,8 +10,8 @@ analysis implementation.
 | WP-2.1 `serve` command and listener | Complete |
 | WP-2.2 Embedded asset server | Complete |
 | WP-2.3 Job state and bounded history | Complete |
-| WP-2.4 Worker lifecycle and cancellation | Not started |
-| WP-2.5 Progress projection for polling | Not started |
+| WP-2.4 Worker lifecycle and cancellation | Complete |
+| WP-2.5 Progress projection for polling | Complete |
 | WP-2.6 Result, error and stale handling | Not started |
 | WP-2.7 Graceful shutdown | Not started |
 

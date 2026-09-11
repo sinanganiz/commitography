@@ -128,3 +128,37 @@ func TestStartRunsWorkerAndCancellationReleasesSlot(t *testing.T) {
 		t.Fatalf("new job after cancellation: %v", err)
 	}
 }
+
+func TestProgressSequenceIsMonotonicAndSnapshotsProjectElapsed(t *testing.T) {
+	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
+	manager := New(Options{
+		Now: func() time.Time {
+			clock = clock.Add(time.Second)
+			return clock
+		},
+		NewID: func() (string, error) { return "progress-job", nil },
+	})
+	job, err := manager.Create("/repos/progress")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.MarkRunning(job.ID, time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.UpdateProgress(job.ID, analysis.ProgressEvent{Sequence: 2, Stage: analysis.StageCode}); err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.UpdateProgress(job.ID, analysis.ProgressEvent{Sequence: 1, Stage: analysis.StageCollecting}); !errors.Is(err, ErrInvalidState) {
+		t.Fatalf("out-of-order progress error = %v, want ErrInvalidState", err)
+	}
+	snapshot, err := manager.Get(job.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Progress == nil || snapshot.Progress.Sequence != 2 {
+		t.Fatalf("progress = %+v, want sequence 2", snapshot.Progress)
+	}
+	if snapshot.Elapsed <= 0 {
+		t.Fatalf("elapsed = %s, want positive duration", snapshot.Elapsed)
+	}
+}

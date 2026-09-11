@@ -57,6 +57,7 @@ type Snapshot struct {
 	CreatedAt    time.Time
 	StartedAt    *time.Time
 	FinishedAt   *time.Time
+	Elapsed      time.Duration
 	Progress     *analysis.ProgressEvent
 	WarningCount int
 	Failure      *Failure
@@ -328,7 +329,7 @@ func (m *Manager) Get(id string) (Snapshot, error) {
 	if !ok {
 		return Snapshot{}, ErrJobNotFound
 	}
-	return cloneSnapshot(entry.snapshot), nil
+	return m.projectSnapshotLocked(entry), nil
 }
 
 // List returns newest jobs first and never exposes internal pointers.
@@ -337,9 +338,25 @@ func (m *Manager) List() []Snapshot {
 	defer m.mu.RUnlock()
 	out := make([]Snapshot, 0, len(m.jobs))
 	for _, entry := range m.jobs {
-		out = append(out, cloneSnapshot(entry.snapshot))
+		out = append(out, m.projectSnapshotLocked(entry))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
+	return out
+}
+
+func (m *Manager) projectSnapshotLocked(entry *job) Snapshot {
+	out := cloneSnapshot(entry.snapshot)
+	end := m.now()
+	if out.FinishedAt != nil {
+		end = *out.FinishedAt
+	}
+	start := out.CreatedAt
+	if out.StartedAt != nil {
+		start = *out.StartedAt
+	}
+	if end.After(start) {
+		out.Elapsed = end.Sub(start)
+	}
 	return out
 }
 
