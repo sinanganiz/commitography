@@ -13,7 +13,7 @@ export default defineConfig({
     // in the developer's own browser, not shipped to the public web.
     target: 'es2020',
     lib: {
-      entry: 'src/main.ts',
+    entry: 'src/main.tsx',
       name: 'Commitography',
       formats: ['iife'],
       fileName: () => 'app.js',

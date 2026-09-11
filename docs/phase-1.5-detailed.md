@@ -63,7 +63,7 @@ work package starts.
 | M1 - Shared analysis engine | `phase-1.5/m1-analysis-engine.md` | M0 | 7 | Complete |
 | M2 - Job manager and HTTP server | `phase-1.5/m2-job-server.md` | M1 | 7 | Complete |
 | M3 - API and local security | `phase-1.5/m3-api-security.md` | M2 | 7 | Complete |
-| M4 - React and MUI application | `phase-1.5/m4-react-frontend.md` | M0, M3 | 8 | Not started |
+| M4 - React and MUI application | `phase-1.5/m4-react-frontend.md` | M0, M3 | 8 | In progress |
 | M5 - Docker and distribution | `phase-1.5/m5-docker.md` | M2, M4 | 5 | Not started |
 | M6 - Verification and release documentation | `phase-1.5/m6-verification.md` | M1-M5 | 8 | Not started |
 | **Total** |  |  | **46** |  |
