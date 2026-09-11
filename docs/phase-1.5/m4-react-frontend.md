@@ -9,7 +9,7 @@ preserving the static CLI mode, report schema and custom SVG visualizations.
 |---|---|
 | WP-4.1 React/MUI toolchain | Complete |
 | WP-4.2 Theme and visual language | Complete |
-| WP-4.3 Application shell and navigation | Not started |
+| WP-4.3 Application shell and navigation | Complete |
 | WP-4.4 Repository form and advanced options | Not started |
 | WP-4.5 Progress and job controls | Not started |
 | WP-4.6 Report and Wrapped components | Not started |

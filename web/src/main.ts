@@ -6,7 +6,7 @@ import type { Report } from './types';
 const DATA_ID = 'commitography-data';
 const ROOT_ID = 'commitography-root';
 
-function readReport(): Report | null {
+export function readEmbeddedReport(): Report | null {
   const node = document.getElementById(DATA_ID);
   if (!node || !node.textContent) return null;
   try {
@@ -17,11 +17,11 @@ function readReport(): Report | null {
   }
 }
 
-function mount(): void {
+export function mountLegacy(): void {
   const root = document.getElementById(ROOT_ID);
   if (!root) return;
 
-  const report = readReport();
+  const report = readEmbeddedReport();
   if (!report) {
     root.appendChild(
       Object.assign(document.createElement('p'), {
@@ -64,10 +64,4 @@ function mount(): void {
   if (foot) page.appendChild(foot);
 
   root.appendChild(page);
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mount, { once: true });
-} else {
-  mount();
 }

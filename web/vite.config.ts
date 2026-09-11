@@ -5,6 +5,9 @@ import { defineConfig } from 'vite';
 // with stable names. Hashed filenames and code splitting are both disabled for
 // that reason.
 export default defineConfig({
+  define: {
+    'process.env.NODE_ENV': JSON.stringify('production'),
+  },
   build: {
     outDir: '../internal/render/assets',
     emptyOutDir: false,

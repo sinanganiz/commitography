@@ -1,4 +1,22 @@
-// The React/MUI toolchain is introduced before the application is migrated.
-// Keeping the existing mount behind this entrypoint preserves the static
-// dashboard while the remaining frontend work packages move it to React.
-import './main';
+import { createRoot } from 'react-dom/client';
+
+import { AppShell } from './app/AppShell';
+import { mountLegacy, readEmbeddedReport } from './main';
+
+function mount(): void {
+  const root = document.getElementById('commitography-root');
+  if (!root) return;
+
+  if (readEmbeddedReport()) {
+    mountLegacy();
+    return;
+  }
+
+  createRoot(root).render(<AppShell />);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', mount, { once: true });
+} else {
+  mount();
+}
