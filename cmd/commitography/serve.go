@@ -13,7 +13,9 @@ import (
 
 func newServeCommand() *cobra.Command {
 	var options server.Options
-	options.Handler = server.NewHandler()
+	app := server.NewApp(nil)
+	options.Handler = app.Handler()
+	options.OnShutdown = app.Jobs.CancelAll
 
 	cmd := &cobra.Command{
 		Use:           "serve",

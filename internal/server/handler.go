@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/sinanganiz/commitography/internal/jobs"
 	"github.com/sinanganiz/commitography/internal/render"
 )
 
@@ -28,9 +29,29 @@ const indexShell = `<!doctype html>
 // are reserved for the job server and return 404 until their handlers are
 // registered by the later server milestones.
 func NewHandler() http.Handler {
+	return NewApp(nil).Handler()
+}
+
+// App is the local HTTP application and its in-memory job manager.
+type App struct {
+	Jobs *jobs.Manager
+}
+
+// NewApp constructs an application around a job manager. A default manager is
+// created when manager is nil.
+func NewApp(manager *jobs.Manager) *App {
+	if manager == nil {
+		manager = jobs.New(jobs.Options{})
+	}
+	return &App{Jobs: manager}
+}
+
+// Handler returns the application and versioned API routes.
+func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	assets := http.FileServer(http.FS(render.AssetFS()))
 	mux.Handle("/assets/", http.StripPrefix("/", assets))
+	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", a.apiHandler()))
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 	})

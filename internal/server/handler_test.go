@@ -34,7 +34,7 @@ func TestNewHandlerServesShellAndEmbeddedAssets(t *testing.T) {
 
 func TestNewHandlerReservesAPIAndRejectsUnknownPaths(t *testing.T) {
 	handler := NewHandler()
-	for _, path := range []string{"/api/v1/jobs", "/unknown"} {
+	for _, path := range []string{"/unknown"} {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
 		res := httptest.NewRecorder()
 		handler.ServeHTTP(res, req)
