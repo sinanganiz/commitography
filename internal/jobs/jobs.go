@@ -350,7 +350,7 @@ func (m *Manager) Complete(id string, result *analysis.Result, finishedAt time.T
 	}
 	if result != nil && result.Stale {
 		entry.snapshot.Status = StatusStale
-		entry.snapshot.Failure = &Failure{Code: "repository_changed", Message: result.StaleReason}
+		entry.snapshot.Failure = &Failure{Code: "repository_changed", Message: staleMessage(result.StaleReason)}
 	} else {
 		entry.snapshot.Status = StatusSucceeded
 	}
@@ -398,6 +398,17 @@ func FailureFromError(err error) Failure {
 		return Failure{Code: "invalid_wrapped_year", Message: err.Error()}
 	}
 	return Failure{Code: "analysis_failed", Message: "analysis failed; no report was produced"}
+}
+
+// staleMessage passes only the fixed consistency-check reasons: a revalidation
+// failure carries the underlying error, which may include Git stderr.
+func staleMessage(reason string) string {
+	switch reason {
+	case analysis.StaleHeadChanged, analysis.StaleCheckoutChanged, analysis.StaleHistoryChanged:
+		return reason
+	default:
+		return analysis.StaleRevalidationFailed
+	}
 }
 
 // Report returns the completed report only for a succeeded job. Stale and

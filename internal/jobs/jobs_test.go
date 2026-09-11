@@ -300,3 +300,32 @@ func TestWarningsAreBounded(t *testing.T) {
 		t.Fatalf("warning after completion error = %v, want ErrInvalidState", err)
 	}
 }
+
+func TestStaleFailureNeverCarriesUnderlyingErrors(t *testing.T) {
+	for _, tc := range []struct {
+		reason string
+		want   string
+	}{
+		{reason: analysis.StaleHeadChanged, want: analysis.StaleHeadChanged},
+		{reason: analysis.StaleCheckoutChanged, want: analysis.StaleCheckoutChanged},
+		{reason: analysis.StaleHistoryChanged, want: analysis.StaleHistoryChanged},
+		{
+			reason: analysis.StaleRevalidationFailed + ": fatal: not a git repository: /home/user/secret/.git",
+			want:   analysis.StaleRevalidationFailed,
+		},
+	} {
+		manager := New(Options{})
+		job, err := manager.Create("/repos/project")
+		if err != nil {
+			t.Fatal(err)
+		}
+		result := &analysis.Result{Report: &aggregate.Report{}, Stale: true, StaleReason: tc.reason}
+		if err := manager.Complete(job.ID, result, time.Time{}); err != nil {
+			t.Fatal(err)
+		}
+		got, _ := manager.Get(job.ID)
+		if got.Status != StatusStale || got.Failure == nil || got.Failure.Message != tc.want {
+			t.Errorf("reason %q produced %s %+v, want message %q", tc.reason, got.Status, got.Failure, tc.want)
+		}
+	}
+}

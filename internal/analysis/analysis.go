@@ -98,3 +98,13 @@ type Result struct {
 	Stale               bool
 	StaleReason         string
 }
+
+// Stale reasons produced by the end-of-run consistency check. A revalidation
+// failure appends the underlying error, which may carry Git output, so
+// adapters that show reasons to a browser should only pass these constants.
+const (
+	StaleHeadChanged        = "repository HEAD changed during analysis"
+	StaleCheckoutChanged    = "repository checkout changed during analysis"
+	StaleHistoryChanged     = "repository history metadata changed during analysis"
+	StaleRevalidationFailed = "repository could not be revalidated after analysis"
+)

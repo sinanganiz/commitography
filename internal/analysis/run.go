@@ -176,7 +176,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		end, err := collect.PreflightContext(ctx, repoPath)
 		if err != nil {
 			result.Stale = true
-			result.StaleReason = fmt.Sprintf("repository could not be revalidated after analysis: %v", err)
+			result.StaleReason = fmt.Sprintf("%s: %v", StaleRevalidationFailed, err)
 		} else {
 			result.EndRepository = &end
 			result.Stale, result.StaleReason = repositoryChanged(history.Repository, end)
@@ -187,13 +187,13 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 
 func repositoryChanged(start, end model.RepositoryInfo) (bool, string) {
 	if start.HeadCommit != end.HeadCommit {
-		return true, "repository HEAD changed during analysis"
+		return true, StaleHeadChanged
 	}
 	if start.DefaultBranch != end.DefaultBranch {
-		return true, "repository checkout changed during analysis"
+		return true, StaleCheckoutChanged
 	}
 	if start.IsShallow != end.IsShallow || start.HasGrafts != end.HasGrafts {
-		return true, "repository history metadata changed during analysis"
+		return true, StaleHistoryChanged
 	}
 	return false, ""
 }
