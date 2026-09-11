@@ -168,7 +168,7 @@ func (a *App) createJob(w http.ResponseWriter, r *http.Request) {
 			writeAPIError(w, http.StatusConflict, "active_job", "another analysis job is already active")
 			return
 		}
-		writeAPIError(w, http.StatusInternalServerError, "job_start_failed", err.Error())
+		writeAPIError(w, http.StatusInternalServerError, "job_start_failed", "could not start the analysis job")
 		return
 	}
 	writeJSON(w, http.StatusAccepted, createJobResponse{ID: snapshot.ID, Status: snapshot.Status})

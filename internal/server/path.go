@@ -77,7 +77,7 @@ func (a *App) validateRepositoryPath(path string, allowShallow bool) (string, er
 
 	info, err := collect.Preflight(canonical)
 	if err != nil {
-		return "", &pathValidationError{Code: "invalid_repository", Message: err.Error()}
+		return "", &pathValidationError{Code: "invalid_repository", Message: "path is not a valid Git repository"}
 	}
 	if info.IsShallow && !allowShallow {
 		return "", &pathValidationError{Code: "shallow_repository", Message: (&collect.ShallowError{Path: canonical}).Error()}

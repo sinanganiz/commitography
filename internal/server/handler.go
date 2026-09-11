@@ -92,11 +92,20 @@ func (a *App) Handler() http.Handler {
 		_, _ = fmt.Fprint(w, indexShell)
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		applySecurityHeaders(w)
 		if !a.authorize(w, r) {
 			return
 		}
 		mux.ServeHTTP(w, r)
 	})
+}
+
+func applySecurityHeaders(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Referrer-Policy", "no-referrer")
+	w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+	w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
 }
 
 const sessionCookieName = "commitography_session"

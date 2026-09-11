@@ -347,13 +347,13 @@ func FailureFromError(err error) Failure {
 	}
 	var usage *analysis.UsageError
 	if errors.As(err, &usage) {
-		return Failure{Code: "invalid_analysis_request", Message: err.Error()}
+		return Failure{Code: "invalid_analysis_request", Message: "analysis request or repository validation failed"}
 	}
 	var year *analysis.YearError
 	if errors.As(err, &year) {
 		return Failure{Code: "invalid_wrapped_year", Message: err.Error()}
 	}
-	return Failure{Code: "analysis_failed", Message: err.Error()}
+	return Failure{Code: "analysis_failed", Message: "analysis failed; no report was produced"}
 }
 
 // Report returns the completed report only for a succeeded job. Stale and
