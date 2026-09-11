@@ -10,6 +10,7 @@ import (
 
 func newServeCommand() *cobra.Command {
 	var options server.Options
+	options.Handler = server.NewHandler()
 
 	cmd := &cobra.Command{
 		Use:           "serve",

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +20,10 @@ import (
 //
 //go:embed assets/app.js assets/app.css
 var assets embed.FS
+
+// AssetFS exposes the embedded frontend assets to the local HTTP server. The
+// returned filesystem is read-only and remains backed by the binary.
+func AssetFS() fs.FS { return assets }
 
 // IndexFile and ReportFile are the only files Render ever writes.
 const (
