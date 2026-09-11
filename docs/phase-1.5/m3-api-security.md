@@ -9,7 +9,7 @@ not an excuse to expose arbitrary filesystem access without validation.
 |---|---|
 | WP-3.1 API resource schemas and routing | Complete |
 | WP-3.2 Job creation and validation | Complete |
-| WP-3.3 Status, report, cancel and delete handlers | Not started |
+| WP-3.3 Status, report, cancel and delete handlers | Complete |
 | WP-3.4 Session and request protection | Not started |
 | WP-3.5 Allowed-root and symlink enforcement | Not started |
 | WP-3.6 Response safety and data minimization | Not started |

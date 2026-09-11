@@ -36,6 +36,20 @@ type jobSummary struct {
 	WarningCount int         `json:"warningCount"`
 }
 
+type jobStatusResponse struct {
+	ID                  string                  `json:"id"`
+	Status              jobs.Status             `json:"status"`
+	RepoName            string                  `json:"repoName"`
+	RepoPath            string                  `json:"repoPath"`
+	CreatedAt           time.Time               `json:"createdAt"`
+	StartedAt           *time.Time              `json:"startedAt"`
+	FinishedAt          *time.Time              `json:"finishedAt"`
+	ElapsedMilliseconds int64                   `json:"elapsedMilliseconds"`
+	Progress            *analysis.ProgressEvent `json:"progress"`
+	Warnings            []string                `json:"warnings"`
+	Error               *jobs.Failure           `json:"error"`
+}
+
 type createJobRequest struct {
 	RepoPath string           `json:"repoPath"`
 	Options  createJobOptions `json:"options"`
@@ -148,11 +162,96 @@ func (a *App) createJob(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/jobs/")
-	if path == "" || strings.Contains(path, "/") {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) == 0 || parts[0] == "" {
 		writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
 		return
 	}
-	writeAPIError(w, http.StatusNotImplemented, "not_implemented", "job lifecycle routes are not available yet")
+	id := parts[0]
+	if len(parts) == 1 {
+		switch r.Method {
+		case http.MethodGet:
+			snapshot, err := a.Jobs.Get(id)
+			if err != nil {
+				writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+				return
+			}
+			writeJSON(w, http.StatusOK, statusResponse(snapshot))
+		case http.MethodDelete:
+			if err := a.Jobs.Delete(id); err != nil {
+				if errors.Is(err, jobs.ErrJobNotFound) {
+					writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+				} else {
+					writeAPIError(w, http.StatusConflict, "invalid_job_state", "active jobs must be cancelled before deletion")
+				}
+				return
+			}
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			methodNotAllowed(w, http.MethodGet, http.MethodDelete)
+		}
+		return
+	}
+	if len(parts) != 2 {
+		writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+		return
+	}
+	switch parts[1] {
+	case "report":
+		if r.Method != http.MethodGet {
+			methodNotAllowed(w, http.MethodGet)
+			return
+		}
+		report, err := a.Jobs.Report(id)
+		if err != nil {
+			if errors.Is(err, jobs.ErrJobNotFound) {
+				writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+			} else {
+				writeAPIError(w, http.StatusConflict, "report_not_ready", "job has no current report")
+			}
+			return
+		}
+		writeJSON(w, http.StatusOK, report)
+	case "cancel":
+		if r.Method != http.MethodPost {
+			methodNotAllowed(w, http.MethodPost)
+			return
+		}
+		if err := a.Jobs.Cancel(id); err != nil {
+			if errors.Is(err, jobs.ErrJobNotFound) {
+				writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+			} else {
+				writeAPIError(w, http.StatusConflict, "invalid_job_state", "job cannot be cancelled in its current state")
+			}
+			return
+		}
+		snapshot, _ := a.Jobs.Get(id)
+		writeJSON(w, http.StatusAccepted, statusResponse(snapshot))
+	case "":
+		writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+	default:
+		writeAPIError(w, http.StatusNotFound, "not_found", "job route not found")
+	}
+}
+
+func statusResponse(snapshot jobs.Snapshot) jobStatusResponse {
+	warnings := []string{}
+	if snapshot.Result != nil && snapshot.Result.Report != nil {
+		warnings = append(warnings, snapshot.Result.Report.Warnings...)
+	}
+	return jobStatusResponse{
+		ID:                  snapshot.ID,
+		Status:              snapshot.Status,
+		RepoName:            snapshot.RepoName,
+		RepoPath:            snapshot.RepoPath,
+		CreatedAt:           snapshot.CreatedAt,
+		StartedAt:           snapshot.StartedAt,
+		FinishedAt:          snapshot.FinishedAt,
+		ElapsedMilliseconds: snapshot.Elapsed.Milliseconds(),
+		Progress:            snapshot.Progress,
+		Warnings:            warnings,
+		Error:               snapshot.Failure,
+	}
 }
 
 func summarizeJob(snapshot jobs.Snapshot) jobSummary {
