@@ -1,5 +1,6 @@
-import { startTransition, useState } from 'react';
+import { startTransition, useCallback, useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -14,15 +15,52 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import type { PaletteMode } from '@mui/material/styles';
 
+import { getCapabilities, isActive, listJobs } from '../api/client';
+import type { JobSummary } from '../api/client';
 import { createCommitographyTheme } from '../ui/theme';
+import { RepositoryForm, initialRepositoryForm } from './RepositoryForm';
+import type { RepositoryFormState } from './RepositoryForm';
 
 type View = 'analyze' | 'recent';
+type SessionState = 'connecting' | 'ready' | 'failed';
 
 /** Local runner shell shared by the web application views. */
 export function AppShell(): ReactElement {
   const [view, setView] = useState<View>('analyze');
   const [mode, setMode] = useState<PaletteMode>('dark');
+  const [session, setSession] = useState<SessionState>('connecting');
+  const [connectAttempt, setConnectAttempt] = useState(0);
+  const [jobs, setJobs] = useState<JobSummary[]>([]);
+  // Kept here rather than in the form so switching views does not clear it.
+  const [form, setForm] = useState<RepositoryFormState>(initialRepositoryForm);
   const theme = createCommitographyTheme(mode);
+  const activeJob = jobs.find((job) => isActive(job.status)) ?? null;
+
+  useEffect(() => {
+    let cancelled = false;
+    setSession('connecting');
+    // Capabilities go first: that response issues the session cookie the job
+    // list and every later request depend on.
+    getCapabilities()
+      .then(() => listJobs())
+      .then((list) => {
+        if (cancelled) return;
+        setJobs(list);
+        setSession('ready');
+      })
+      .catch(() => {
+        if (!cancelled) setSession('failed');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [connectAttempt]);
+
+  const refreshJobs = useCallback(() => {
+    listJobs()
+      .then(setJobs)
+      .catch(() => setSession('failed'));
+  }, []);
 
   const navigate = (next: View) => {
     startTransition(() => setView(next));
@@ -78,7 +116,30 @@ export function AppShell(): ReactElement {
               </Button>
             </Stack>
 
-            {view === 'analyze' ? <AnalyzePlaceholder /> : <RecentPlaceholder />}
+            {session === 'failed' ? (
+              <Alert
+                severity="error"
+                action={
+                  <Button color="inherit" size="small" onClick={() => setConnectAttempt((n) => n + 1)}>
+                    Retry
+                  </Button>
+                }
+              >
+                The local server could not be reached. Check that commitography serve is still running.
+              </Alert>
+            ) : null}
+
+            {view === 'analyze' ? (
+              <AnalyzeView
+                form={form}
+                onFormChange={setForm}
+                ready={session === 'ready'}
+                activeJob={activeJob}
+                onRefreshJobs={refreshJobs}
+              />
+            ) : (
+              <RecentPlaceholder />
+            )}
           </Stack>
         </Container>
       </Box>
@@ -86,7 +147,15 @@ export function AppShell(): ReactElement {
   );
 }
 
-function AnalyzePlaceholder(): ReactElement {
+interface AnalyzeViewProps {
+  form: RepositoryFormState;
+  onFormChange: (next: RepositoryFormState) => void;
+  ready: boolean;
+  activeJob: JobSummary | null;
+  onRefreshJobs: () => void;
+}
+
+function AnalyzeView({ form, onFormChange, ready, activeJob, onRefreshJobs }: AnalyzeViewProps): ReactElement {
   return (
     <Paper component="main" sx={{ p: { xs: 2.5, md: 5 }, borderRadius: 3 }}>
       <Stack spacing={2.5} sx={{ maxWidth: 720 }}>
@@ -97,13 +166,18 @@ function AnalyzePlaceholder(): ReactElement {
           See the shape of your repository.
         </Typography>
         <Typography color="text.secondary">
-          Choose a repository path to begin. The analysis runs on this machine, and the completed report stays in this
-          dashboard.
+          Enter the path of a repository on this machine. The analysis runs locally, and the completed report stays in
+          this dashboard.
         </Typography>
         <Divider />
-        <Button variant="contained" size="large" disabled sx={{ alignSelf: 'flex-start' }}>
-          Repository form coming next
-        </Button>
+        <RepositoryForm
+          value={form}
+          onChange={onFormChange}
+          ready={ready}
+          activeJob={activeJob}
+          onStarted={onRefreshJobs}
+          onRefreshJobs={onRefreshJobs}
+        />
       </Stack>
     </Paper>
   );

@@ -37,6 +37,7 @@ export function createCommitographyTheme(mode: PaletteMode) {
       warning: { main: mode === 'dark' ? '#e8b04b' : '#8a6500' },
       error: { main: mode === 'dark' ? '#ef8a7a' : '#a2382b' },
       success: { main: mode === 'dark' ? '#9ecb9b' : '#3d7540' },
+      info: { main: mode === 'dark' ? '#9fbfd6' : '#2e5f7f' },
     },
     typography: {
       fontFamily: systemFont,
