@@ -81,3 +81,33 @@ func TestServeBrowserFailureIsWarning(t *testing.T) {
 		t.Fatalf("browser warning = %q", errors.String())
 	}
 }
+
+func TestServeCallsShutdownHook(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	out := make(messageWriter, 1)
+	called := make(chan struct{}, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- Serve(ctx, Options{
+			ListenAddress: "127.0.0.1:0",
+			Output:        out,
+			OnShutdown:    func() { called <- struct{}{} },
+		})
+	}()
+	select {
+	case <-out:
+	case <-time.After(2 * time.Second):
+		t.Fatal("server did not announce its listener")
+	}
+	cancel()
+	select {
+	case <-called:
+	case <-time.After(2 * time.Second):
+		t.Fatal("shutdown hook was not called")
+	}
+	if err := <-errCh; err != nil {
+		t.Fatalf("Serve: %v", err)
+	}
+}

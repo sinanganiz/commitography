@@ -206,6 +206,23 @@ func (m *Manager) Cancel(id string) error {
 	return nil
 }
 
+// CancelAll requests cancellation for every active worker. Workers still own
+// their terminal transition and must observe the context before shutdown is
+// considered complete.
+func (m *Manager) CancelAll() {
+	m.mu.RLock()
+	cancels := make([]context.CancelFunc, 0, 1)
+	for _, entry := range m.jobs {
+		if (entry.snapshot.Status == StatusQueued || entry.snapshot.Status == StatusRunning) && entry.cancel != nil {
+			cancels = append(cancels, entry.cancel)
+		}
+	}
+	m.mu.RUnlock()
+	for _, cancel := range cancels {
+		cancel()
+	}
+}
+
 // Cancelled marks a job cancelled after its worker has observed context
 // cancellation and exited.
 func (m *Manager) Cancelled(id string, finishedAt time.Time) error {

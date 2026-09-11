@@ -13,7 +13,7 @@ analysis implementation.
 | WP-2.4 Worker lifecycle and cancellation | Complete |
 | WP-2.5 Progress projection for polling | Complete |
 | WP-2.6 Result, error and stale handling | Complete |
-| WP-2.7 Graceful shutdown | Not started |
+| WP-2.7 Graceful shutdown | Complete |
 
 ---
 

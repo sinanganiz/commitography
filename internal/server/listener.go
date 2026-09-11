@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"time"
 )
 
 const defaultListenAddress = "127.0.0.1:8080"
@@ -25,6 +26,7 @@ type Options struct {
 	Output        io.Writer
 	Errors        io.Writer
 	OpenBrowser   func(string) error
+	OnShutdown    func()
 }
 
 // Serve binds the local HTTP listener and blocks until the context is
@@ -65,7 +67,7 @@ func Serve(ctx context.Context, opts Options) error {
 	}
 
 	httpServer := &http.Server{Handler: opts.Handler}
-	go shutdownOnContext(ctx, httpServer)
+	go shutdownOnContext(ctx, httpServer, opts.OnShutdown)
 	err = httpServer.Serve(listener)
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
@@ -73,9 +75,12 @@ func Serve(ctx context.Context, opts Options) error {
 	return err
 }
 
-func shutdownOnContext(ctx context.Context, httpServer *http.Server) {
+func shutdownOnContext(ctx context.Context, httpServer *http.Server, onShutdown func()) {
 	<-ctx.Done()
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5e9)
+	if onShutdown != nil {
+		onShutdown()
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = httpServer.Shutdown(shutdownCtx)
 }
