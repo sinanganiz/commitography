@@ -23,6 +23,36 @@ export interface JobSummary {
   warningCount: number;
 }
 
+/** One observable point in an analysis. `fraction` is null when unknown. */
+export interface ProgressEvent {
+  sequence: number;
+  stage: string;
+  detail: string;
+  fraction: number | null;
+  current: number;
+  total: number;
+  estimated: boolean;
+}
+
+export interface JobFailure {
+  code: string;
+  message: string;
+}
+
+export interface JobStatus {
+  id: string;
+  status: JobStatusValue;
+  repoName: string;
+  repoPath: string;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  elapsedMilliseconds: number;
+  progress: ProgressEvent | null;
+  warnings: string[];
+  error: JobFailure | null;
+}
+
 export interface AnalysisOptions {
   noBlame: boolean;
   perAuthor: boolean;
@@ -76,6 +106,15 @@ export async function listJobs(): Promise<JobSummary[]> {
 
 export function createJob(input: CreateJobRequest): Promise<CreateJobResponse> {
   return request<CreateJobResponse>('POST', '/jobs', input);
+}
+
+export function getJob(id: string): Promise<JobStatus> {
+  return request<JobStatus>('GET', `/jobs/${encodeURIComponent(id)}`);
+}
+
+/** Requests cooperative cancellation. Repeating it for a cancelled job is safe. */
+export function cancelJob(id: string): Promise<JobStatus> {
+  return request<JobStatus>('POST', `/jobs/${encodeURIComponent(id)}/cancel`);
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {

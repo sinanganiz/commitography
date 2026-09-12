@@ -14,6 +14,7 @@ import Typography from '@mui/material/Typography';
 
 import { createJob } from '../api/client';
 import type { AnalysisOptions, CreateJobResponse, JobSummary } from '../api/client';
+import { routeHash } from './routes';
 import { describeStartError } from './startErrors';
 import type { StartErrorGuidance } from './startErrors';
 
@@ -255,8 +256,13 @@ export function RepositoryForm({
           <Alert
             severity="info"
             action={
-              <Button color="inherit" size="small" sx={{ whiteSpace: 'nowrap' }} onClick={onRefreshJobs}>
-                Check again
+              <Button
+                color="inherit"
+                size="small"
+                sx={{ whiteSpace: 'nowrap' }}
+                href={routeHash({ name: 'job', id: activeJob.id })}
+              >
+                View progress
               </Button>
             }
           >

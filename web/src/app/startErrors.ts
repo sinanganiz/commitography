@@ -1,4 +1,5 @@
 import { ApiError } from '../api/client';
+import { sentence } from './format';
 
 /** A follow-up the form can offer next to an error. */
 export type StartErrorAction = 'allowShallow' | 'reload' | 'refreshJobs';
@@ -92,11 +93,4 @@ export function describeStartError(error: unknown): StartErrorGuidance {
         pathProblem: false,
       };
   }
-}
-
-function sentence(message: string): string {
-  const trimmed = message.trim();
-  if (!trimmed) return '';
-  const capitalized = trimmed[0].toUpperCase() + trimmed.slice(1);
-  return /[.!?]$/.test(capitalized) ? capitalized : `${capitalized}.`;
 }
