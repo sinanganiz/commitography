@@ -137,6 +137,23 @@ export function AppShell(): ReactElement {
     navigate({ name: 'job', id: job.id });
   };
 
+  // A view change removes the control that had focus. Focus moves to the new
+  // view's heading instead, so a screen reader announces where the user is and
+  // Tab continues from the top of that view. The first render keeps the
+  // browser's own starting point.
+  const routeKey = routeHash(route);
+  const firstRoute = useRef(true);
+  useEffect(() => {
+    if (firstRoute.current) {
+      firstRoute.current = false;
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>('main h2[tabindex="-1"]')?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [routeKey]);
+
   const viewingActiveJob = route.name === 'job' && route.id === activeJob?.id;
 
   return (
@@ -284,7 +301,7 @@ function AnalyzeView({ form, onFormChange, ready, activeJob, onStarted, onRefres
         <Typography variant="overline" color="primary">
           Start a local analysis
         </Typography>
-        <Typography variant="h3" component="h2">
+        <Typography variant="h3" component="h2" tabIndex={-1} sx={{ outline: 'none' }}>
           See the shape of your repository.
         </Typography>
         <Typography color="text.secondary">

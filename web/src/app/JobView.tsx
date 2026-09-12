@@ -128,7 +128,13 @@ export function JobView({
                 job {id.slice(0, 8)}
               </Typography>
             </Stack>
-            <Typography id={titleId} variant="h3" component="h2" sx={{ overflowWrap: 'anywhere' }}>
+            <Typography
+              id={titleId}
+              variant="h3"
+              component="h2"
+              tabIndex={-1}
+              sx={{ overflowWrap: 'anywhere', outline: 'none' }}
+            >
               {status ? status.repoName || 'Repository' : 'Loading analysis…'}
             </Typography>
             {status?.repoPath ? (
@@ -323,7 +329,7 @@ function JobNotFound({ onStartNew, onOpenRecent }: { onStartNew: () => void; onO
         <Typography variant="overline" color="primary">
           Analysis
         </Typography>
-        <Typography variant="h3" component="h2">
+        <Typography variant="h3" component="h2" tabIndex={-1} sx={{ outline: 'none' }}>
           This job is no longer available.
         </Typography>
         <Typography color="text.secondary">

@@ -14,7 +14,7 @@ preserving the static CLI mode, report schema and custom SVG visualizations.
 | WP-4.5 Progress and job controls | Complete |
 | WP-4.6 Report and Wrapped components | Complete |
 | WP-4.7 Job history and terminal states | Complete |
-| WP-4.8 Accessibility, responsiveness and static compatibility | Not started |
+| WP-4.8 Accessibility, responsiveness and static compatibility | Complete |
 
 ---
 
