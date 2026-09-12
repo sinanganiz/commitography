@@ -12,7 +12,7 @@ preserving the static CLI mode, report schema and custom SVG visualizations.
 | WP-4.3 Application shell and navigation | Complete |
 | WP-4.4 Repository form and advanced options | Complete |
 | WP-4.5 Progress and job controls | Complete |
-| WP-4.6 Report and Wrapped components | Not started |
+| WP-4.6 Report and Wrapped components | Complete |
 | WP-4.7 Job history and terminal states | Not started |
 | WP-4.8 Accessibility, responsiveness and static compatibility | Not started |
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
@@ -14,10 +14,12 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import type { ChipProps } from '@mui/material/Chip';
 import type { AlertColor } from '@mui/material/Alert';
+import type { PaletteMode } from '@mui/material/styles';
 
 import { ApiError, cancelJob, isActive } from '../api/client';
 import type { JobStatus, JobStatusValue, ProgressEvent } from '../api/client';
 import { countedDetail, formatDuration, plural, sentence, stageLabel } from './format';
+import { JobReport } from './JobReport';
 import { useJobStatus } from './useJobStatus';
 
 // Pixel strings, not numbers: MUI's sx reads 1 as 100% and -1 as a spacing unit.
@@ -52,6 +54,8 @@ interface StageEntry {
 interface JobViewProps {
   id: string;
   pollIntervalMs: number;
+  /** The application theme, which the embedded report follows. */
+  themeMode: PaletteMode;
   /** Called once when the job is first seen in a terminal state. */
   onSettled: () => void;
   onStartNew: () => void;
@@ -59,7 +63,14 @@ interface JobViewProps {
 }
 
 /** Live progress, cancellation and the terminal outcome of one analysis job. */
-export function JobView({ id, pollIntervalMs, onSettled, onStartNew, onOpenRecent }: JobViewProps): ReactElement {
+export function JobView({
+  id,
+  pollIntervalMs,
+  themeMode,
+  onSettled,
+  onStartNew,
+  onOpenRecent,
+}: JobViewProps): ReactElement {
   const { status, receivedAt, error, notFound, retry, accept } = useJobStatus(id, pollIntervalMs);
   const [cancelState, setCancelState] = useState<CancelState>('idle');
   const [showWarnings, setShowWarnings] = useState(false);
@@ -68,6 +79,7 @@ export function JobView({ id, pollIntervalMs, onSettled, onStartNew, onOpenRecen
   const active = status ? isActive(status.status) : true;
   const now = useNow(active && status !== null);
   const settledRef = useRef(false);
+  const titleId = useId();
 
   const progress = status?.progress ?? null;
 
@@ -120,111 +132,115 @@ export function JobView({ id, pollIntervalMs, onSettled, onStartNew, onOpenRecen
   const warnings = status?.warnings ?? [];
 
   return (
-    <Paper component="main" sx={{ p: { xs: 2.5, md: 5 }, borderRadius: 3 }}>
-      <Box role="status" aria-live="polite" sx={visuallyHidden}>
-        {announcement}
-      </Box>
-      <Stack spacing={3} sx={{ maxWidth: 760 }}>
-        <Stack spacing={1}>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
-            <Typography variant="overline" color="primary">
-              Analysis
+    <Stack component="main" spacing={{ xs: 4, md: 6 }}>
+      <Paper component="section" aria-labelledby={titleId} sx={{ p: { xs: 2.5, md: 5 }, borderRadius: 3 }}>
+        <Box role="status" aria-live="polite" sx={visuallyHidden}>
+          {announcement}
+        </Box>
+        <Stack spacing={3} sx={{ maxWidth: 760 }}>
+          <Stack spacing={1}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
+              <Typography variant="overline" color="primary">
+                Analysis
+              </Typography>
+              {status ? (
+                <Chip size="small" label={statusChip[status.status].label} color={statusChip[status.status].color} />
+              ) : null}
+              <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                job {id.slice(0, 8)}
+              </Typography>
+            </Stack>
+            <Typography id={titleId} variant="h3" component="h2" sx={{ overflowWrap: 'anywhere' }}>
+              {status ? status.repoName || 'Repository' : 'Loading analysis…'}
             </Typography>
-            {status ? (
-              <Chip size="small" label={statusChip[status.status].label} color={statusChip[status.status].color} />
+            {status?.repoPath ? (
+              <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', overflowWrap: 'anywhere' }}>
+                {status.repoPath}
+              </Typography>
             ) : null}
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-              job {id.slice(0, 8)}
-            </Typography>
           </Stack>
-          <Typography variant="h3" component="h2" sx={{ overflowWrap: 'anywhere' }}>
-            {status ? status.repoName || 'Repository' : 'Loading analysis…'}
-          </Typography>
-          {status?.repoPath ? (
-            <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', overflowWrap: 'anywhere' }}>
-              {status.repoPath}
-            </Typography>
+
+          {error ? <PollError error={error} onRetry={retry} /> : null}
+
+          {status && active ? (
+            <ActiveProgress
+              status={status.status}
+              progress={progress}
+              cancelling={cancelState === 'requested' || cancelState === 'requesting'}
+            />
+          ) : null}
+          {status && !active ? <Outcome status={status} /> : null}
+          {!status && !error ? <LinearProgress aria-label="Loading analysis status" /> : null}
+
+          {status ? (
+            <Stack direction="row" spacing={3} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+              <Meta label="Elapsed">
+                <time dateTime={`PT${Math.floor(elapsed / 1000)}S`}>{formatDuration(elapsed)}</time>
+              </Meta>
+              <Meta label="Warnings">{warnings.length}</Meta>
+            </Stack>
+          ) : null}
+
+          {warnings.length > 0 ? (
+            <Box>
+              <Button
+                variant="text"
+                color="warning"
+                aria-expanded={showWarnings}
+                onClick={() => setShowWarnings(!showWarnings)}
+                sx={{ px: 1, ml: -1 }}
+              >
+                {showWarnings ? 'Hide' : 'Show'} {plural(warnings.length, 'warning')}
+              </Button>
+              <Collapse in={showWarnings}>
+                <Box component="ul" sx={{ m: 0, mt: 1, pl: 3, color: 'text.secondary' }}>
+                  {warnings.map((warning) => (
+                    <Typography component="li" variant="body2" key={warning} sx={{ overflowWrap: 'anywhere' }}>
+                      {warning}
+                    </Typography>
+                  ))}
+                </Box>
+              </Collapse>
+            </Box>
+          ) : null}
+
+          {stages.length > 0 ? <StageLog stages={stages} status={status?.status ?? 'queued'} /> : null}
+
+          <Divider />
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { sm: 'center' } }}>
+            {status && active ? (
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={cancel}
+                disabled={cancelState === 'requesting' || cancelState === 'requested'}
+                startIcon={
+                  cancelState === 'requesting' || cancelState === 'requested' ? (
+                    <CircularProgress size={16} color="inherit" aria-hidden />
+                  ) : undefined
+                }
+              >
+                {cancelState === 'requesting' || cancelState === 'requested' ? 'Cancelling…' : 'Cancel analysis'}
+              </Button>
+            ) : (
+              <Button variant="contained" onClick={onStartNew}>
+                {status?.status === 'succeeded' ? 'Analyze another repository' : 'Start a new analysis'}
+              </Button>
+            )}
+            <Button variant="text" color="inherit" onClick={onOpenRecent}>
+              Recent jobs
+            </Button>
+          </Stack>
+          {cancelState === 'failed' ? (
+            <Alert severity="error">
+              The cancel request did not reach the server. The analysis may still be running; try again.
+            </Alert>
           ) : null}
         </Stack>
-
-        {error ? <PollError error={error} onRetry={retry} /> : null}
-
-        {status && active ? (
-          <ActiveProgress
-            status={status.status}
-            progress={progress}
-            cancelling={cancelState === 'requested' || cancelState === 'requesting'}
-          />
-        ) : null}
-        {status && !active ? <Outcome status={status} /> : null}
-        {!status && !error ? <LinearProgress aria-label="Loading analysis status" /> : null}
-
-        {status ? (
-          <Stack direction="row" spacing={3} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-            <Meta label="Elapsed">
-              <time dateTime={`PT${Math.floor(elapsed / 1000)}S`}>{formatDuration(elapsed)}</time>
-            </Meta>
-            <Meta label="Warnings">{warnings.length}</Meta>
-          </Stack>
-        ) : null}
-
-        {warnings.length > 0 ? (
-          <Box>
-            <Button
-              variant="text"
-              color="warning"
-              aria-expanded={showWarnings}
-              onClick={() => setShowWarnings(!showWarnings)}
-              sx={{ px: 1, ml: -1 }}
-            >
-              {showWarnings ? 'Hide' : 'Show'} {plural(warnings.length, 'warning')}
-            </Button>
-            <Collapse in={showWarnings}>
-              <Box component="ul" sx={{ m: 0, mt: 1, pl: 3, color: 'text.secondary' }}>
-                {warnings.map((warning) => (
-                  <Typography component="li" variant="body2" key={warning} sx={{ overflowWrap: 'anywhere' }}>
-                    {warning}
-                  </Typography>
-                ))}
-              </Box>
-            </Collapse>
-          </Box>
-        ) : null}
-
-        {stages.length > 0 ? <StageLog stages={stages} status={status?.status ?? 'queued'} /> : null}
-
-        <Divider />
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { sm: 'center' } }}>
-          {status && active ? (
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={cancel}
-              disabled={cancelState === 'requesting' || cancelState === 'requested'}
-              startIcon={
-                cancelState === 'requesting' || cancelState === 'requested' ? (
-                  <CircularProgress size={16} color="inherit" aria-hidden />
-                ) : undefined
-              }
-            >
-              {cancelState === 'requesting' || cancelState === 'requested' ? 'Cancelling…' : 'Cancel analysis'}
-            </Button>
-          ) : (
-            <Button variant="contained" onClick={onStartNew}>
-              {status?.status === 'succeeded' ? 'Analyze another repository' : 'Start a new analysis'}
-            </Button>
-          )}
-          <Button variant="text" color="inherit" onClick={onOpenRecent}>
-            Recent jobs
-          </Button>
-        </Stack>
-        {cancelState === 'failed' ? (
-          <Alert severity="error">
-            The cancel request did not reach the server. The analysis may still be running; try again.
-          </Alert>
-        ) : null}
-      </Stack>
-    </Paper>
+      </Paper>
+      {/* Only a succeeded job has a current report; a stale one is never shown. */}
+      {status?.status === 'succeeded' ? <JobReport id={id} theme={themeMode} /> : null}
+    </Stack>
   );
 }
 

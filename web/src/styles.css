@@ -1,7 +1,13 @@
 /* System font stack only. The page loads nothing from the network, so a web
-   font is not an option and would not be worth the weight if it were. */
+   font is not an option and would not be worth the weight if it were.
 
-:root {
+   The report renders in two hosts: the static CLI page, whose <html> carries
+   .cg-static, and the local application, where MUI owns the page. Rules that
+   touch bare elements are therefore scoped to one of those two roots so they
+   never restyle the application around an embedded report. */
+
+:root,
+.cg-report[data-theme='light'] {
   color-scheme: light dark;
 
   --bg: #fbfaf8;
@@ -50,7 +56,10 @@
   }
 }
 
-:root[data-theme='dark'] {
+/* An embedded report follows the application's theme through its own
+   data-theme, which overrides whatever the system preference chose above. */
+:root[data-theme='dark'],
+.cg-report[data-theme='dark'] {
   --bg: #14130f;
   --surface: #1c1b17;
   --border: #33312b;
@@ -69,23 +78,31 @@
   --heat-4: #d8a463;
 }
 
-* {
+.cg-static *,
+.cg-report,
+.cg-report * {
   box-sizing: border-box;
 }
 
-html,
-body {
+.cg-static,
+.cg-static body {
   margin: 0;
   padding: 0;
 }
 
-body {
+.cg-static body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font);
   font-size: 16px;
   line-height: 1.55;
   -webkit-text-size-adjust: 100%;
+}
+
+.cg-report {
+  color: var(--fg);
+  font-family: var(--font);
+  line-height: 1.55;
 }
 
 .page {
@@ -100,6 +117,10 @@ body {
   border-bottom: 1px solid var(--border);
   padding-bottom: 1.5rem;
   margin-bottom: 2rem;
+}
+
+.cg-report-embedded .page-header {
+  padding-top: 0.5rem;
 }
 
 .page-header-top {
@@ -146,7 +167,8 @@ body {
   border-color: var(--accent);
 }
 
-:focus-visible {
+.cg-static :focus-visible,
+.cg-report :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -360,33 +382,33 @@ body {
   background: var(--surface);
 }
 
-table {
+.cg-report table {
   border-collapse: collapse;
   width: 100%;
   font-size: 0.9rem;
 }
 
-caption {
+.cg-report caption {
   text-align: left;
   color: var(--fg-muted);
   font-size: 0.85rem;
   padding: 0.5rem 0.75rem;
 }
 
-th,
-td {
+.cg-report th,
+.cg-report td {
   text-align: left;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
-tbody tr:last-child th,
-tbody tr:last-child td {
+.cg-report tbody tr:last-child th,
+.cg-report tbody tr:last-child td {
   border-bottom: none;
 }
 
-thead th {
+.cg-report thead th {
   color: var(--fg-muted);
   font-weight: 600;
   font-size: 0.8rem;
@@ -394,8 +416,8 @@ thead th {
   letter-spacing: 0.04em;
 }
 
-.path,
-code {
+.cg-report .path,
+.cg-report code {
   font-family: var(--mono);
   font-size: 0.85em;
 }
@@ -521,7 +543,7 @@ code {
   padding: 1rem 1.1rem;
 }
 
-.card h3 {
+.card-title {
   margin: 0 0 0.5rem;
   font-size: 0.85rem;
   text-transform: uppercase;
@@ -640,6 +662,12 @@ code {
   background: transparent;
   color: var(--wrapped-fg);
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* The wrapped deck is a .cg-report for its focus ring, but it keeps the
+   page's own wrapped palette rather than the report text colour. */
+.wrapped-deck.cg-report {
+  color: inherit;
 }
 
 @media (prefers-reduced-motion: reduce) {

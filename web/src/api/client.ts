@@ -1,6 +1,8 @@
 // Mirrors the Phase 1.5 local API contract in docs/phase-1.5/m0-contracts.md.
 // The report body itself is typed by ../types and is not duplicated here.
 
+import type { Report } from '../types';
+
 export type JobStatusValue = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'stale';
 
 export interface Capabilities {
@@ -110,6 +112,11 @@ export function createJob(input: CreateJobRequest): Promise<CreateJobResponse> {
 
 export function getJob(id: string): Promise<JobStatus> {
   return request<JobStatus>('GET', `/jobs/${encodeURIComponent(id)}`);
+}
+
+/** Returns the report of a succeeded job; any other state answers 409. */
+export function getReport(id: string): Promise<Report> {
+  return request<Report>('GET', `/jobs/${encodeURIComponent(id)}/report`);
 }
 
 /** Requests cooperative cancellation. Repeating it for a cancelled job is safe. */

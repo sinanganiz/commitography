@@ -187,6 +187,7 @@ export function AppShell(): ReactElement {
                 key={route.id}
                 id={route.id}
                 pollIntervalMs={pollIntervalMs}
+                themeMode={mode}
                 onSettled={refreshJobs}
                 onStartNew={() => navigate({ name: 'analyze' })}
                 onOpenRecent={() => navigate({ name: 'recent' })}

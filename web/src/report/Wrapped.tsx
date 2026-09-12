@@ -1,5 +1,8 @@
-import { el, num, pct, shortPath } from './dom';
-import type { Report } from './types';
+import { useEffect, useRef } from 'react';
+import type { KeyboardEvent, ReactElement, TouchEvent } from 'react';
+
+import type { Report } from '../types';
+import { num, pct, shortPath } from './format';
 
 /**
  * Repo Wrapped: a vertical sequence of full-viewport cards, one statistic each.
@@ -192,50 +195,62 @@ function wrapText(
   if (line) ctx.fillText(line, x, cursor);
 }
 
-export function renderWrapped(root: HTMLElement, r: Report, year: number, previousYearCommits: number | null): void {
-  document.documentElement.classList.add('wrapped-mode');
+interface WrappedProps {
+  report: Report;
+  year: number;
+  previousYearCommits: number | null;
+}
 
-  const cards = cardsFor(r, year, previousYearCommits);
-  const deck = el('main', { class: 'wrapped-deck', tabindex: '0', 'aria-label': `${r.repository.name} wrapped ${year}` });
+export function Wrapped({ report, year, previousYearCommits }: WrappedProps): ReactElement {
+  const cards = cardsFor(report, year, previousYearCommits);
+  const repoName = report.repository.name || 'repository';
+  const sections = useRef<(HTMLElement | null)[]>([]);
+  const current = useRef(0);
+  const touchStart = useRef(0);
 
-  const sections = cards.map((card, index) => {
-    const node = el(
-      'section',
-      { class: 'wrapped-card', 'aria-label': card.kicker, tabindex: '-1' },
-      el('p', { class: 'wrapped-kicker' }, card.kicker),
-      el('p', { class: 'wrapped-headline' }, card.headline),
-      card.detail ? el('p', { class: 'wrapped-detail' }, card.detail) : null,
-      card.footnote ? el('p', { class: 'wrapped-footnote' }, card.footnote) : null,
-      el('p', { class: 'wrapped-progress' }, `${index + 1} of ${cards.length}`),
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('wrapped-mode');
+    return () => root.classList.remove('wrapped-mode');
+  }, []);
+
+  // Keep the current card honest when the reader simply scrolls.
+  useEffect(() => {
+    const nodes = sections.current.filter((node): node is HTMLElement => node !== null);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const index = nodes.indexOf(entry.target as HTMLElement);
+            if (index >= 0) current.current = index;
+          }
+        }
+      },
+      { threshold: 0.6 },
     );
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [cards.length]);
 
-    const button = el('button', { type: 'button', class: 'wrapped-export' }, 'Export as image');
-    button.addEventListener('click', () => exportCard(card, index, r.repository.name || 'repository'));
-    node.appendChild(button);
-
-    deck.appendChild(node);
-    return node;
-  });
-
-  let current = 0;
   const go = (next: number) => {
-    current = Math.max(0, Math.min(sections.length - 1, next));
-    sections[current].scrollIntoView({ behavior: 'smooth', block: 'start' });
-    sections[current].focus({ preventScroll: true });
+    current.current = Math.max(0, Math.min(cards.length - 1, next));
+    const node = sections.current[current.current];
+    node?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    node?.focus({ preventScroll: true });
   };
 
-  deck.addEventListener('keydown', (event) => {
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     switch (event.key) {
       case 'ArrowDown':
       case 'PageDown':
       case ' ':
         event.preventDefault();
-        go(current + 1);
+        go(current.current + 1);
         break;
       case 'ArrowUp':
       case 'PageUp':
         event.preventDefault();
-        go(current - 1);
+        go(current.current - 1);
         break;
       case 'Home':
         event.preventDefault();
@@ -243,36 +258,51 @@ export function renderWrapped(root: HTMLElement, r: Report, year: number, previo
         break;
       case 'End':
         event.preventDefault();
-        go(sections.length - 1);
+        go(cards.length - 1);
         break;
       default:
         break;
     }
-  });
+  };
 
   // Swipe, for the phone this is most likely to be read on.
-  let touchStart = 0;
-  deck.addEventListener('touchstart', (e) => {
-    touchStart = e.changedTouches[0].clientY;
-  }, { passive: true });
-  deck.addEventListener('touchend', (e) => {
-    const delta = touchStart - e.changedTouches[0].clientY;
-    if (Math.abs(delta) > 60) go(current + (delta > 0 ? 1 : -1));
-  }, { passive: true });
+  const onTouchStart = (event: TouchEvent<HTMLElement>) => {
+    touchStart.current = event.changedTouches[0].clientY;
+  };
+  const onTouchEnd = (event: TouchEvent<HTMLElement>) => {
+    const delta = touchStart.current - event.changedTouches[0].clientY;
+    if (Math.abs(delta) > 60) go(current.current + (delta > 0 ? 1 : -1));
+  };
 
-  // Keep `current` honest when the reader simply scrolls.
-  const observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) {
-          const index = sections.indexOf(entry.target as HTMLElement);
-          if (index >= 0) current = index;
-        }
-      }
-    },
-    { threshold: 0.6 },
+  return (
+    <main
+      className="cg-report wrapped-deck"
+      tabIndex={0}
+      aria-label={`${report.repository.name} wrapped ${year}`}
+      onKeyDown={onKeyDown}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      {cards.map((card, index) => (
+        <section
+          key={index}
+          ref={(node) => {
+            sections.current[index] = node;
+          }}
+          className="wrapped-card"
+          aria-label={card.kicker}
+          tabIndex={-1}
+        >
+          <p className="wrapped-kicker">{card.kicker}</p>
+          <p className="wrapped-headline">{card.headline}</p>
+          {card.detail ? <p className="wrapped-detail">{card.detail}</p> : null}
+          {card.footnote ? <p className="wrapped-footnote">{card.footnote}</p> : null}
+          <p className="wrapped-progress">{`${index + 1} of ${cards.length}`}</p>
+          <button type="button" className="wrapped-export" onClick={() => exportCard(card, index, repoName)}>
+            Export as image
+          </button>
+        </section>
+      ))}
+    </main>
   );
-  sections.forEach((s) => observer.observe(s));
-
-  root.appendChild(deck);
 }
