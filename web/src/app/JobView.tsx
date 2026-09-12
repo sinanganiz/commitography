@@ -12,37 +12,15 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import type { ChipProps } from '@mui/material/Chip';
-import type { AlertColor } from '@mui/material/Alert';
 import type { PaletteMode } from '@mui/material/styles';
 
 import { ApiError, cancelJob, isActive } from '../api/client';
 import type { JobStatus, JobStatusValue, ProgressEvent } from '../api/client';
+import { visuallyHidden } from './a11y';
 import { countedDetail, formatDuration, plural, sentence, stageLabel } from './format';
 import { JobReport } from './JobReport';
+import { jobOutcome, statusChip } from './outcomes';
 import { useJobStatus } from './useJobStatus';
-
-// Pixel strings, not numbers: MUI's sx reads 1 as 100% and -1 as a spacing unit.
-const visuallyHidden = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  margin: '-1px',
-  padding: 0,
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-} as const;
-
-const statusChip: Record<JobStatusValue, { label: string; color: ChipProps['color'] }> = {
-  queued: { label: 'Queued', color: 'default' },
-  running: { label: 'Running', color: 'primary' },
-  succeeded: { label: 'Succeeded', color: 'success' },
-  failed: { label: 'Failed', color: 'error' },
-  cancelled: { label: 'Cancelled', color: 'default' },
-  stale: { label: 'Stale', color: 'warning' },
-};
 
 type CancelState = 'idle' | 'requesting' | 'requested' | 'failed';
 
@@ -102,7 +80,7 @@ export function JobView({
   const currentStage = progress?.stage ?? '';
   const outcome = status && !isActive(status.status) ? status.status : null;
   useEffect(() => {
-    if (outcome) setAnnouncement(outcomeCopy(status!).title);
+    if (outcome) setAnnouncement(jobOutcome(status!).title);
     else if (currentStage) setAnnouncement(stageLabel(currentStage));
   }, [currentStage, outcome]);
 
@@ -304,70 +282,8 @@ function ActiveProgress({
   );
 }
 
-interface OutcomeCopy {
-  severity: AlertColor;
-  title: string;
-  detail: string;
-}
-
-function outcomeCopy(status: JobStatus): OutcomeCopy {
-  const stage = status.progress ? stageLabel(status.progress.stage) : '';
-  const elapsed = formatDuration(status.elapsedMilliseconds);
-  switch (status.status) {
-    case 'succeeded':
-      return {
-        severity: 'success',
-        title: 'Analysis complete',
-        detail: `Finished in ${elapsed}${status.warnings.length ? ` with ${plural(status.warnings.length, 'warning')}` : ''}.`,
-      };
-    case 'cancelled':
-      return {
-        severity: 'info',
-        title: 'Analysis cancelled',
-        detail: `Stopped${stage ? ` during “${stage}”` : ''} after ${elapsed}. No report was produced.`,
-      };
-    case 'stale':
-      return {
-        severity: 'warning',
-        title: 'The repository changed during the analysis',
-        detail:
-          `${sentence(status.error?.message ?? '')} The result is not shown because it would not match the repository ` +
-          'as it is now. Run the analysis again once the repository is stable.',
-      };
-    default:
-      return failureCopy(status);
-  }
-}
-
-function failureCopy(status: JobStatus): OutcomeCopy {
-  switch (status.error?.code) {
-    case 'invalid_analysis_request':
-      return {
-        severity: 'error',
-        title: 'The analysis request was rejected',
-        detail:
-          'The repository or its .commitography.yml did not pass validation, or a Since or Until date was not ' +
-          'understood. Run commitography on the same path from a terminal to see the full message.',
-      };
-    case 'analysis_failed':
-      return {
-        severity: 'error',
-        title: 'The analysis failed',
-        detail:
-          'Git or the analysis stopped before a report was produced. Try again; if it keeps failing, run ' +
-          'commitography on the same path from a terminal to see the full error.',
-      };
-    default:
-      return {
-        severity: 'error',
-        title: 'The analysis failed',
-        detail: sentence(status.error?.message ?? 'No report was produced.'),
-      };
-  }
-}
-
 function Outcome({ status }: { status: JobStatus }): ReactElement {
-  const copy = outcomeCopy(status);
+  const copy = jobOutcome(status);
   return (
     <Alert severity={copy.severity}>
       <AlertTitle>{copy.title}</AlertTitle>

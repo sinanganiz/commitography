@@ -36,6 +36,12 @@ export function formatDuration(milliseconds: number): string {
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${seconds}` : `${minutes}:${seconds}`;
 }
 
+/** A job timestamp in the reader's own locale and timezone. */
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' });
+}
+
 export function plural(count: number, noun: string): string {
   return `${count.toLocaleString()} ${noun}${count === 1 ? '' : 's'}`;
 }

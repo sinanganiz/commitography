@@ -119,6 +119,11 @@ export function getReport(id: string): Promise<Report> {
   return request<Report>('GET', `/jobs/${encodeURIComponent(id)}/report`);
 }
 
+/** Removes a finished job from the server's memory. Active jobs answer 409. */
+export async function deleteJob(id: string): Promise<void> {
+  await request<null>('DELETE', `/jobs/${encodeURIComponent(id)}`);
+}
+
 /** Requests cooperative cancellation. Repeating it for a cancelled job is safe. */
 export function cancelJob(id: string): Promise<JobStatus> {
   return request<JobStatus>('POST', `/jobs/${encodeURIComponent(id)}/cancel`);

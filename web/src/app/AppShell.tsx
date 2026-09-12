@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -20,14 +20,18 @@ import { ApiError, getCapabilities, isActive, listJobs } from '../api/client';
 import type { CreateJobResponse, JobSummary } from '../api/client';
 import { createCommitographyTheme } from '../ui/theme';
 import { JobView } from './JobView';
+import { RecentJobs } from './RecentJobs';
 import { RepositoryForm, initialRepositoryForm } from './RepositoryForm';
 import type { RepositoryFormState } from './RepositoryForm';
 import { navigate, routeHash, useRoute } from './routes';
 
 type SessionState = 'connecting' | 'ready' | 'failed';
+/** Why the session failed: no answer at all, or an answer rejecting the cookie. */
+type SessionProblem = 'unreachable' | 'expired';
 
 /** The API contract asks clients to poll every 500-1000 ms. */
 const DEFAULT_POLL_MS = 750;
+const DEFAULT_MAX_RECENT_JOBS = 10;
 
 function clampPollInterval(value: number | undefined): number {
   if (!value || !Number.isFinite(value)) return DEFAULT_POLL_MS;
@@ -39,13 +43,23 @@ export function AppShell(): ReactElement {
   const route = useRoute();
   const [mode, setMode] = useState<PaletteMode>('dark');
   const [session, setSession] = useState<SessionState>('connecting');
+  const [problem, setProblem] = useState<SessionProblem>('unreachable');
   const [connectAttempt, setConnectAttempt] = useState(0);
   const [pollIntervalMs, setPollIntervalMs] = useState(DEFAULT_POLL_MS);
+  const [maxRecentJobs, setMaxRecentJobs] = useState(DEFAULT_MAX_RECENT_JOBS);
   const [jobs, setJobs] = useState<JobSummary[]>([]);
+  const [restarted, setRestarted] = useState(false);
+  // The job IDs of the last successful list, to recognise a restarted server.
+  const knownIds = useRef<string[]>([]);
   // Kept here rather than in the form so switching views does not clear it.
   const [form, setForm] = useState<RepositoryFormState>(initialRepositoryForm);
   const theme = createCommitographyTheme(mode);
   const activeJob = jobs.find((job) => isActive(job.status)) ?? null;
+
+  const acceptJobs = useCallback((list: JobSummary[]) => {
+    knownIds.current = list.map((job) => job.id);
+    setJobs(list);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,31 +68,45 @@ export function AppShell(): ReactElement {
     // list and every later request depend on.
     getCapabilities()
       .then((capabilities) => {
-        if (!cancelled) setPollIntervalMs(clampPollInterval(capabilities.pollIntervalMilliseconds));
+        if (!cancelled) {
+          setPollIntervalMs(clampPollInterval(capabilities.pollIntervalMilliseconds));
+          setMaxRecentJobs(capabilities.maxRecentJobs > 0 ? capabilities.maxRecentJobs : DEFAULT_MAX_RECENT_JOBS);
+        }
         return listJobs();
       })
       .then((list) => {
         if (cancelled) return;
-        setJobs(list);
+        // Jobs live only in the server's memory, so a reconnect that finds none
+        // of the jobs this page knew means the server was restarted.
+        const previous = knownIds.current;
+        if (previous.length > 0 && !list.some((job) => previous.includes(job.id))) setRestarted(true);
+        acceptJobs(list);
         setSession('ready');
       })
       .catch(() => {
-        if (!cancelled) setSession('failed');
+        if (cancelled) return;
+        setProblem('unreachable');
+        setSession('failed');
       });
     return () => {
       cancelled = true;
     };
-  }, [connectAttempt]);
+  }, [connectAttempt, acceptJobs]);
 
   // A failed background refresh keeps the last known list; only a lost
   // session needs the user, and views report their own connection problems.
-  const refreshJobs = useCallback(() => {
-    listJobs()
-      .then(setJobs)
-      .catch((error: unknown) => {
-        if (error instanceof ApiError && error.status === 401) setSession('failed');
-      });
-  }, []);
+  const refreshJobs = useCallback(async () => {
+    try {
+      acceptJobs(await listJobs());
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setProblem('expired');
+        setSession('failed');
+      }
+    }
+  }, [acceptJobs]);
+
+  const reconnect = () => setConnectAttempt((n) => n + 1);
 
   // While a job is active the list is refreshed at a relaxed pace, so the
   // form unlocks and the activity indicator clears when it finishes.
@@ -89,8 +117,23 @@ export function AppShell(): ReactElement {
     return () => window.clearInterval(timer);
   }, [activeId, session, pollIntervalMs, refreshJobs]);
 
+  // The history is read again whenever it is opened, and when the tab becomes
+  // visible, which is also how a restarted server is noticed.
+  const viewingRecent = route.name === 'recent';
+  useEffect(() => {
+    if (viewingRecent && session === 'ready') void refreshJobs();
+  }, [viewingRecent, session, refreshJobs]);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && session === 'ready') void refreshJobs();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [session, refreshJobs]);
+
   const jobStarted = (job: CreateJobResponse) => {
-    refreshJobs();
+    setRestarted(false);
+    void refreshJobs();
     navigate({ name: 'job', id: job.id });
   };
 
@@ -159,12 +202,14 @@ export function AppShell(): ReactElement {
               <Alert
                 severity="error"
                 action={
-                  <Button color="inherit" size="small" onClick={() => setConnectAttempt((n) => n + 1)}>
-                    Retry
+                  <Button color="inherit" size="small" onClick={reconnect}>
+                    Reconnect
                   </Button>
                 }
               >
-                The local server could not be reached. Check that commitography serve is still running.
+                {problem === 'expired'
+                  ? 'The local session has expired, usually because commitography serve was restarted. Reconnect to start a new session.'
+                  : 'The local server could not be reached. Check that commitography serve is still running.'}
               </Alert>
             ) : null}
 
@@ -178,7 +223,17 @@ export function AppShell(): ReactElement {
                 onRefreshJobs={refreshJobs}
               />
             ) : null}
-            {route.name === 'recent' ? <RecentPlaceholder /> : null}
+            {route.name === 'recent' ? (
+              <RecentJobs
+                jobs={jobs}
+                session={session}
+                maxJobs={maxRecentJobs}
+                restarted={restarted}
+                onRefresh={refreshJobs}
+                onReconnect={reconnect}
+                onStartNew={() => navigate({ name: 'analyze' })}
+              />
+            ) : null}
             {/* The job view waits for the first session negotiation, then stays
                 mounted and reports its own polling problems. Keying by ID gives
                 every job a fresh poll and stage log. */}
@@ -245,24 +300,6 @@ function AnalyzeView({ form, onFormChange, ready, activeJob, onStarted, onRefres
           onStarted={onStarted}
           onRefreshJobs={onRefreshJobs}
         />
-      </Stack>
-    </Paper>
-  );
-}
-
-function RecentPlaceholder(): ReactElement {
-  return (
-    <Paper component="main" sx={{ p: { xs: 2.5, md: 5 }, borderRadius: 3 }}>
-      <Stack spacing={2}>
-        <Typography variant="overline" color="primary">
-          Recent jobs
-        </Typography>
-        <Typography variant="h3" component="h2">
-          Nothing analyzed yet.
-        </Typography>
-        <Typography color="text.secondary">
-          Completed, failed and cancelled analyses will appear here for the lifetime of this local server.
-        </Typography>
       </Stack>
     </Paper>
   );
