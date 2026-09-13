@@ -11,7 +11,7 @@ the current CLI image contract.
 | WP-5.2 Container path and mount documentation | Complete |
 | WP-5.3 Runtime security and image behavior | Complete |
 | WP-5.4 Docker smoke tests | Complete |
-| WP-5.5 Release and image documentation | Not started |
+| WP-5.5 Release and image documentation | Complete |
 
 ---
 
@@ -276,3 +276,35 @@ claims to imply Phase 1.5 is already released.
 - A fresh user can run native or Docker mode from the documentation.
 - The documentation states that the browser sees container paths in Docker.
 - No example exposes the server on all host interfaces.
+
+### Changes
+
+- README: the local web dashboard section describes the implemented server as
+  unreleased, with a native build, the Docker invocation, container paths and
+  its limitations. It adds the `serve` flags and exit codes, links
+  [`docs/docker.md`](../docker.md), lists `make docker-image` and
+  `make docker-smoke`, and describes the React frontend. The Phase 1 install
+  instructions are unchanged.
+- `CHANGELOG.md` records these changes under *Unreleased*. No tag exists
+  locally or on `origin`, so no version is named.
+- [`phase-1.5.md`](../phase-1.5.md) links the Docker contract to its guide.
+
+### Verification
+
+Recorded 2026-09-13 on the Windows host recorded under WP-5.1, from fresh
+clones of commit `9557a9b`, which had no `web/node_modules`.
+
+- **Native:** the README `go build` command succeeded without Node.js.
+  `serve` printed its URL, a job for the typed Windows path of the checkout
+  succeeded, `localhost` answered `200` and `attacker.example` answered `403`.
+  `--open` was replaced by another `--listen` port so no desktop browser was
+  launched; recording `--open` belongs to WP-6.5.
+- **Docker:** the guide's build steps produced the image, and the README server
+  command in its Git Bash form mounted the folder holding the checkout. A job
+  for `/repos/commitography` succeeded with the report named `commitography`;
+  typing the host path was refused with `invalid_repository_path`.
+- **Container paths:** the README, the changelog and the guide's path table
+  each state that the dashboard takes container paths.
+- **Host interfaces:** every `--publish` in the README, changelog, guide, phase
+  document and `Dockerfile` binds `127.0.0.1`. The only other forms named are
+  `--publish 8080:8080` and `-P`, in the guide's warning against them.

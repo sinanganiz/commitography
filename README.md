@@ -67,6 +67,9 @@ go install github.com/sinanganiz/commitography/cmd/commitography@latest
 docker run --rm -v "$PWD:/repo" ghcr.io/sinanganiz/commitography:latest
 ```
 
+For read-only mounts, Windows shells and troubleshooting, see
+[`docs/docker.md`](docs/docker.md).
+
 **Direct download**
 
 Binaries for Linux, macOS and Windows on amd64 and arm64 are attached to every [release](https://github.com/sinanganiz/commitography/releases), along with a SHA-256 checksums file.
@@ -88,42 +91,64 @@ A year in review, as a shareable page of full-screen cards:
 commitography ./repo --wrapped 2026
 ```
 
-### Planned local web dashboard
+### Local web dashboard (unreleased)
 
-The approved Phase 1.5 plan adds a local web runner for users who prefer a
-dashboard while an analysis is running:
+`commitography serve` runs the same analysis behind a dashboard in your
+browser: type a repository path, watch the analysis stage by stage, cancel it
+if needed, and open the report in the same page. It is on the `main` branch and
+**not part of a tagged release yet**, so the installs above do not include it.
+Build it from a checkout instead. The frontend bundle is committed, so Go is
+the only requirement:
 
 ```bash
-commitography serve --open
+go build -o commitography ./cmd/commitography
+./commitography serve --open
 ```
 
-The server listens on `127.0.0.1:8080` by default. It accepts a repository path
-inside the current working directory, or inside a path supplied with one or
-more `--allowed-root` flags:
+On Windows, build with `-o commitography.exe` and run
+`.\commitography.exe serve --open`.
+
+The server listens on `127.0.0.1:8080` and prints its URL; `--open` also opens
+that URL in your browser. It reads repositories below the current directory, or
+below each folder given with `--allowed-root`:
 
 ```bash
-commitography serve --open --allowed-root /work
+./commitography serve --open --allowed-root ~/src
 ```
 
-When implemented, the browser will receive progress updates, let you cancel
-the active analysis and open the completed report in the same application. A
-normal browser cannot
-open an arbitrary host filesystem picker, so native usage enters the path as
-text. Docker usage enters the path visible inside the container, not the host
-path:
+A web page cannot browse your file system, so you type the repository's path,
+for example `/home/ana/src/api` or `C:\Users\ana\src\api`.
+
+**In Docker**, build the image from the checkout and publish the dashboard on
+this computer's loopback interface only:
 
 ```bash
+make docker-image
 docker run --rm \
   --publish 127.0.0.1:8080:8080 \
   --mount type=bind,source="$PWD",target=/repos,readonly \
-  ghcr.io/sinanganiz/commitography:latest \
+  commitography:local \
   serve --listen 0.0.0.0:8080 --allowed-root /repos
 ```
 
-The existing Docker default remains the batch CLI mode. The local web runner is
-single-user, keeps the ten most recent jobs in memory and does not provide
-remote repository access or a persistent server database. See
-[`docs/phase-1.5.md`](docs/phase-1.5.md) for the scope and
+The browser then works with **container paths**: type `/repos/<name>`, never the
+host path. [`docs/docker.md`](docs/docker.md) has the PowerShell and Git Bash
+forms, the build steps without `make`, and troubleshooting.
+
+What to expect:
+
+- One analysis runs at a time. The ten most recent jobs and their reports are
+  kept in the server's memory and are gone when it stops.
+- Nothing is written to the analyzed repository, and nothing leaves your
+  machine.
+- It is a single-user tool, not a network service. Open it as
+  `http://127.0.0.1:8080` or `http://localhost:8080`; other host names are
+  refused. Outside a container, `--listen` with a non-loopback address prints a
+  warning.
+- It analyzes local repositories only: there is no remote cloning, no account
+  and no scheduling.
+
+See [`docs/phase-1.5.md`](docs/phase-1.5.md) for the scope and
 [`docs/phase-1.5-detailed.md`](docs/phase-1.5-detailed.md) for the work
 packages.
 
@@ -234,6 +259,23 @@ commitography [path] [flags]
 
 Progress output goes to **stderr**, never stdout.
 
+### `serve`
+
+```
+commitography serve [flags]
+```
+
+The local web dashboard, which is [not released yet](#local-web-dashboard-unreleased).
+
+| Flag | Default | Behaviour |
+|---|---|---|
+| `--listen` | `127.0.0.1:8080` | Address to listen on. Outside a container, a non-loopback address prints a warning. |
+| `--open` | false | Open the dashboard in the default browser once the server listens |
+| `--allowed-root` | current directory | A folder whose repositories may be analyzed; repeat it for several folders |
+
+`serve` exits with `1` when it cannot listen or an allowed root does not exist,
+and with `0` when it is stopped with `Ctrl+C` or `SIGTERM`.
+
 ### Exit codes
 
 | Code | Meaning |
@@ -320,14 +362,16 @@ Within a schema version, `report.json` fields are never removed or repurposed, s
 ## Development
 
 ```bash
-make fixtures   # build the deterministic test repositories
-make lint       # go vet + gofmt
-make test       # go test ./...
-make build      # build the frontend, then the binary with version info
+make fixtures      # build the deterministic test repositories
+make lint          # go vet + gofmt
+make test          # go test ./...
+make build         # build the frontend, then the binary with version info
+make docker-image  # build commitography:local for the local Docker daemon
+make docker-smoke  # run that image against the fixtures; needs Docker and make fixtures
 make clean
 ```
 
-The frontend lives in `web/` (TypeScript and hand-written SVG, no framework and no charting library) and is embedded into the binary with `//go:embed`.
+The frontend lives in `web/`: React with MUI for the local dashboard's controls, and hand-written SVG charts with no charting library. Its built bundle is committed and embedded into the binary with `//go:embed`, so `go build` works without Node.js.
 
 Third-party Go dependencies are deliberately limited to three: `cobra`, `yaml.v3` and `doublestar`. Everything else is the standard library.
 

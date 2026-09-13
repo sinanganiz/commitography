@@ -275,6 +275,8 @@ The Docker contract must document:
 - The performance impact of filesystem virtualization and the `--no-blame`
   option.
 
+The user guide that documents this contract is [`docker.md`](docker.md).
+
 ---
 
 ## 10. Phase Relationships
