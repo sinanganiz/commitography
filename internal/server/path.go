@@ -72,7 +72,7 @@ func canonicalDirectory(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	canonical, err := filepath.EvalSymlinks(abs)
+	canonical, err := resolvePath(abs)
 	if err != nil {
 		return "", err
 	}
@@ -91,7 +91,7 @@ func (a *App) validateRepositoryPath(path string, allowShallow bool) (string, er
 	if err != nil {
 		return "", &pathValidationError{Code: "invalid_repository_path", Message: err.Error()}
 	}
-	canonical, err := filepath.EvalSymlinks(abs)
+	canonical, err := resolvePath(abs)
 	if err != nil {
 		return "", &pathValidationError{Code: "invalid_repository_path", Message: "repository path does not exist"}
 	}
@@ -115,7 +115,7 @@ func (a *App) validateRepositoryPath(path string, allowShallow bool) (string, er
 	if err != nil {
 		return "", &pathValidationError{Code: "invalid_repository", Message: "could not resolve the repository Git directory"}
 	}
-	gitDir, err = filepath.EvalSymlinks(gitDir)
+	gitDir, err = resolvePath(gitDir)
 	if err != nil || !withinAnyRoot(a.allowedRoots, gitDir) {
 		return "", &pathValidationError{
 			Code:      "path_not_allowed",

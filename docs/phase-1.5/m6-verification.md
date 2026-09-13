@@ -11,7 +11,7 @@ inspection for behavior that can be exercised.
 | WP-6.2 Job lifecycle and API tests | Complete |
 | WP-6.3 Frontend build and component tests | Complete |
 | WP-6.4 Browser end-to-end audit | Complete |
-| WP-6.5 Cross-platform path verification | Not started |
+| WP-6.5 Cross-platform path verification | Blocked: macOS host unavailable; Windows and Linux complete |
 | WP-6.6 Performance and resource verification | Not started |
 | WP-6.7 Security verification | Not started |
 | WP-6.8 Final documentation and phase closure | Not started |
@@ -261,6 +261,67 @@ must include OS version, Go version, Git version and date.
 - macOS and Linux symlink escape cases are covered.
 - Native loopback binding and `--open` behavior are recorded.
 - Docker path behavior is recorded separately from native behavior.
+
+### Changes
+
+- **Junctions are resolved by Windows.** A junction needs no privilege to
+  create. Go resolves junctions in `filepath.EvalSymlinks` only under the pre-1.23
+  `winsymlink` default, which this module gets from `go 1.22.0` in `go.mod`.
+  Run with `GODEBUG=winsymlink=1`, the Go 1.23 default, the new junction test
+  saw a junction to a repository outside the allowed root pass the root check;
+  only the target's lack of commits stopped it. The path check now asks Windows
+  for the final path with `GetFinalPathNameByHandleW`, so it no longer depends
+  on the Go version. Other systems keep `filepath.EvalSymlinks`.
+- `internal/server/path_windows_test.go` adds a junction out of the root, case
+  and separator variants inside it, parent traversal, and extended-length and
+  UNC spellings.
+
+### Verification
+
+Recorded 2026-09-13.
+
+**Windows** — the host recorded under WP-6.1.
+
+| Case | Result |
+|---|---|
+| Junction to a repository outside the root | Refused as forbidden under the module default and under `GODEBUG=winsymlink=1`. Before the change, the second run failed. |
+| Drive letter case, upper and lower case, forward slashes, trailing separator, `\internal\..` | Accepted inside the root. |
+| `..` out of the root with backslashes, forward slashes and different case | Refused as forbidden. |
+| `\\?\` spelling of an outside repository | Refused. |
+| UNC spelling `\\localhost\C$\…` of an outside repository | Refused. |
+| UNC spelling of a path inside the root | Refused as outside the roots: the root is compared in the spelling it was given. This is a limitation, not an escape. |
+| Symbolic link out of the root | Not run: creating a symlink needs a privilege the account lacks. Covered on Linux below. |
+
+**Linux** — `golang:1.22` container on Docker Desktop 29.7.2: Go 1.22.12,
+Git 2.39.5, kernel 6.18.33.2-microsoft-standard-WSL2 x86_64, with the checkout
+mounted read-only. Every `internal/server` test passed, including
+`TestValidateRepositoryRejectsSymlinkEscape`, the path, host, origin, session,
+endpoint matrix and listener tests.
+
+**macOS — blocked.** No macOS host is available. The case is covered by
+`TestValidateRepositoryRejectsSymlinkEscape`, which has not run on macOS. On a
+macOS host with Go and Git, run:
+
+```bash
+make fixtures
+go test -count=1 -v ./internal/server
+```
+
+and record the macOS, Go and Git versions here with the result.
+
+**Native listener and `--open`** — on the Windows host,
+`commitography serve --open` with default flags printed
+`Commitography listening at http://127.0.0.1:8080`, opened that address in the
+default browser and printed no browser warning. `netstat` showed a single
+listening socket, `127.0.0.1:8080`; connections to the host's other addresses,
+192.168.1.114, 172.28.160.1 and 172.26.0.1, were refused.
+`TestServeFlagsDefaultToLoopbackWithoutBrowser` checks the flag defaults.
+
+**Docker** — recorded separately under M5: the dashboard works with container
+paths such as `/repos/<name>`, a host path is refused with
+`invalid_repository_path`, Git Bash needs `MSYS_NO_PATHCONV=1`, and Docker
+Desktop mounts an empty folder for a mistyped source. In a container, `--open`
+has no browser to launch, so the documented command does not use it.
 
 ## WP-6.6 - Performance and resource verification
 
