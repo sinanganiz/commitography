@@ -65,7 +65,7 @@ work package starts.
 | M3 - API and local security | `phase-1.5/m3-api-security.md` | M2 | 7 | Complete |
 | M4 - React and MUI application | `phase-1.5/m4-react-frontend.md` | M0, M3 | 8 | Complete |
 | M5 - Docker and distribution | `phase-1.5/m5-docker.md` | M2, M4 | 5 | Complete |
-| M6 - Verification and release documentation | `phase-1.5/m6-verification.md` | M1-M5 | 8 | Not started |
+| M6 - Verification and release documentation | `phase-1.5/m6-verification.md` | M1-M5 | 8 | In progress |
 | **Total** |  |  | **46** |  |
 
 M0 must land before implementation because it defines the API and security
