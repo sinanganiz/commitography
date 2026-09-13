@@ -301,6 +301,125 @@ func TestWarningsAreBounded(t *testing.T) {
 	}
 }
 
+// A runner that ignores cancellation and returns a report anyway must not turn
+// a cancelled job into a succeeded one.
+func TestCancellationWinsOverALateResult(t *testing.T) {
+	started := make(chan struct{})
+	manager := New(Options{
+		Runner: func(ctx context.Context, _ analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
+			close(started)
+			<-ctx.Done()
+			return &analysis.Result{Report: &aggregate.Report{}}, nil
+		},
+	})
+	job, err := manager.Start("/repos/late", analysis.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("worker did not start")
+	}
+	if err := manager.Cancel(job.ID); err != nil {
+		t.Fatal(err)
+	}
+	if status := waitForTerminal(t, manager, job.ID); status != StatusCancelled {
+		t.Fatalf("status = %s, want cancelled", status)
+	}
+	if _, err := manager.Report(job.ID); !errors.Is(err, ErrInvalidState) {
+		t.Fatalf("report of a cancelled job error = %v, want ErrInvalidState", err)
+	}
+}
+
+func TestTerminalStatesCannotBeOverwritten(t *testing.T) {
+	report := func() *analysis.Result { return &analysis.Result{Report: &aggregate.Report{}} }
+	for _, tc := range []struct {
+		name   string
+		finish func(*Manager, string) error
+		want   Status
+	}{
+		{name: "cancelled", finish: func(m *Manager, id string) error { return m.Cancelled(id, time.Time{}) }, want: StatusCancelled},
+		{name: "succeeded", finish: func(m *Manager, id string) error { return m.Complete(id, report(), time.Time{}) }, want: StatusSucceeded},
+		{name: "failed", finish: func(m *Manager, id string) error { return m.Fail(id, Failure{Code: "test"}, time.Time{}) }, want: StatusFailed},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			manager := New(Options{})
+			job, err := manager.Create("/repos/project")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := tc.finish(manager, job.ID); err != nil {
+				t.Fatal(err)
+			}
+			attempts := map[string]error{
+				"complete":     manager.Complete(job.ID, report(), time.Time{}),
+				"fail":         manager.Fail(job.ID, Failure{Code: "late"}, time.Time{}),
+				"cancelled":    manager.Cancelled(job.ID, time.Time{}),
+				"mark running": manager.MarkRunning(job.ID, time.Time{}),
+			}
+			for label, err := range attempts {
+				if !errors.Is(err, ErrInvalidState) {
+					t.Errorf("%s after %s error = %v, want ErrInvalidState", label, tc.name, err)
+				}
+			}
+			if got, _ := manager.Get(job.ID); got.Status != tc.want {
+				t.Errorf("status = %s after overwrite attempts, want %s", got.Status, tc.want)
+			}
+		})
+	}
+}
+
+func TestHistoryKeepsExactlyTheTenNewestJobs(t *testing.T) {
+	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
+	next := 0
+	manager := New(Options{
+		Now: func() time.Time {
+			clock = clock.Add(time.Second)
+			return clock
+		},
+		NewID: func() (string, error) {
+			next++
+			return fmt.Sprintf("job-%02d", next), nil
+		},
+	})
+	for i := 0; i < 12; i++ {
+		job, err := manager.Create("/repos/project")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := manager.Fail(job.ID, Failure{Code: "test"}, time.Time{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var got []string
+	for _, job := range manager.List() {
+		got = append(got, job.ID)
+	}
+	want := []string{"job-12", "job-11", "job-10", "job-09", "job-08", "job-07", "job-06", "job-05", "job-04", "job-03"}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("history = %v, want %v", got, want)
+	}
+}
+
+func waitForTerminal(t *testing.T, manager *Manager, id string) Status {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		current, err := manager.Get(id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if current.Status != StatusQueued && current.Status != StatusRunning {
+			return current.Status
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("job %s is still %s", id, current.Status)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
 func TestStaleFailureNeverCarriesUnderlyingErrors(t *testing.T) {
 	for _, tc := range []struct {
 		reason string

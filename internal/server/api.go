@@ -120,16 +120,16 @@ func (a *App) jobsRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) createJob(w http.ResponseWriter, r *http.Request) {
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBody))
 	decoder.DisallowUnknownFields()
 	var request createJobRequest
 	if err := decoder.Decode(&request); err != nil {
-		writeAPIError(w, http.StatusBadRequest, "invalid_json", "request body is not valid JSON")
+		writeDecodeError(w, err, "request body is not valid JSON")
 		return
 	}
 	var extra any
 	if err := decoder.Decode(&extra); err != io.EOF {
-		writeAPIError(w, http.StatusBadRequest, "invalid_json", "request body must contain one JSON object")
+		writeDecodeError(w, err, "request body must contain one JSON object")
 		return
 	}
 	if strings.TrimSpace(request.RepoPath) == "" {
@@ -255,6 +255,20 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeAPIError(w, http.StatusNotFound, "not_found", "job route not found")
 	}
+}
+
+// maxRequestBody bounds a job request. The contract maps a larger body to 413.
+const maxRequestBody = 1 << 20
+
+// writeDecodeError distinguishes a body over the size limit from one that is
+// not a single valid JSON object.
+func writeDecodeError(w http.ResponseWriter, err error, message string) {
+	var tooLarge *http.MaxBytesError
+	if errors.As(err, &tooLarge) {
+		writeAPIError(w, http.StatusRequestEntityTooLarge, "request_too_large", "request body exceeds 1 MiB")
+		return
+	}
+	writeAPIError(w, http.StatusBadRequest, "invalid_json", message)
 }
 
 func statusResponse(snapshot jobs.Snapshot) jobStatusResponse {

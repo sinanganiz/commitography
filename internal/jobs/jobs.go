@@ -185,11 +185,13 @@ func (m *Manager) run(id string, ctx context.Context, options analysis.Options) 
 	result, err := m.runner(ctx, options, func(event analysis.ProgressEvent) {
 		_ = m.UpdateProgress(id, event)
 	})
+	// A requested cancellation wins over whatever the runner returned after it,
+	// so a job the user cancelled never ends as succeeded, failed or stale.
+	if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		_ = m.Cancelled(id, m.now())
+		return
+	}
 	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			_ = m.Cancelled(id, m.now())
-			return
-		}
 		_ = m.Fail(id, FailureFromError(err), m.now())
 		return
 	}

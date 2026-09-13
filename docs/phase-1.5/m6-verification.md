@@ -8,7 +8,7 @@ inspection for behavior that can be exercised.
 | Package | Status |
 |---|---|
 | WP-6.1 Analysis and CLI regression tests | Complete |
-| WP-6.2 Job lifecycle and API tests | Not started |
+| WP-6.2 Job lifecycle and API tests | Complete |
 | WP-6.3 Frontend build and component tests | Not started |
 | WP-6.4 Browser end-to-end audit | Not started |
 | WP-6.5 Cross-platform path verification | Not started |
@@ -111,6 +111,34 @@ start, polling, conflict, cancel, failure, stale, delete and eviction flows.
 - Cancellation cannot be overwritten by success.
 - The ten-job limit is deterministic.
 - Polling is safe across repeated identical requests.
+
+### Changes
+
+- **Cancellation wins.** A runner that finished after a cancellation was
+  requested turned the job into `succeeded`. The job manager now records a
+  requested cancellation whatever the runner returns afterwards. With the
+  previous manager, the new `TestCancellationWinsOverALateResult` failed with
+  `status = succeeded, want cancelled`.
+- **Oversized bodies answer `413`.** A job request over 1 MiB now answers
+  `413 request_too_large`, as the M0 contract maps it, instead of
+  `400 invalid_json`.
+- `internal/server/matrix_test.go` walks every endpoint through its lifecycle
+  with a runner the test releases, and adds a plain folder and eviction through
+  the API. `internal/jobs` adds the late-result, overwrite and ten-newest
+  tests.
+
+### Verification
+
+Recorded 2026-09-13 on the host recorded under WP-6.1. `go test -count=1 -v
+./...` passed with 202 tests passing, none failing and the same single skip.
+
+| Criterion | Evidence |
+|---|---|
+| Every documented endpoint has success and failure tests | `TestAPIEndpointMatrix`: capabilities `200` and `405`; list `200`, `401`, `405`; create `202`, `400` for malformed JSON, two objects, `outputDir`, `configPath` and an empty path, `401`, `403` for origin and outside root, `409`, `413`; status `200`, `401`, `404`, `405`; report `200`, `401`, `404`, `405` and `409` while running, cancelled, failed or stale; cancel `202`, `200` when repeated, `401`, `403`, `404`, `405`, `409` when succeeded; delete `204`, `401`, `403`, `404`, `409` while running. `TestAPIRejectsAFolderThatIsNotARepository` adds `invalid_repository` and a missing path. |
+| A second start cannot create a second active worker | The matrix answers `409 active_job` to a second start and counts exactly one started analysis. |
+| Cancellation cannot be overwritten by success | `TestCancellationWinsOverALateResult` and `TestTerminalStatesCannotBeOverwritten`, which refuses complete, fail, cancel and restart on each terminal state. |
+| The ten-job limit is deterministic | `TestHistoryKeepsExactlyTheTenNewestJobs` keeps `job-12` to `job-03` of twelve jobs, newest first; `TestAPIHistoryEvictsTheOldestFinishedJob` shows the same through the API. |
+| Polling is safe across repeated identical requests | Five repeated polls of a running job were equal apart from elapsed time, and five polls of a finished job were byte-identical. |
 
 ## WP-6.3 - Frontend build and component tests
 
