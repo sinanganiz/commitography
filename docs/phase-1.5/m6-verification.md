@@ -689,10 +689,11 @@ documentation.
 | `make docker-image` (the no-`make` Git Bash steps in `docs/docker.md`), then the README `docker run` on port 18090 with `MSYS_NO_PATHCONV=1` | The image built; `GET /` answered `200` and `/api/v1/capabilities` returned the v1 capabilities. |
 
 `make` is not installed on this host, so each target was run as its recipe.
-`make docker-smoke` and `make perfcheck` ran under M5 and WP-6.6. The
-`go install …@latest`, Homebrew, Scoop and `ghcr.io` lines install the last
-published Phase 1 release, which does not include `serve`. The README says so
-beside the `serve` instructions, and they were not rerun here.
+`make docker-smoke` and `make perfcheck` ran under M5 and WP-6.6. No release
+has been tagged, so no Homebrew, Scoop, `ghcr.io` or release download exists
+yet. `go install …@latest` resolves to the latest `main` commit and includes
+`serve`. The README was rewritten afterwards to describe these installation
+channels accurately.
 
 **Acceptance criteria**
 
