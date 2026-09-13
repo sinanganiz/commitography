@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/sinanganiz/commitography/internal/container"
 )
 
 const defaultListenAddress = "127.0.0.1:8080"
@@ -60,7 +62,7 @@ func Serve(ctx context.Context, opts Options) error {
 
 	inContainer := opts.InContainer
 	if inContainer == nil {
-		inContainer = runningInContainer
+		inContainer = container.Running
 	}
 	url := announce(listener.Addr(), opts.ListenAddress, inContainer(), opts.Output, opts.Errors)
 	if opts.Open {
@@ -123,17 +125,6 @@ func announce(addr net.Addr, requested string, inContainer bool, out, errs io.Wr
 	url := "http://" + net.JoinHostPort(tcp.IP.String(), port)
 	fmt.Fprintf(out, "Commitography listening at %s\n", url)
 	return url
-}
-
-// runningInContainer reports whether the process runs inside a Docker or
-// Podman container, detected from the marker file each one creates.
-func runningInContainer() bool {
-	for _, marker := range []string{"/.dockerenv", "/run/.containerenv"} {
-		if _, err := os.Stat(marker); err == nil {
-			return true
-		}
-	}
-	return false
 }
 
 func shutdownOnContext(ctx context.Context, httpServer *http.Server, onShutdown func()) {

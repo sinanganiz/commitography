@@ -138,6 +138,11 @@ MSYS_NO_PATHCONV=1 docker run --rm \
 The dashboard is written to `out/index.html`. Any flag from the native CLI can
 follow the path, for example `/repo -o /out --no-blame`.
 
+The report names the repository after the path it analyzes, so the examples
+above produce a report named `repo`. To keep the real name, mount the
+repository at a path that ends in it and analyze that path, for example
+`target=/repos/api` followed by `/repos/api -o /out`.
+
 On Linux, files the container writes belong to root. Add
 `--user "$(id -u):$(id -g)"` after `docker run --rm` to write them as your own
 user; Git inside the image still reads the mounted repository.
@@ -202,7 +207,7 @@ out of that report. Running the native binary avoids the overhead entirely.
 | The browser cannot connect to <http://127.0.0.1:8080>. | `--listen 0.0.0.0:8080` is missing, or the port is published differently. The container log shows how the server was started. |
 | *Nothing was found at this path.* | A host path was typed. Type the container path, such as `/repos/api`. |
 | *This path is outside the folders the server may read.* | The path is not below `--allowed-root`. Mount the folder that contains the repository and allow that mount point. |
-| *This folder is not a Git repository* for a path that looks right. | The `source=` folder is misspelled, so Docker Desktop mounted an empty folder, or the folder is not shared with Docker Desktop. |
+| *This folder is not a Git repository* for a path that looks right. | The `source=` folder is misspelled, so Docker Desktop mounted an empty folder, or the folder is not shared with Docker Desktop. The server warns at startup when its allowed root is empty, and CLI mode prints a mount hint. |
 | In Git Bash, `/repos` turns into `C:/Program Files/Git/repos`. | Set `MSYS_NO_PATHCONV=1` for the command. |
 | CLI mode fails with `read-only file system`. | The default output `/repo/out` is inside a read-only mount. Mount an output folder and pass `-o /out`. |
 | The page answers *request host is not allowed*. | The dashboard was opened through a name other than `127.0.0.1` or `localhost`. Only those names are accepted, which stops other websites from reaching the dashboard through DNS rebinding. |

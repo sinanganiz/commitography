@@ -1,7 +1,9 @@
 package server
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,6 +21,30 @@ type pathValidationError struct {
 
 func (e *pathValidationError) Error() string { return e.Message }
 
+// MissingRootError reports an allowed root that does not exist. Inside a
+// container it usually means nothing was mounted at that path.
+type MissingRootError struct {
+	Root string
+}
+
+// Error implements the error interface.
+func (e *MissingRootError) Error() string {
+	return fmt.Sprintf("allowed root %q does not exist", e.Root)
+}
+
+// EmptyAllowedRoots returns the allowed roots that contain nothing. An empty
+// root cannot hold a repository; as a container mount it usually means the
+// source path was mistyped and Docker created an empty folder in its place.
+func (a *App) EmptyAllowedRoots() []string {
+	var empty []string
+	for _, root := range a.allowedRoots {
+		if entries, err := os.ReadDir(root); err == nil && len(entries) == 0 {
+			empty = append(empty, root)
+		}
+	}
+	return empty
+}
+
 func canonicalRoots(roots []string) ([]string, error) {
 	if len(roots) == 0 {
 		cwd, err := os.Getwd()
@@ -30,6 +56,9 @@ func canonicalRoots(roots []string) ([]string, error) {
 	out := make([]string, 0, len(roots))
 	for _, root := range roots {
 		canonical, err := canonicalDirectory(root)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, &MissingRootError{Root: root}
+		}
 		if err != nil {
 			return nil, fmt.Errorf("allowed root %q: %w", root, err)
 		}

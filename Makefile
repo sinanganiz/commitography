@@ -26,7 +26,7 @@ LDFLAGS := $(STRIP_FLAGS) \
 	-X '$(MODULE)/internal/version.Commit=$(COMMIT)' \
 	-X '$(MODULE)/internal/version.BuildDate=$(BUILD_DATE)'
 
-.PHONY: build web test fixtures lint clean docker-image
+.PHONY: build web test fixtures lint clean docker-image docker-smoke
 
 build: web
 	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/commitography
@@ -48,6 +48,12 @@ docker-image:
 	CGO_ENABLED=0 GOOS=linux GOARCH=$(DOCKER_ARCH) go build -trimpath -ldflags "$(LDFLAGS)" -o dist/docker/commitography ./cmd/commitography
 	cp Dockerfile dist/docker/Dockerfile
 	docker build -t $(DOCKER_IMAGE) dist/docker
+
+# Runs the image against the fixtures in CLI and server mode. The tests build
+# their own image, or test COMMITOGRAPHY_IMAGE when it is set, and need Docker
+# and `make fixtures`.
+docker-smoke:
+	go test -tags dockersmoke -count=1 -v ./internal/dockersmoke
 
 test:
 	go test ./...

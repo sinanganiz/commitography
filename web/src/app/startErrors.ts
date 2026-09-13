@@ -47,7 +47,10 @@ export function describeStartError(error: unknown): StartErrorGuidance {
     case 'invalid_repository':
       return {
         title: 'This folder is not a Git repository.',
-        detail: 'Point to the repository folder, the one that contains .git, and make sure Git can read it.',
+        detail:
+          'Point to the repository folder, the one that contains .git, and make sure Git can read it. In Docker, ' +
+          'also check that the --mount source path exists: Docker Desktop mounts an empty folder in place of a ' +
+          'mistyped one.',
         pathProblem: true,
       };
     case 'shallow_repository':

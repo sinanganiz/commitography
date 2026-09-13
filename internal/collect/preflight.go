@@ -43,6 +43,15 @@ To analyze anyway and accept incorrect results, pass --allow-shallow.`
 // Error implements the error interface.
 func (e *ShallowError) Error() string { return ShallowMessage }
 
+// NotRepositoryError reports that Git does not recognize a path as a
+// repository. Inside a container this usually means nothing was mounted there.
+type NotRepositoryError struct {
+	Path string
+}
+
+// Error implements the error interface.
+func (e *NotRepositoryError) Error() string { return e.Path + " is not a git repository" }
+
 var gitVersionRe = regexp.MustCompile(`(\d+)\.(\d+)(?:\.(\d+))?`)
 
 // Preflight validates that the given path is analyzable and returns repository
@@ -77,7 +86,7 @@ func PreflightContext(ctx context.Context, repoPath string) (model.RepositoryInf
 
 	// 3. Path is a repository.
 	if _, err := runGitContext(ctx, repoPath, "rev-parse", "--git-dir"); err != nil {
-		return info, fmt.Errorf("%s is not a git repository", repoPath)
+		return info, &NotRepositoryError{Path: repoPath}
 	}
 
 	abs, err := filepath.Abs(repoPath)

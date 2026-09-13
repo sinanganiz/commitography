@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -23,6 +24,9 @@ func newServeCommand() *cobra.Command {
 			app, err := server.NewAppWithAllowedRoots(nil, options.AllowedRoots)
 			if err != nil {
 				return err
+			}
+			for _, root := range app.EmptyAllowedRoots() {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: allowed root %q is empty; if it is a mount, check that its source path exists\n", root)
 			}
 			app.AllowListenHost(options.ListenAddress)
 			options.Handler = app.Handler()

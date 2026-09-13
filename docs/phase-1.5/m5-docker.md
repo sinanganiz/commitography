@@ -10,7 +10,7 @@ the current CLI image contract.
 | WP-5.1 Preserve CLI and add explicit server invocation | Complete |
 | WP-5.2 Container path and mount documentation | Complete |
 | WP-5.3 Runtime security and image behavior | Complete |
-| WP-5.4 Docker smoke tests | Not started |
+| WP-5.4 Docker smoke tests | Complete |
 | WP-5.5 Release and image documentation | Not started |
 
 ---
@@ -220,6 +220,48 @@ Run the image against a fixture repository and verify CLI and server modes.
 - Server mode serves the UI and completes a fixture analysis.
 - The report shown through Docker matches the native server report.
 - A missing or invalid mount produces a useful error.
+
+### Changes
+
+- `internal/dockersmoke` holds the smoke tests behind the `dockersmoke` build
+  tag, run by `make docker-smoke`. They build a throwaway image from the
+  checkout, or test `COMMITOGRAPHY_IMAGE`, and remove what they start.
+- Inside a container, a path Git does not recognize and a missing allowed root
+  print a mount hint after the error. Outside a container the output is
+  unchanged. `serve` warns at startup when an allowed root is empty, which is
+  what a mistyped Docker Desktop mount source produces.
+- The dashboard's *not a Git repository* guidance mentions a mistyped mount
+  source.
+
+### Verification
+
+Recorded 2026-09-13 on the Windows host recorded under WP-5.1. `make` is not
+installed there, so the target's command,
+`go test -tags dockersmoke -count=1 -v ./internal/dockersmoke`, was run
+directly: 8 tests passed in 44.7 s against an image built from the checkout.
+
+| Criterion | Test and result |
+|---|---|
+| CLI mode creates the existing output files | `TestCLIDefaultCommandWritesTheDashboard`: the default command wrote `out/index.html` and a schema-version-1 `out/report.json`. `TestCLIReadsReadOnlyRepositoriesAsAnyUser`: uid 1000 analyzed a read-only repository into a separate mount, and the default output inside a read-only mount failed with `read-only file system` and exit code `1`. |
+| Server mode serves the UI and completes a fixture analysis | `TestServerModeMatchesTheNativeServer`: `/`, `app.js` and `app.css` answered `200` and a `basic` job with per-author metrics succeeded from a read-only mount. |
+| The Docker report matches the native server report | The same test ran the job through an in-process native server; every report field except `generatedAt` and `toolVersion` was equal. |
+| A missing or invalid mount produces a useful error | `TestMissingMountsExplainThemselves`: nothing mounted at `/repo` exits `2` with a mount hint; nothing mounted at the allowed root exits `1` with a mount hint; a mistyped source, which Docker Desktop mounted as an empty folder, printed the hint; an empty allowed root produced the startup warning. |
+
+The suite also re-verifies WP-5.1 and WP-5.3: the image contract, `git`, no
+exposed port or health check, `403` for a foreign host, `404` for undocumented
+paths, a graceful `docker stop` through `tini`, and a mounted repository whose
+files are unchanged by an analysis.
+
+Two results differed from expectations and were resolved:
+
+- The CLI names the repository after the path it analyzes, so the default
+  command reports `repo`. The test expects that, and
+  [`docs/docker.md`](../docker.md) shows how to keep the real name.
+- Directory modification times proved unusable as evidence of writes. On the
+  host, 76 of 166 directory times shifted by up to 88 ms in the ten seconds
+  after copying a fixture, and 66 shifted when a container that ran nothing
+  mounted the settled copy. The write check therefore compares files by size,
+  time and mode and directories by path.
 
 ## WP-5.5 - Release and image documentation
 

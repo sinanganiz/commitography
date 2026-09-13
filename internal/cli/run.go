@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/sinanganiz/commitography/internal/analysis"
 	"github.com/sinanganiz/commitography/internal/collect"
+	"github.com/sinanganiz/commitography/internal/container"
 	"github.com/sinanganiz/commitography/internal/render"
+	"github.com/sinanganiz/commitography/internal/server"
 )
 
 // Exit codes. These are part of the command's contract: a CI job can branch on
@@ -173,10 +176,33 @@ func ExitCode(err error) int {
 
 // Report prints an error in the form the exit code implies.
 func Report(err error) {
+	report(os.Stderr, err, container.Running())
+}
+
+// report prints err and, inside a container, a hint for the mistake a
+// container makes likely: a repository or allowed root that was never mounted,
+// or mounted from a mistyped source, which Docker Desktop replaces with an
+// empty folder. Outside a container the output is unchanged.
+func report(w io.Writer, err error, inContainer bool) {
 	var shallow *collect.ShallowError
 	if errors.As(err, &shallow) {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", shallow.Error())
+		fmt.Fprintf(w, "Error: %s\n", shallow.Error())
 		return
 	}
-	fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	fmt.Fprintf(w, "Error: %v\n", err)
+	if !inContainer {
+		return
+	}
+	var notRepository *collect.NotRepositoryError
+	if errors.As(err, &notRepository) {
+		fmt.Fprintf(w, "hint: no Git repository is mounted at %s. Mount one with "+
+			"--mount type=bind,source=<repository>,target=%s,readonly and check that the source path exists; "+
+			"Docker Desktop mounts an empty folder in place of a mistyped one.\n", notRepository.Path, notRepository.Path)
+		return
+	}
+	var missingRoot *server.MissingRootError
+	if errors.As(err, &missingRoot) {
+		fmt.Fprintf(w, "hint: nothing is mounted at %s. Mount a folder of repositories with "+
+			"--mount type=bind,source=<folder>,target=%s,readonly.\n", missingRoot.Root, missingRoot.Root)
+	}
 }

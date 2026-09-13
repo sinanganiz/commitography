@@ -1,6 +1,8 @@
 package server
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -52,6 +54,37 @@ func TestValidateRepositoryAcceptsRepositoryInsideRoot(t *testing.T) {
 	}
 	if canonical == "" {
 		t.Fatal("canonical path is empty")
+	}
+}
+
+func TestMissingAllowedRootIsReportedByName(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "not-mounted")
+	_, err := NewAppWithAllowedRoots(nil, []string{missing})
+	var missingRoot *MissingRootError
+	if !errors.As(err, &missingRoot) || missingRoot.Root != missing {
+		t.Fatalf("error = %T %v, want MissingRootError for %s", err, err, missing)
+	}
+	if want := fmt.Sprintf("allowed root %q does not exist", missing); err.Error() != want {
+		t.Fatalf("message = %q, want %q", err.Error(), want)
+	}
+}
+
+func TestEmptyAllowedRootsAreReported(t *testing.T) {
+	empty := t.TempDir()
+	populated := t.TempDir()
+	if err := os.Mkdir(filepath.Join(populated, "repository"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	app, err := NewAppWithAllowedRoots(nil, []string{empty, populated})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := canonicalDirectory(empty)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := app.EmptyAllowedRoots(); len(got) != 1 || got[0] != want {
+		t.Fatalf("empty roots = %v, want [%s]", got, want)
 	}
 }
 
