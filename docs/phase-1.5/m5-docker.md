@@ -8,7 +8,7 @@ the current CLI image contract.
 | Package | Status |
 |---|---|
 | WP-5.1 Preserve CLI and add explicit server invocation | Complete |
-| WP-5.2 Container path and mount documentation | Not started |
+| WP-5.2 Container path and mount documentation | Complete |
 | WP-5.3 Runtime security and image behavior | Not started |
 | WP-5.4 Docker smoke tests | Not started |
 | WP-5.5 Release and image documentation | Not started |
@@ -132,6 +132,29 @@ Windows. Use explicit `--mount` examples and bind the host port to loopback.
 - Examples mount repositories read-only.
 - Windows PowerShell and POSIX shell examples do not mix path syntax.
 - Docker Desktop file-sharing requirements are explicit.
+
+### Verification
+
+The guide is [`docs/docker.md`](../docker.md). Its commands were run as written
+on 2026-09-13, on the Windows host recorded under WP-5.1, against copies of the
+`basic` and `coupling` fixtures. The server examples were started detached so
+the API could be exercised; everything else was unchanged.
+
+- The PowerShell server command answered through `127.0.0.1:8080`; a job for
+  `/repos/basic` succeeded and its report returned 50 analyzed commits.
+- The Git Bash server command, with `MSYS_NO_PATHCONV=1` and `pwd -W`, completed
+  `/repos/coupling`. Typing the host path instead was refused with
+  `invalid_repository_path`.
+- Without `MSYS_NO_PATHCONV=1`, Git Bash turned `/repos` into
+  `C:/Program Files/Git/repos`, as the guide warns.
+- Both read-only CLI commands wrote `index.html` and `report.json` to the
+  separately mounted output folder and exited `0`.
+- The bash and PowerShell image build steps each produced a Linux ELF binary
+  and an image; the PowerShell steps left no `GOOS`, `GOARCH` or `CGO_ENABLED`
+  behind.
+- The Linux and macOS commands are the Git Bash commands without the two
+  Windows adaptations. They were not run on Linux or macOS; that evidence
+  belongs to WP-6.5.
 
 ## WP-5.3 - Runtime security and image behavior
 
