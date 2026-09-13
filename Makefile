@@ -26,7 +26,7 @@ LDFLAGS := $(STRIP_FLAGS) \
 	-X '$(MODULE)/internal/version.Commit=$(COMMIT)' \
 	-X '$(MODULE)/internal/version.BuildDate=$(BUILD_DATE)'
 
-.PHONY: build web test fixtures lint clean docker-image docker-smoke
+.PHONY: build web test fixtures lint clean docker-image docker-smoke perfcheck
 
 build: web
 	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/commitography
@@ -54,6 +54,12 @@ docker-image:
 # and `make fixtures`.
 docker-smoke:
 	go test -tags dockersmoke -count=1 -v ./internal/dockersmoke
+
+# Measures analysis time, server responsiveness, cancellation latency, retained
+# memory, startup and Docker overhead against generated repositories. Set
+# COMMITOGRAPHY_PERF_REPO to add a real repository.
+perfcheck:
+	go test -tags perfcheck -count=1 -v -timeout 60m ./internal/perfcheck
 
 test:
 	go test ./...

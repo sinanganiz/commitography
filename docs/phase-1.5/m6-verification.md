@@ -12,7 +12,7 @@ inspection for behavior that can be exercised.
 | WP-6.3 Frontend build and component tests | Complete |
 | WP-6.4 Browser end-to-end audit | Complete |
 | WP-6.5 Cross-platform path verification | Blocked: macOS host unavailable; Windows and Linux complete |
-| WP-6.6 Performance and resource verification | Not started |
+| WP-6.6 Performance and resource verification | Complete |
 | WP-6.7 Security verification | Not started |
 | WP-6.8 Final documentation and phase closure | Not started |
 
@@ -338,6 +338,139 @@ without `--no-blame`.
   tested repository.
 - Memory growth from retained reports is bounded by the ten-job limit.
 - Docker filesystem overhead and `--no-blame` guidance are documented.
+
+### Changes
+
+- `internal/perfcheck` is a measurement package behind the `perfcheck` build
+  tag, run with `make perfcheck`. It generates two linear repositories with
+  `git fast-import` in a temporary directory: 15,000 and 3,000 commits, each
+  commit rewriting one of 400 files. Blame therefore walks real history.
+  `COMMITOGRAPHY_PERF_REPO` adds a real repository to the analysis and Docker
+  timings.
+- The tests record numbers and fail only past generous bounds:
+  - `GET` p95 above 250 ms during analysis.
+  - Cancellation slower than 5 s.
+  - Heap growth above 8 MiB once the ten-job limit is reached.
+
+### Verification
+
+Recorded 2026-09-13 with `make perfcheck` on the Windows host recorded under
+WP-6.1: Intel Core i5-13500H, 12 cores and 16 threads, 31.7 GiB RAM, and Docker
+Desktop 29.7.2 with the WSL2 Linux engine, kernel 6.18.33.2. Every test passed
+in 538.6 s.
+
+**Analysis duration** — `analysis.Run`, in process.
+
+| Repository | With blame | `--no-blame` |
+|---|---:|---:|
+| `testdata/fixtures/basic` | 325 ms | 240 ms |
+| Generated, 3,000 commits | 28.7 s | 335 ms |
+| Generated, 15,000 commits | 1 m 39.6 s | 503 ms |
+
+Blame is almost the whole cost. Collecting and aggregating 15,000 commits takes
+about half a second. Blame runs on a deterministic sample of at most 300 text
+files, so its cost grows with the history behind each sampled file rather than
+with the number of files. Here each file has about 37 revisions in the
+15,000-commit repository and 7.5 in the 3,000-commit one. Every tracked text
+file is still read once to detect binaries and count lines, with or without
+blame.
+
+**Responsiveness** — during a with-blame analysis of the 15,000-commit
+repository, 300 status requests and 300 page requests alternated 20 ms apart.
+
+| Request | p50 | p95 | Max |
+|---|---:|---:|---:|
+| `GET /api/v1/jobs/{id}` | 0 s | 561 µs | 14.8 ms |
+| `GET /` | 0 s | 683 µs | 843 µs |
+
+A p50 of 0 s means below the clock resolution Go measures on this Windows host;
+it is not an exact zero. The p95 bound is 250 ms.
+
+**Cancellation latency** — the time from the cancel request to the `cancelled`
+status, on the 15,000-commit repository with blame.
+
+| Stage when cancelled | Latency |
+|---|---:|
+| `collecting` (`git log` streaming) | 11 ms |
+| `identity` | 12 ms |
+| `code` (line counting and blame) | 12 ms |
+| `messages` | 53 ms |
+
+For this repository the upper bound is 5 s; the worst measured value was 53 ms.
+A running Git child process is killed through its context, so latency does not
+grow with repository size. Pure Go stages stop at their next checkpoint.
+
+**Retained reports** — 20 consecutive `--no-blame` jobs on the 3,000-commit
+repository, with live heap measured after a forced GC.
+
+| After jobs | Retained | Heap |
+|---:|---:|---:|
+| 5 | 5 | 1.9 MiB |
+| 10 | 10 | 2.9 MiB |
+| 15 | 10 | 2.9 MiB |
+| 20 | 10 | 2.9 MiB |
+
+Each retained report took about 189 KiB. Heap growth from job 10 to job 20 was
+0 MiB, so memory stops growing at the job limit. A report's size depends on the
+repository's file and author counts, not its commit count, so larger
+repositories raise the plateau but do not remove it.
+
+**Startup**
+
+| Measurement | Result |
+|---|---:|
+| Native `serve`, process start to first `200` | median 28 ms, max 272 ms (5 runs; the max is the cold first start) |
+| `docker run --rm` of an empty command | median 336 ms (3 runs) |
+| `docker run -d … serve` to first `200` through the published port | median 236 ms, max 249 ms (3 runs) |
+
+The `serve` start is faster than the empty `docker run` because that
+measurement also includes removing the container.
+
+**Docker filesystem overhead** — the same `-trimpath` Linux binary in the
+repository Dockerfile image, with the repository bind-mounted read-only from
+the Windows filesystem. Native times use the Windows binary.
+
+| Repository | Mode | Native | Docker | Difference |
+|---|---|---:|---:|---:|
+| Basic fixture | with blame | 359 ms | 5.153 s | +4.8 s |
+| Basic fixture | `--no-blame` | 277 ms | 2.547 s | +2.3 s |
+| Generated, 15,000 commits | with blame | 1 m 41.1 s | 2 m 40.1 s | +59 s (1.58×) |
+| Generated, 15,000 commits | `--no-blame` | 478 ms | 2.984 s | +2.5 s |
+
+A Docker Desktop bind mount of a Windows path costs about 2 to 2.5 s per run
+before any analysis. That is well above the 336 ms empty container start, so
+most of it is Git reading the repository through the mount. Every blame call
+pays that cost again, which is why blame slows down the most. A Linux host
+without a VM file share was not measured.
+
+**A real repository** — a private application repository with 2,632 commits,
+14,377 tracked files and a 299 MiB working tree, timed with the native CLI.
+
+| Mode | Time |
+|---|---:|
+| `--no-blame`, two runs | 11.3 s, 10.9 s |
+| With blame | 19.5 s |
+
+Here the file reads, not blame, dominate: without blame the run still reads
+every tracked text file to sniff binaries and count lines. For a working tree
+of this size, `--no-blame` roughly halves the run but does not bring it under a
+few seconds. A first `make perfcheck` run that included this repository was
+stopped while it read files at about 46 per second. The cause was not isolated,
+and the recorded run above excludes the repository. `COMMITOGRAPHY_PERF_REPO`
+still adds one on request.
+
+**`--no-blame` guidance.** Blame is the only stage whose cost reaches minutes.
+Use `--no-blame`, or the dashboard's blame toggle:
+- for repositories with thousands of tracked files or long per-file histories;
+- for runs through Docker Desktop on Windows or macOS;
+- when only history, temporal and message metrics are needed.
+
+Without blame, the report leaves out code age by year and the share of lines
+surviving from the first year. Bus factor, knowledge concentration and every
+other metric come from commit history and are unchanged. `docs/docker.md` and
+section 12 of `phase-1.5.md` carry the same guidance. `docs/docker.md` used to
+say line ownership and knowledge concentration were left out; this package
+corrects that.
 
 ## WP-6.7 - Security verification
 

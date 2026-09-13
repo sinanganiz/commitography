@@ -195,8 +195,16 @@ a Git repository. If a path that should work is refused, check the spelling of
 Reading files through a Docker Desktop mount is slower than reading the host
 disk, and blame is the part of an analysis that reads the most. For a large
 repository, tick *Skip blame* in the dashboard's advanced options, or pass
-`--no-blame` in CLI mode. Line ownership and knowledge concentration are left
-out of that report. Running the native binary avoids the overhead entirely.
+`--no-blame` in CLI mode. That report leaves out code age and the share of lines
+surviving from the first year; bus factor, knowledge concentration and the
+other metrics come from commit history and are unchanged. Running the native
+binary avoids the overhead entirely.
+
+Measured on a Windows host with Docker Desktop, a bind mount adds about 2 to
+2.5 seconds to every run and made a with-blame run of a 15,000-commit
+repository about 1.6 times slower than the native binary. The measurements are
+recorded under WP-6.6 in
+[`phase-1.5/m6-verification.md`](phase-1.5/m6-verification.md).
 
 ---
 
