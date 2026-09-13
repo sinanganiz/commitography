@@ -10,7 +10,7 @@ inspection for behavior that can be exercised.
 | WP-6.1 Analysis and CLI regression tests | Complete |
 | WP-6.2 Job lifecycle and API tests | Complete |
 | WP-6.3 Frontend build and component tests | Complete |
-| WP-6.4 Browser end-to-end audit | Not started |
+| WP-6.4 Browser end-to-end audit | Complete |
 | WP-6.5 Cross-platform path verification | Not started |
 | WP-6.6 Performance and resource verification | Not started |
 | WP-6.7 Security verification | Not started |
@@ -210,6 +210,43 @@ documented headless browser environment.
 - Keyboard and responsive behavior meet M4 criteria.
 - Browser console has no uncaught errors.
 - No network request leaves the local server origin.
+
+### Changes
+
+`web/e2e/` holds the audit, run by `npm run e2e`. It needs Node.js 22 or newer,
+Go, Git and Chrome, Chromium or Edge (or `CHROME_PATH`), and nothing else:
+
+- `cdp.mjs` drives headless Chrome through the DevTools Protocol over Node's
+  built-in WebSocket.
+- `repositories.mjs` builds the repositories it analyzes: a small history, a
+  15,000-commit history written with `git fast-import`, an invalid
+  configuration and a repository missing an object.
+- `a11y.mjs` checks horizontal overflow, Tab reachability and order, visible
+  focus and WCAG AA text contrast.
+- `audit.mjs` builds the binary, runs the server and the static CLI output, and
+  walks every flow.
+
+The M4 audits depended on a private repository for slow analyses; this one
+does not.
+
+### Verification
+
+Recorded 2026-09-13 on the host recorded under WP-6.1, with Node.js 24.18.1 and
+Chrome 153.0.8010.37.
+
+The first run passed 76 checks and failed 4, all in the harness: the 15,000-commit
+history was read before the stale step could change the repository, and the
+lost-server step waited for a Retry button while the page correctly reported
+an expired session. After changing the repository during a later stage and
+waiting for the expired session instead, the second run passed all 80 checks.
+
+| Criterion | Evidence |
+|---|---|
+| Start, progress, cancellation, success, failure and stale flows work | A job started from the form succeeded; a 15,000-commit analysis showed activity and an estimated percentage and was cancelled; an invalid configuration was reported as a rejected request and a missing object as a failed analysis; a repository changed during the analysis ended stale without a report. The recent jobs list described all five outcomes differently. |
+| The report is visible without a full page reload | A marker set on `window` survived until the report rendered, and until cancellation completed. |
+| Keyboard and responsive behavior meet M4 | The start view, a job report, the recent jobs list, the static dashboard and the static Wrapped page had no horizontal overflow at 360, 768 and 1440 pixels; every control was reachable with Tab in document order with visible focus at 360 and 1440 pixels; text met WCAG AA contrast in both themes; every chart kept a named image and data table; changing views moved focus to the new heading. |
+| No uncaught errors | No exception and no console error were recorded. |
+| No request leaves the origin | Every request went to the local server; the static pages, opened with the network disabled, made none. After a server restart, Retry sent no `POST` and the page reported an expired session. |
 
 ## WP-6.5 - Cross-platform path verification
 
