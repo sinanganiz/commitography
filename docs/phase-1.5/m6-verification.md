@@ -9,7 +9,7 @@ inspection for behavior that can be exercised.
 |---|---|
 | WP-6.1 Analysis and CLI regression tests | Complete |
 | WP-6.2 Job lifecycle and API tests | Complete |
-| WP-6.3 Frontend build and component tests | Not started |
+| WP-6.3 Frontend build and component tests | Complete |
 | WP-6.4 Browser end-to-end audit | Not started |
 | WP-6.5 Cross-platform path verification | Not started |
 | WP-6.6 Performance and resource verification | Not started |
@@ -153,6 +153,48 @@ terminal states, report rendering and static bootstrap.
 - `npm.cmd run build` passes.
 - The bundle contains no external `http` or `https` asset references.
 - Static embedded data and server-fetched data render the same report sections.
+
+### Changes
+
+- Vitest 2.1.9, jsdom 25.0.1, `@testing-library/react` 16.3.3 and
+  `@testing-library/dom` 10.4.1 are development dependencies locked in
+  `web/package-lock.json`. `npm run test` runs them with `web/vitest.config.ts`;
+  the library build configuration is unchanged.
+- 38 tests in five files:
+  - `logic.test.ts`: start-error guidance, outcome wording for each terminal
+    state, formatting, and routes, including hashes that must fall back to the
+    start view.
+  - `RepositoryForm.test.tsx`: an empty path, an inverted date range, the
+    per-author privacy warning, one request however often Start is pressed, an
+    active job blocking a new start, and guidance for a rejected path and a
+    shallow clone.
+  - `JobView.test.tsx`: an estimated percentage that says so, an indeterminate
+    stage, polling that stops at success and then shows the report,
+    cancellation without a reload, a rejected request told apart from a failed
+    analysis, a stale job that never loads a report, a retry that only reads
+    status, and a job the server no longer has.
+  - `Dashboard.test.tsx`: section order, sections omitted without data, a named
+    chart and data table for every figure, static and embedded heading
+    structure, warnings, and per-author data staying opt-in.
+  - `main.test.tsx`: static dashboard and Wrapped bootstrap, a page without
+    data, the local application for a page without a mode, and static against
+    server-fetched rendering.
+- `internal/render/bundle_test.go` accepts only reviewed absolute URLs in the
+  embedded JavaScript and CSS (XML namespaces and the React and MUI error
+  documentation) and refuses every form that loads a remote resource.
+
+### Verification
+
+Recorded 2026-09-13 on the host recorded under WP-6.1, with Node.js 24.18.1.
+
+| Criterion | Evidence |
+|---|---|
+| `npm run typecheck` passes | Exit code `0`, with the test files included. |
+| `npm run build` passes | The build succeeded and produced a bundle identical to the committed one. |
+| No external asset references | `TestEmbeddedBundleReferencesNoExternalResources` passes. With `fetch("https://cdn.example.com/tracker.js")` appended to the bundle it failed twice, once for the unreviewed URL and once for the remote fetch. |
+| Static and server data render the same sections | `main.test.tsx` renders one report from embedded JSON and from the report endpoint; all ten sections match in order and text. |
+
+`npm run test` passed all 38 tests.
 
 ## WP-6.4 - Browser end-to-end audit
 
