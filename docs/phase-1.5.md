@@ -229,6 +229,9 @@ The report endpoint returns schema version 1 and must remain compatible with
 - Each server process creates a cryptographically random session secret.
 - The UI receives an `HttpOnly`, `SameSite=Strict` session cookie.
 - State-changing requests validate the request `Origin` and same-host rules.
+- Every request must name the server as `localhost`, `127.0.0.1`, `[::1]` or
+  the explicit listen address. Other `Host` values are refused before a session
+  cookie is issued, which blocks DNS rebinding.
 - CORS is not enabled.
 - Job IDs are generated with `crypto/rand` and are not sequential.
 - Responses set `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,

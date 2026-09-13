@@ -24,6 +24,7 @@ func newServeCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			app.AllowListenHost(options.ListenAddress)
 			options.Handler = app.Handler()
 			options.OnShutdown = app.Jobs.CancelAll
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

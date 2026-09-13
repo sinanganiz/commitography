@@ -9,7 +9,7 @@ the current CLI image contract.
 |---|---|
 | WP-5.1 Preserve CLI and add explicit server invocation | Complete |
 | WP-5.2 Container path and mount documentation | Complete |
-| WP-5.3 Runtime security and image behavior | Not started |
+| WP-5.3 Runtime security and image behavior | Complete |
 | WP-5.4 Docker smoke tests | Not started |
 | WP-5.5 Release and image documentation | Not started |
 
@@ -171,6 +171,42 @@ mount.
 - Signals reach the Go process through `tini`.
 - The image does not expose a health endpoint or admin endpoint that is absent
   from the documented API.
+
+### Changes
+
+- **D4:** every request must name the server as `localhost`, `127.0.0.1`,
+  `[::1]` or the explicit listen address, before any session cookie is issued.
+  Before this change a foreign `Host` received a cookie and a matching `Origin`
+  created a job through the container's published port.
+- **D5:** `safe.directory` is in `/etc/gitconfig`, so the image also reads
+  mounted repositories under `--user`. Before, uid 1000 was told
+  `/repo is not a git repository`.
+- `ca-certificates` is no longer requested, since the tool never contacts a
+  remote. Alpine's `git` package still installs it through `libcurl`.
+- `/assets/` listed the embedded files. Directory paths now answer `404`, as
+  the security contract requires no directory listing.
+
+### Verification
+
+Recorded 2026-09-13 on the Windows host recorded under WP-5.1, against copies
+of the `basic` fixture and a 2,632-commit repository.
+
+- Installed packages are the Alpine base, `tini`, `git` and the libraries
+  `git` depends on. `git --version` reports 2.45.4.
+- The server analyzed `basic` from a read-only mount. Against a writable mount,
+  the repository's recursive listing of paths, sizes, modification times and
+  modes was identical before and after the analysis.
+- The CLI ran as uid 1000 against a read-only repository and wrote its output
+  to a separate mount.
+- Through the published port, `127.0.0.1` and `localhost` answered `200`;
+  `attacker.example` and `192.168.1.20` answered `403 invalid_host` without a
+  cookie; a rebinding `POST` carrying a valid cookie answered `403`.
+- `/healthz`, `/health`, `/metrics`, `/debug/pprof/`, `/debug/vars`,
+  `/api/v1/admin`, `/api/v1/health`, `/api/v2/jobs` and `/.env` answered `404`,
+  and so does `/assets/` after the change above.
+- PID 1 is `/sbin/tini`. `docker stop` during a running server analysis ended
+  the container in 378 ms with exit code `0`; during a CLI analysis it ended in
+  313 ms with exit code `143`, the SIGTERM the Go process received.
 
 ## WP-5.4 - Docker smoke tests
 

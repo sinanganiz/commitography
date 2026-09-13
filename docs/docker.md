@@ -138,6 +138,10 @@ MSYS_NO_PATHCONV=1 docker run --rm \
 The dashboard is written to `out/index.html`. Any flag from the native CLI can
 follow the path, for example `/repo -o /out --no-blame`.
 
+On Linux, files the container writes belong to root. Add
+`--user "$(id -u):$(id -g)"` after `docker run --rm` to write them as your own
+user; Git inside the image still reads the mounted repository.
+
 ---
 
 ## Docker Desktop file sharing
@@ -201,6 +205,7 @@ out of that report. Running the native binary avoids the overhead entirely.
 | *This folder is not a Git repository* for a path that looks right. | The `source=` folder is misspelled, so Docker Desktop mounted an empty folder, or the folder is not shared with Docker Desktop. |
 | In Git Bash, `/repos` turns into `C:/Program Files/Git/repos`. | Set `MSYS_NO_PATHCONV=1` for the command. |
 | CLI mode fails with `read-only file system`. | The default output `/repo/out` is inside a read-only mount. Mount an output folder and pass `-o /out`. |
+| The page answers *request host is not allowed*. | The dashboard was opened through a name other than `127.0.0.1` or `localhost`. Only those names are accepted, which stops other websites from reaching the dashboard through DNS rebinding. |
 
 ---
 

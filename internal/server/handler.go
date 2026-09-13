@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -41,6 +42,7 @@ type App struct {
 	Jobs         *jobs.Manager
 	sessionToken string
 	allowedRoots []string
+	allowedHosts map[string]bool
 }
 
 // NewApp constructs an application around a job manager. A default manager is
@@ -63,14 +65,67 @@ func NewAppWithAllowedRoots(manager *jobs.Manager, roots []string) (*App, error)
 	if err != nil {
 		return nil, err
 	}
-	return &App{Jobs: manager, sessionToken: newSessionToken(), allowedRoots: allowedRoots}, nil
+	return &App{
+		Jobs:         manager,
+		sessionToken: newSessionToken(),
+		allowedRoots: allowedRoots,
+		allowedHosts: loopbackHosts(),
+	}, nil
+}
+
+// loopbackHosts are the names a browser uses for this machine. A request that
+// names any other host is refused, so a page that rebinds its own DNS name to
+// 127.0.0.1 cannot obtain a session or reach the API. Inside a container the
+// server listens on every interface, and this rule still holds there.
+func loopbackHosts() map[string]bool {
+	return map[string]bool{"localhost": true, "127.0.0.1": true, "::1": true}
+}
+
+// AllowListenHost also accepts the host of an explicit listen address, such as
+// an interface address chosen with --listen. A wildcard address adds nothing:
+// it names no host, and the loopback names already cover this machine.
+func (a *App) AllowListenHost(address string) {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil || host == "" {
+		return
+	}
+	if ip := net.ParseIP(host); ip != nil && ip.IsUnspecified() {
+		return
+	}
+	a.allowedHosts[normalizeHost(host)] = true
+}
+
+// hostAllowed compares only the host name. The port is ignored because a
+// published container port may be remapped on the host.
+func (a *App) hostAllowed(hostport string) bool {
+	host := hostport
+	if h, _, err := net.SplitHostPort(hostport); err == nil {
+		host = h
+	}
+	host = normalizeHost(strings.TrimSuffix(strings.TrimPrefix(host, "["), "]"))
+	return host != "" && a.allowedHosts[host]
+}
+
+func normalizeHost(host string) string {
+	return strings.TrimSuffix(strings.ToLower(host), ".")
+}
+
+// rejectHost refuses a request for another host before a session cookie can
+// be issued to it.
+func rejectHost(w http.ResponseWriter, r *http.Request) {
+	const message = "request host is not allowed; open the dashboard at http://127.0.0.1 or http://localhost"
+	if strings.HasPrefix(r.URL.Path, "/api/") {
+		writeAPIError(w, http.StatusForbidden, "invalid_host", message)
+		return
+	}
+	http.Error(w, message, http.StatusForbidden)
 }
 
 // Handler returns the application and versioned API routes.
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	assets := http.FileServer(http.FS(render.AssetFS()))
-	mux.Handle("/assets/", http.StripPrefix("/", assets))
+	mux.Handle("/assets/", http.StripPrefix("/", filesOnly(assets)))
 	mux.Handle("/api/v1/", http.StripPrefix("/api/v1", a.apiHandler()))
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
@@ -93,10 +148,27 @@ func (a *App) Handler() http.Handler {
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		applySecurityHeaders(w)
+		if !a.hostAllowed(r.Host) {
+			rejectHost(w, r)
+			return
+		}
 		if !a.authorize(w, r) {
 			return
 		}
 		mux.ServeHTTP(w, r)
+	})
+}
+
+// filesOnly refuses directory paths. The embedded assets can be fetched by
+// name, but http.FileServer would otherwise list the directory, and the
+// security contract allows no directory listing.
+func filesOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 

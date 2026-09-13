@@ -19,7 +19,7 @@ func TestNewHandlerServesShellAndEmbeddedAssets(t *testing.T) {
 		{path: "/assets/app.css", want: "--"},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			req := localRequest(http.MethodGet, tc.path, nil)
 			res := httptest.NewRecorder()
 			handler.ServeHTTP(res, req)
 			if res.Code != http.StatusOK {
@@ -35,11 +35,30 @@ func TestNewHandlerServesShellAndEmbeddedAssets(t *testing.T) {
 func TestNewHandlerReservesAPIAndRejectsUnknownPaths(t *testing.T) {
 	handler := NewHandler()
 	for _, path := range []string{"/unknown"} {
-		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req := localRequest(http.MethodGet, path, nil)
 		res := httptest.NewRecorder()
 		handler.ServeHTTP(res, req)
 		if res.Code != http.StatusNotFound {
 			t.Errorf("%s status = %d, want 404", path, res.Code)
 		}
+	}
+}
+
+func TestEmbeddedAssetsCannotBeListed(t *testing.T) {
+	handler := NewHandler()
+	for _, path := range []string{"/assets/", "/assets"} {
+		req := localRequest(http.MethodGet, path, nil)
+		res := httptest.NewRecorder()
+		handler.ServeHTTP(res, req)
+		// "/assets" redirects to "/assets/", which must then be refused.
+		if res.Code == http.StatusOK || strings.Contains(res.Body.String(), "app.js") {
+			t.Errorf("%s status = %d, body %q: the asset directory is listable", path, res.Code, res.Body.String())
+		}
+	}
+	req := localRequest(http.MethodGet, "/assets/", nil)
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+	if res.Code != http.StatusNotFound {
+		t.Errorf("/assets/ status = %d, want 404", res.Code)
 	}
 }
