@@ -7,7 +7,10 @@
 **Phase 1.5 relationship:** The Local Web Dashboard and Runner is an
 independent local experience. It does not satisfy Phase 2 exit criteria and
 does not require the Phase 2 cache. Phase 2 may later provide an optional cache
-interface consumed by both the CLI and the local runner.
+interface consumed by both the CLI and the local runner. Phase 1.5 is
+implemented on `main` but not released; its container changes, such as the
+explicit `serve` command, become part of the image Phase 2 publishes, and
+publishing that image remains Phase 2 deliverable 5.
 
 ---
 

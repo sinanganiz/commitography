@@ -8,7 +8,10 @@
 server-mode implementation. It has no repository catalog, remote credentials,
 scheduler, persistent reports or organization rollups. Phase 3 may reuse its
 analysis and API contracts, but it must replace the in-memory job manager with
-the persistence and operational controls defined below.
+the persistence and operational controls defined below. Phase 1.5 is
+implemented on `main` but not released. Its host-name check, session cookie
+and allowed-root rules protect a single-user loopback service; they are not an
+authentication design for a networked server.
 
 ---
 

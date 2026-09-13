@@ -1,6 +1,8 @@
 # Phase 1.5 - Local Web Dashboard and Runner
 
-**Status:** Approved for planning - 2026-09-11
+**Status:** Implemented on `main`, not released. Verification recorded
+2026-09-13; exit criterion 14 is blocked until a macOS host verifies path
+behavior.
 
 **Position:** An intermediate phase between Phase 1 and Phase 2. This phase is
 not Phase 3 server mode. It adds a local operator interface around the Phase 1
@@ -265,10 +267,15 @@ docker run --rm \
 The container listens on `0.0.0.0` only because the host port mapping is the
 container boundary. The host binding remains loopback-only.
 
+No published image contains `serve` yet. Until a release does,
+`make docker-image` builds `commitography:local` from a checkout.
+
 The Docker contract must document:
 
 - Native host path versus container-visible path.
-- `--mount` instead of `-v` for explicit source validation.
+- `--mount` instead of `-v`. Docker Engine refuses a missing bind source, but
+  Docker Desktop creates an empty folder in its place, so the tool itself
+  reports a missing mount.
 - Docker Desktop file sharing on macOS and Windows.
 - Read-only repository mounts.
 - Linked worktrees and submodules that require additional mounts.
@@ -297,31 +304,63 @@ job manager.
 
 The detailed work packages in [`phase-1.5-detailed.md`](phase-1.5-detailed.md)
 are the source of truth for implementation status. Phase 1.5 is complete only
-when every criterion below is met:
+when every criterion below is met. The evidence is recorded in the milestone
+files under [`phase-1.5/`](phase-1.5/), most of it in
+[`m6-verification.md`](phase-1.5/m6-verification.md).
 
-1. Shared analysis produces byte-equivalent report values for CLI and server
-   runs with the same inputs.
-2. Existing CLI tests and static render tests pass without weakening their
-   assertions.
-3. `serve` starts, prints its URL and serves the React application on the
-   default loopback address.
-4. Allowed-root validation rejects outside paths, symlink escapes, invalid
-   repositories and unsafe Git directory relationships.
-5. A valid job can be started, observed through polling, cancelled and removed.
-6. A second start request is rejected while the first job is active.
-7. Progress events include stage, sequence, detail and estimated fraction
-   semantics.
-8. A successful report is rendered in the same application and validates
-   against the existing report schema.
-9. Failure, cancellation and stale repository states are distinct and useful.
-10. The ten-job in-memory history is bounded and oldest entries are evicted
-    deterministically.
-11. Session, Origin, response-header and no-raw-data security tests pass.
-12. The React/MUI bundle is embedded and the static offline dashboard remains
-    self-contained.
-13. Docker server smoke tests pass with a read-only mount and a loopback host
-    binding.
-14. Windows, macOS and Linux path behavior is either tested or explicitly
-    recorded as manual verification.
-15. README, project overview and phase relationship documentation describe the
-    new mode without claiming Phase 2 or Phase 3 functionality.
+| # | Criterion | Status | Evidence |
+|---:|---|---|---|
+| 1 | Shared analysis produces byte-equivalent report values for CLI and server runs with the same inputs. | Met | `TestCLIAndAnalysisServiceProduceTheSameReport`; the Docker smoke test compares a container report with the native server's field by field (M5 WP-5.4). |
+| 2 | Existing CLI tests and static render tests pass without weakening their assertions. | Met | `go test ./...` passes with the fixtures built; the only skip is a Windows symlink test covered on Linux (WP-6.1). |
+| 3 | `serve` starts, prints its URL and serves the React application on the default loopback address. | Met | With default flags the server listened only on `127.0.0.1:8080` and printed its URL (WP-6.5); the browser audit runs the application (WP-6.4). |
+| 4 | Allowed-root validation rejects outside paths, symlink escapes, invalid repositories and unsafe Git directory relationships. | Met on Windows and Linux | Path and endpoint tests (M3, WP-6.2), Windows junction, case and UNC tests and Linux symlink escape (WP-6.5). macOS: see 14. |
+| 5 | A valid job can be started, observed through polling, cancelled and removed. | Met | `TestAPIEndpointMatrix` (WP-6.2) and the browser audit (WP-6.4). |
+| 6 | A second start request is rejected while the first job is active. | Met | `409 active_job` with exactly one started analysis (WP-6.2). |
+| 7 | Progress events include stage, sequence, detail and estimated fraction semantics. | Met | Progress contract and sequence tests (M1, M2); estimates labelled in the UI (WP-6.3, WP-6.4). |
+| 8 | A successful report is rendered in the same application and validates against the existing report schema. | Met | Report rendered without a reload (WP-6.4); report fields checked against the schema (WP-6.7). |
+| 9 | Failure, cancellation and stale repository states are distinct and useful. | Met | Job view and recent jobs tests and audits (WP-4.7, WP-6.3, WP-6.4). |
+| 10 | The ten-job in-memory history is bounded and oldest entries are evicted deterministically. | Met | `TestHistoryKeepsExactlyTheTenNewestJobs` and eviction through the API (WP-6.2); retained memory measured (WP-6.6). |
+| 11 | Session, Origin, response-header and no-raw-data security tests pass. | Met | Security matrix and manual review (WP-6.7). |
+| 12 | The React/MUI bundle is embedded and the static offline dashboard remains self-contained. | Met | Render and bundle URL tests (WP-6.3); static pages audited offline (WP-4.8, WP-6.4). |
+| 13 | Docker server smoke tests pass with a read-only mount and a loopback host binding. | Met | `make docker-smoke` (M5 WP-5.4). |
+| 14 | Windows, macOS and Linux path behavior is either tested or explicitly recorded as manual verification. | **Blocked** | Windows and Linux are tested (WP-6.5). No macOS host was available; the commands to run are recorded in WP-6.5. |
+| 15 | README, project overview and phase relationship documentation describe the new mode without claiming Phase 2 or Phase 3 functionality. | Met | WP-5.5 and WP-6.8. |
+
+Phase 1.5 is therefore not complete until criterion 14 is verified on macOS.
+It is not released either: a release follows the project release process
+separately.
+
+---
+
+## 12. Known Limitations
+
+- Path behavior has not been verified on macOS.
+- A UNC spelling of a folder inside an allowed root is refused. Type the root
+  in the form it was given to `--allowed-root`.
+- Counting lines follows a tracked symbolic link that points outside the
+  allowed root. Only a line count, never file content, reaches the report.
+- A linked worktree cannot be analyzed from a container on its own.
+- Blame dominates analysis time on long histories, and a working tree with many
+  files adds a read of every file. Skipping blame helps; Docker Desktop mounts
+  are slower still. Measurements are in WP-6.6.
+- One analysis runs at a time, and jobs and reports are lost when the server
+  stops.
+- The frontend development tools, `vite` 5 and `vitest` 2, have published
+  advisories for their development servers. The fixes need major upgrades that
+  have not been made. The embedded bundle's runtime packages have none, and
+  `npm run dev` should not be used on an untrusted network. Details are in
+  WP-6.7.
+- No published binary or image includes `serve`.
+
+## 13. Verification Commands
+
+```bash
+make fixtures                      # build the test repositories
+go test ./...                      # Go unit, API and security tests
+cd web && npm run typecheck && npm run test   # frontend types and components
+cd web && npm run e2e              # browser audit; needs Chrome, Go and Git
+make docker-smoke                  # container image smoke tests
+make perfcheck                     # performance and resource measurements
+```
+
+Without `make`, run the Go commands the Makefile targets name.

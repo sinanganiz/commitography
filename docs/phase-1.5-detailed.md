@@ -1,6 +1,7 @@
 # Phase 1.5 - Detailed Work Packages
 
-**Status:** Approved scope, implementation in progress - 2026-09-13
+**Status:** Implemented on `main`, not released - 2026-09-13. One verification
+item is blocked: path behavior on a macOS host (M6 WP-6.5).
 
 **Scope:** [`phase-1.5.md`](phase-1.5.md)
 
@@ -65,7 +66,7 @@ work package starts.
 | M3 - API and local security | `phase-1.5/m3-api-security.md` | M2 | 7 | Complete |
 | M4 - React and MUI application | `phase-1.5/m4-react-frontend.md` | M0, M3 | 8 | Complete |
 | M5 - Docker and distribution | `phase-1.5/m5-docker.md` | M2, M4 | 5 | Complete |
-| M6 - Verification and release documentation | `phase-1.5/m6-verification.md` | M1-M5 | 8 | In progress |
+| M6 - Verification and release documentation | `phase-1.5/m6-verification.md` | M1-M5 | 8 | Blocked: WP-6.5 needs a macOS host; the other seven packages are complete |
 | **Total** |  |  | **46** |  |
 
 M0 must land before implementation because it defines the API and security
@@ -187,3 +188,21 @@ These are implementation tasks, not unresolved product decisions:
   approved in a package update.
 - Record any change to the Phase 1 report schema separately; Phase 1.5 should
   not require a schema version bump.
+
+---
+
+## 7. Closure Summary - 2026-09-13
+
+- **Status.** M0 to M5 are complete. M6 has recorded evidence for seven of its
+  eight packages; WP-6.5 is blocked because no macOS host was available. The
+  report schema stayed at version 1.
+- **Evidence.** Each milestone file records what was verified, on which host,
+  with which tool versions and on which repositories. The phase exit criteria
+  table in [`phase-1.5.md`](phase-1.5.md) links each criterion to its evidence.
+- **Known limitations and test commands.** Sections 12 and 13 of
+  [`phase-1.5.md`](phase-1.5.md).
+- **Closing the phase.** Run the macOS commands recorded under WP-6.5 on a
+  macOS host and record the result; criterion 14 then becomes met.
+- **Release.** Phase 1.5 is not released. No tag exists, and no published
+  binary or image contains `serve`; publishing follows the project release
+  process separately.

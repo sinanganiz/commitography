@@ -24,6 +24,8 @@ This document is written to be executed sequentially. Each task lists its exact 
 
 Criterion 1 is the one that matters most: it is the only open item that could hide a genuine product defect rather than an unfinished errand, and the `LC_UUID` bug is proof that this platform can break silently. Verify it before tagging anything.
 
+**Phase 1.5 relationship:** Phase 1.5, the local web dashboard and runner, was built on `main` after this closure. It reuses this engine through a shared analysis package without changing the CLI, its flags or the static report, and CLI and server report equality is tested. It does not close any open item above. Its own macOS path check is blocked on the same missing macOS host, so one macOS session can settle both. See [`phase-1.5-detailed.md`](phase-1.5-detailed.md).
+
 ---
 
 ## Implementation Status

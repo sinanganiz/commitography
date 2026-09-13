@@ -144,12 +144,17 @@ No server, no database, no configuration required. This is the flagship experien
 commitography serve --open
 ```
 
-The planned Phase 1.5 feature wraps the Phase 1 analysis engine in a local,
-single-user web application. It will provide repository path validation, one
-active asynchronous job, estimated progress, cancellation, a bounded
-in-memory job history and the completed report in the same UI. It does not
-provide remote repository management, persistent server storage, accounts or
-scheduling. The detailed scope is in `phase-1.5.md`.
+Phase 1.5 wraps the Phase 1 analysis engine in a local, single-user web
+application, natively or from the Docker image: repository path validation, one
+active asynchronous job, estimated progress, cancellation, a bounded in-memory
+job history and the completed report in the same UI. It does not provide
+remote repository management, persistent server storage, accounts or
+scheduling.
+
+**Implemented on `main` on 2026-09-13, not released.** Its verification is
+recorded, and one exit criterion is blocked: path behavior has not been checked
+on a macOS host. The scope is in `phase-1.5.md`; status and evidence are in
+`phase-1.5-detailed.md`.
 
 ### Phase 2 — CI/CD integration
 

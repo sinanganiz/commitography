@@ -14,7 +14,7 @@ inspection for behavior that can be exercised.
 | WP-6.5 Cross-platform path verification | Blocked: macOS host unavailable; Windows and Linux complete |
 | WP-6.6 Performance and resource verification | Complete |
 | WP-6.7 Security verification | Complete |
-| WP-6.8 Final documentation and phase closure | Not started |
+| WP-6.8 Final documentation and phase closure | Complete |
 
 ---
 
@@ -637,3 +637,73 @@ verification evidence.
 - Phase 1, Phase 2 and Phase 3 documents describe the relationship accurately.
 - The phase is not marked released until the project release process has been
   executed separately.
+
+### Changes
+
+- **`docs/phase-1.5.md`**
+  - The status line now says the phase is implemented on `main`, not released,
+    with criterion 14 blocked.
+  - The Docker bullet is corrected, and a note says no published image
+    contains `serve`.
+  - Section 11 is an exit criteria table giving each criterion's status and
+    evidence.
+  - New section 12, Known Limitations: macOS, UNC spelling of a root, tracked
+    symlinks, linked worktrees in a container, blame and working-tree cost, one
+    job and in-memory history, frontend development tool advisories, and no
+    published build with `serve`.
+  - New section 13 lists the verification commands.
+- **`docs/phase-1.5-detailed.md`**: the status line and M6 roll-up now name the
+  blocker, and "7. Closure Summary" is new.
+- **`docs/project-overview.md`**: the Phase 1.5 paragraph says the phase was
+  implemented on 2026-09-13, is not released and has one blocked criterion.
+- **`docs/phase-1-detailed.md`, `docs/phase-2.md` and `docs/phase-3.md`**:
+  each gains a relationship paragraph.
+  - Phase 1.5 reuses the Phase 1 engine without changing the CLI, and closes
+    none of the Phase 1 release items.
+  - It does not satisfy Phase 2 and does not need its cache; publishing the
+    image with `serve` remains Phase 2 deliverable 5.
+  - It is not Phase 3 server mode, and its local protections are not an
+    authentication design for a networked server.
+- **`README.md`**: adds `make perfcheck`, the frontend check commands and a link
+  to this file.
+
+### Verification
+
+Recorded 2026-09-13 on the Windows host recorded under WP-6.1, with Go 1.27.0,
+Git 2.55.0.windows.3, Node 24.18.1, npm 12.0.2 and Docker Desktop 29.7.2.
+
+**Clean checkout.** A fresh clone of `origin/main` at `6f08ef2`, which holds
+every code change of this milestone. The WP-6.8 change itself touches only
+documentation.
+
+| README example | Result |
+|---|---|
+| `go build -o commitography ./cmd/commitography` | Built with Go only; the committed bundle needed no Node. |
+| `commitography ./repo -o out/` (on the clone, `--no-blame -q`) | Wrote `out/index.html` and `out/report.json`. |
+| `./commitography serve` | Printed `Commitography listening at http://127.0.0.1:18089` on the chosen port; `GET /` answered `200`. |
+| `make fixtures` (its recipe, `sh testdata/build-fixtures.sh`) | Built all ten fixtures. |
+| `make lint` (its recipe) | `go vet ./...` passed; `gofmt -l cmd internal` printed nothing. |
+| `make test` | `go test -count=1 ./...` passed in every package. |
+| `make web` (`npm ci && npm run build`) | Built; the rebuilt `internal/render/assets` matched the committed files exactly. |
+| `npm run typecheck && npm run test` | Passed; 5 files and 38 tests. |
+| `make docker-image` (the no-`make` Git Bash steps in `docs/docker.md`), then the README `docker run` on port 18090 with `MSYS_NO_PATHCONV=1` | The image built; `GET /` answered `200` and `/api/v1/capabilities` returned the v1 capabilities. |
+
+`make` is not installed on this host, so each target was run as its recipe.
+`make docker-smoke` and `make perfcheck` ran under M5 and WP-6.6. The
+`go install …@latest`, Homebrew, Scoop and `ghcr.io` lines install the last
+published Phase 1 release, which does not include `serve`. The README says so
+beside the `serve` instructions, and they were not rerun here.
+
+**Acceptance criteria**
+
+| Criterion | Evidence |
+|---|---|
+| No package remains marked complete without evidence | Each Complete M6 package has a verification section in this file naming the host, tool versions, repositories and date. The M0 to M5 records are in their milestone files. WP-6.5 is Blocked, with its reason and the macOS commands to run. |
+| The phase exit criteria table is fully checked or has an explicit blocker | Section 11 of `phase-1.5.md` marks 13 criteria Met, criterion 4 Met on Windows and Linux, and criterion 14 **Blocked** with its reason. |
+| README examples work from a clean checkout | The table above. |
+| Phase 1, Phase 2 and Phase 3 documents describe the relationship accurately | The relationship paragraphs listed under Changes. None claims Phase 2 or Phase 3 functionality. |
+| The phase is not marked released | Every status line says "not released", and no tag was created. |
+
+**Milestone status.** M0 to M5 are Complete. M6 is **Blocked**: seven of its
+eight packages are complete, and WP-6.5 needs a macOS host. Phase 1.5 is
+implemented but not complete and not released.

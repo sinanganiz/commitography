@@ -368,8 +368,14 @@ make test          # go test ./...
 make build         # build the frontend, then the binary with version info
 make docker-image  # build commitography:local for the local Docker daemon
 make docker-smoke  # run that image against the fixtures; needs Docker and make fixtures
+make perfcheck     # measure analysis time, responsiveness, cancellation and memory
 make clean
 ```
+
+Frontend checks run from `web/`: `npm run typecheck`, `npm run test` for the
+component tests, and `npm run e2e` for the browser audit, which needs Chrome, Go
+and Git. The verification record for the local dashboard is in
+[`docs/phase-1.5/m6-verification.md`](docs/phase-1.5/m6-verification.md).
 
 The frontend lives in `web/`: React with MUI for the local dashboard's controls, and hand-written SVG charts with no charting library. Its built bundle is committed and embedded into the binary with `//go:embed`, so `go build` works without Node.js.
 
