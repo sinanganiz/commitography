@@ -26,13 +26,28 @@ LDFLAGS := $(STRIP_FLAGS) \
 	-X '$(MODULE)/internal/version.Commit=$(COMMIT)' \
 	-X '$(MODULE)/internal/version.BuildDate=$(BUILD_DATE)'
 
-.PHONY: build web test fixtures lint clean
+.PHONY: build web test fixtures lint clean docker-image
 
 build: web
 	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/commitography
 
 web:
 	cd web && npm ci && npm run build
+
+# The Dockerfile copies a prebuilt Linux binary from its build context, which
+# goreleaser supplies for releases. This target supplies the same context for
+# a local image, built for the architecture of the Docker daemon in use. It
+# embeds the committed frontend bundle; run `make web` first after UI changes.
+DOCKER_IMAGE ?= commitography:local
+DOCKER_ARCH  ?= $(shell docker version --format '{{.Server.Arch}}' 2>/dev/null)
+
+docker-image:
+	@test -n "$(DOCKER_ARCH)" || (echo "docker-image: the Docker daemon is not reachable" && exit 1)
+	rm -rf dist/docker
+	mkdir -p dist/docker
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(DOCKER_ARCH) go build -trimpath -ldflags "$(LDFLAGS)" -o dist/docker/commitography ./cmd/commitography
+	cp Dockerfile dist/docker/Dockerfile
+	docker build -t $(DOCKER_IMAGE) dist/docker
 
 test:
 	go test ./...

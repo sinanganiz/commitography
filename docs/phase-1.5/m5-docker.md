@@ -7,11 +7,76 @@ the current CLI image contract.
 
 | Package | Status |
 |---|---|
-| WP-5.1 Preserve CLI and add explicit server invocation | Not started |
+| WP-5.1 Preserve CLI and add explicit server invocation | Complete |
 | WP-5.2 Container path and mount documentation | Not started |
 | WP-5.3 Runtime security and image behavior | Not started |
 | WP-5.4 Docker smoke tests | Not started |
 | WP-5.5 Release and image documentation | Not started |
+
+---
+
+## Clarified scope - 2026-09-13
+
+The repository was reviewed against this milestone before implementation. The
+work packages below remain normative; this section records what they mean for
+the code as it exists.
+
+### Findings
+
+1. The `Dockerfile` expects goreleaser to place a prebuilt Linux
+   `commitography` binary in the build context. goreleaser has never been
+   executed (Phase 2 M1), so no published image contains `serve`, and there is
+   no documented way to build the image locally.
+2. The image declares no `EXPOSE` and no `HEALTHCHECK`. Adding `EXPOSE` would
+   let `docker run -P` publish the server on every host interface.
+3. `serve` compares the `Origin` header with the `Host` header but never checks
+   `Host` itself. A DNS-rebinding page served from its own name passes both
+   checks, receives a session cookie and can start jobs and read reports. The
+   M0 contract already lists host rejection as a `403`; it was not enforced.
+   Inside a container the server listens on `0.0.0.0`, so this matters here.
+4. `safe.directory` is written to root's global Git configuration. A container
+   started with `--user` has no access to that file, and Git then refuses a
+   mounted repository owned by another uid.
+5. `serve` without `--listen` binds loopback inside the container, which a
+   published port cannot reach, and a wildcard listener prints
+   `http://[::]:8080`, which is not an address a browser should open.
+6. The CLI default writes `/repo/out` and therefore needs a writable mount. The
+   server writes nothing and works with a read-only mount.
+7. Git Bash rewrites container paths such as `/repos` into Windows paths unless
+   `MSYS_NO_PATHCONV=1` is set.
+8. Docker Desktop on Windows does not reject a bind source that does not exist.
+   With either `--mount` or `-v` it creates an empty host directory, and the
+   CLI then reports only `/repo is not a git repository`. Documentation cannot
+   rely on Docker to catch a mistyped source, so the tool's own errors must
+   explain a missing mount.
+
+### Decisions
+
+| ID | Decision |
+|---|---|
+| D1 | `make docker-image` cross-compiles a static binary for the Docker daemon's architecture into `dist/docker/` and builds `commitography:local`. The `Dockerfile` stays compatible with goreleaser. M5 does not publish an image. |
+| D2 | The image keeps no `EXPOSE` and no `HEALTHCHECK`, and says why in the `Dockerfile`. |
+| D3 | `serve` never binds a reachable interface silently: a non-loopback listener outside a container prints a warning, and inside a container a loopback listener prints how to publish the server correctly. A wildcard listener prints loopback guidance instead of a `0.0.0.0` URL. |
+| D4 | Every request must carry a `Host` of `localhost`, `127.0.0.1`, `[::1]` or the explicit non-wildcard listen address. The port is not compared, because a published port may be remapped. Other hosts receive `403 invalid_host`. |
+| D5 | `safe.directory` moves to the system Git configuration so any uid can read mounted repositories. The image user stays root so the CLI default can still write `/repo/out`. |
+| D6 | Docker smoke tests are Go tests behind the `dockersmoke` build tag, run by `make docker-smoke`. They build the image themselves, or test `COMMITOGRAPHY_IMAGE` when it is set, and skip when Docker or the fixtures are unavailable. |
+| D7 | `docs/docker.md` is the single Docker guide. README and `CHANGELOG.md` describe the server as unreleased until a tagged release includes it. |
+
+### Execution order
+
+1. **WP-5.1:** D1, D2 and D3, with listener tests, then verify the default
+   command and the `serve` override against a locally built image.
+2. **WP-5.2:** `docs/docker.md` covering host and container paths for Linux,
+   macOS, Windows PowerShell and Git Bash, read-only `--mount`, loopback
+   publishing, Docker Desktop file sharing, worktrees, submodules and
+   filesystem performance.
+3. **WP-5.3:** D4 and D5, then verify read-only analysis, Git, `tini` signal
+   delivery and the absence of undocumented endpoints.
+4. **WP-5.4:** D6, including report parity with the native server and useful
+   errors for a missing mount, a missing allowed root and a mistyped bind
+   source that Docker creates as an empty directory.
+5. **WP-5.5:** README, `CHANGELOG.md` and a fresh-user walkthrough of every
+   documented command.
 
 ---
 
@@ -32,6 +97,27 @@ serve --listen 0.0.0.0:8080 --allowed-root /repos
 - Running the image with `serve` starts the HTTP server.
 - The image does not require a second server binary.
 - The server does not silently bind the host interface.
+
+### Verification
+
+Recorded 2026-09-13 on Windows 11 Pro 10.0.26200 with Docker Desktop 29.7.2
+(Linux engine, amd64), Go 1.27.0 and the image's Git 2.45.4, against the
+generated `basic` fixture. The image was built with the `make docker-image`
+recipe; `make` itself is not installed on that host, so its commands were run
+in Git Bash.
+
+- With no command, a mounted copy of `basic` produced `out/index.html` and
+  `out/report.json` and exited `0`.
+- `serve --listen 0.0.0.0:8080 --allowed-root /repos` answered `200` through
+  `--publish 127.0.0.1:18090:8080`, and `docker stop` ended it in 364 ms with
+  exit code `0`.
+- `/usr/local/bin` holds only `commitography`; the entrypoint and `CMD` are
+  unchanged.
+- The image declares no exposed port, so `docker run -P` published nothing.
+- A wildcard listener in the container announces the host loopback URL and
+  `--publish` form instead of `0.0.0.0`; a loopback listener in the container
+  explains why it is unreachable. Outside a container, a non-loopback listener
+  prints a warning. These rules are unit-tested in `internal/server`.
 
 ## WP-5.2 - Container path and mount documentation
 

@@ -14,5 +14,15 @@ RUN git config --global --add safe.directory '*'
 
 WORKDIR /repo
 
+# The default command is the batch CLI. The local web server is opt-in, by
+# overriding the command:
+#
+#   docker run --rm --publish 127.0.0.1:8080:8080 \
+#     --mount type=bind,source="$PWD",target=/repos,readonly \
+#     <image> serve --listen 0.0.0.0:8080 --allowed-root /repos
+#
+# There is deliberately no EXPOSE: it would let `docker run -P` publish the
+# server on every host interface. There is no HEALTHCHECK either, because the
+# server has no health endpoint beyond its documented API.
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/commitography"]
 CMD ["/repo", "-o", "/repo/out"]
