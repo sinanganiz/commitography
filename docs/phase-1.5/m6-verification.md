@@ -13,7 +13,7 @@ inspection for behavior that can be exercised.
 | WP-6.4 Browser end-to-end audit | Complete |
 | WP-6.5 Cross-platform path verification | Blocked: macOS host unavailable; Windows and Linux complete |
 | WP-6.6 Performance and resource verification | Complete |
-| WP-6.7 Security verification | Not started |
+| WP-6.7 Security verification | Complete |
 | WP-6.8 Final documentation and phase closure | Not started |
 
 ---
@@ -486,6 +486,132 @@ cross-origin requests, raw data exposure, cache headers and public binding.
 - No raw history or cache file is exposed.
 - The default listener is loopback-only.
 - Response headers match the security contract.
+
+### Changes
+
+`internal/server/securitymatrix_test.go` gathers the security matrix:
+
+- `TestRouteTraversalReadsNoFiles` sends twelve traversal spellings through
+  the page, asset and API routes: `..`, `%2e%2e`, `%2f`, `%5c`, doubled
+  slashes, and traversal past a real asset name. Each test follows up to three
+  redirects and requires that no response is `200` or contains `go.mod`. A job
+  whose `repoPath` names a file is refused with `400`.
+- `TestStateChangingRoutesRequireSessionAndSameOrigin` covers job creation,
+  cancellation and deletion. Each is sent without a session, without a session
+  from another site, from another site, from another local port and from an
+  opaque `null` origin. They answer `401 invalid_session` or
+  `403 invalid_origin`. Afterwards the running job is still running and no
+  second analysis started.
+- `TestSecurityHeadersOnEveryResponseClass` checks `Cache-Control: no-store`,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, the
+  Content-Security-Policy directives and the absence of
+  `Access-Control-Allow-Origin` on thirteen response classes:
+  - the application page, an asset and capabilities (`200`);
+  - a created job (`202`) and a conflict (`409`);
+  - a missing session (`401`), a cross-origin request and a foreign `Host`
+    (`403`);
+  - an unknown job and an unknown page (`404`);
+  - a wrong method (`405`), an oversized body (`413`) and a cleaned-path
+    redirect.
+- `TestSessionCookieIsProcessScopedAndStrict` checks that the cookie is
+  `HttpOnly`, `SameSite=Strict`, `Path=/`, has no `Domain`, and has no
+  `Expires` or `Max-Age`. Its value is a 256-bit hexadecimal token, and two
+  server instances never share it.
+- `TestResponsesCarryOnlyDocumentedData` runs a real analysis of this checkout
+  and requires the documented fields exactly:
+  - the eleven status fields;
+  - the seven job-list summary fields, which carry no repository path;
+  - report top-level fields that `docs/report-schema.json` defines, including
+    every required one;
+  - no e-mail address in the default report.
+- `TestDefaultListenerIsLoopback` pins `127.0.0.1:8080`, and
+  `cmd/commitography/serve_test.go` adds
+  `TestServeFlagsDefaultToLoopbackWithoutBrowser`: the `serve` flags default to
+  that address, no `--open` and no extra allowed root.
+
+The cleaned-path case accepts any redirect status, because Go's router chooses
+the status code and it has differed between Go versions.
+
+### Verification
+
+Recorded 2026-09-13 on the Windows host recorded under WP-6.1, with Go 1.27.0,
+Git 2.55.0.windows.3, Node 24.18.1 and npm 12.0.2.
+
+- `gofmt -l internal/server cmd/commitography` printed nothing and
+  `go vet ./...` passed.
+- The eight WP-6.7 tests passed.
+- `go test -count=1 -v ./...` passed: 214 tests passed, none failed, and
+  `TestValidateRepositoryRejectsSymlinkEscape` skipped for the reason recorded
+  under WP-6.1.
+
+**Acceptance criteria**
+
+| Criterion | Evidence |
+|---|---|
+| No unauthenticated state-changing request succeeds | `TestStateChangingRoutesRequireSessionAndSameOrigin`; M3 host, origin and session tests; DNS rebinding tests from M5. |
+| No API endpoint reads arbitrary files | `TestRouteTraversalReadsNoFiles`, the allowed-root and path tests of M3 and WP-6.5, and the manual review below. |
+| No raw history or cache file is exposed | `TestResponsesCarryOnlyDocumentedData` and the route review below. Phase 1.5 writes no cache file. |
+| The default listener is loopback-only | `TestDefaultListenerIsLoopback`, `TestServeFlagsDefaultToLoopbackWithoutBrowser`, and the `netstat` check under WP-6.5. |
+| Response headers match the security contract | `TestSecurityHeadersOnEveryResponseClass`; every response passes through `applySecurityHeaders` before the host check. |
+
+**Manual review — routes.** `Handler` in `internal/server/handler.go` has four
+routes:
+
+- `/assets/` serves only the embedded `render.AssetFS()`. `filesOnly` refuses
+  directory paths, and the file system cannot reach the disk.
+- `/api/v1/` holds the capability and job routes. The report is built from the
+  job's in-memory result; there is no file download route.
+- Any other `/api/` path answers `404`.
+- `/` serves the fixed application shell, and any other path answers `404`.
+
+No handler opens a file named by the request. The server writes no file; the
+report is kept in memory, and `model.History` never reaches a response.
+
+**Manual review — what a job reads.** A job reads only inside a repository that
+passed the allowed-root check:
+
+- **Git commands:** `git --version`, `rev-parse`, `symbolic-ref`,
+  `rev-list --all --date-order`, `log --numstat --no-renames`,
+  `ls-tree -r --name-only HEAD`, and
+  `blame --line-porcelain -w -M HEAD -- <path>` for sampled files.
+- **Worktree files:** tracked files as HEAD lists them, opened once to detect
+  binaries and read again to count lines.
+- **Repository root:** `.gitattributes` and `.commitography.yml`.
+- **Git directory:** the `shallow` and `info/grafts` markers.
+
+At startup the server lists and checks the allowed roots and reads container
+markers. The client cannot supply a config path or output directory.
+
+**Residual risk — tracked symbolic links.** Line counting opens tracked paths
+with `os.Open` and `os.ReadFile`, which follow a symbolic link. A repository
+inside an allowed root that tracks a link to a file outside it therefore has
+that file read. Only a newline count and a binary or text decision reach the
+report, never content, and only for a repository the local user chose to
+analyze. This is recorded as a known limitation in section 12 of
+`phase-1.5.md`.
+
+**Manual review — listener.** A native server binds `127.0.0.1:8080` unless
+`--listen` names another address. An explicit non-loopback address is honored
+and announced. For such an address, the Host check still accepts only the
+loopback names and the named host; a wildcard adds nothing. The Docker image
+listens on `0.0.0.0` inside the container, and the documented command
+publishes the port only on `127.0.0.1`.
+
+**Dependency audit.** `npm audit --omit=dev` in `web/` found 0
+vulnerabilities, so the embedded bundle's runtime packages have no advisory.
+The full audit reports five advisories, all in development tooling:
+
+| Package | Severity | Advisory | Exposure |
+|---|---|---|---|
+| `vitest` 2.1.9 | critical | UI server file read (GHSA-5xrq-8626-4rwp); mocker redirect path traversal (GHSA-82fw-gwwq-j7x9) | `npm run test` is `vitest run`; no UI server is started. |
+| `vite` 5.4.x | high | optimized-deps `.map` path traversal (GHSA-4w7w-66w2-5vf9); `server.fs.deny` bypass on Windows (GHSA-fx2h-pf6j-xcff); `launch-editor` UNC hash disclosure (GHSA-v6wh-96g9-6wx3) | Dev server only. The build uses `vite build`; `npm run dev` starts the affected server. |
+| `esbuild` ≤0.24.2 | moderate | any site can query the dev server (GHSA-67mh-4wv8-2f99) | Dev server only. |
+| `vite-node`, `@vitest/mocker` | moderate | inherited from `vite` and `vitest` | Test runner only. |
+
+The fixes need `vite` 8 and `vitest` 5, both semver-major. They were not
+applied in this package because they change the frontend build toolchain; the
+risk is limited to a developer running `npm run dev` on an untrusted network.
+Section 12 of `phase-1.5.md` records the upgrade as a known limitation.
 
 ## WP-6.8 - Final documentation and phase closure
 
