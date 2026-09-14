@@ -12,6 +12,9 @@ Rules for working with these records are defined in
   expressed only as implementation dependency.
 - Requirements are written as numbers or prohibitions, never as adjectives.
 
+`docs/decisions/` is **binding**; a violation is a defect.
+`docs/conventions.md` is **guidance**; a justified deviation is acceptable.
+
 If a proposed change contradicts an accepted record, the change is wrong unless
 a superseding record is written first.
 
@@ -55,6 +58,31 @@ a superseding record is written first.
 | [0032](0032-family-status-reporting.md) | Every family reports a status; absence is never silent | Accepted |
 | [0033](0033-identity-privacy-layers.md) | Raw identities stay internal; exported artifacts carry no raw email | Accepted |
 | [0034](0034-cli-output.md) | The CLI emits `report.json` only | Accepted |
+| [0035](0035-embedded-storage.md) | Embedded SQLite for metadata, files for blobs | Accepted |
+| [0036](0036-frontend-delivery.md) | Embedded static SPA with server-injected meta tags | Accepted |
+| [0037](0037-visualization-approach.md) | Layout mathematics from libraries, DOM ownership by React alone | Accepted |
+| [0038](0038-styling-and-design-tokens.md) | Token-enforced styling with headless primitives | Accepted |
+| [0039](0039-llm-integration-surface.md) | One compatible HTTP interface, and full function without it | Accepted |
+| [0040](0040-package-boundaries.md) | Package boundaries follow pipeline stages, with a one-way dependency rule | Accepted |
+| [0041](0041-error-model.md) | Two error classes with enumerated user-facing reasons | Accepted |
+| [0042](0042-dependency-wiring.md) | Explicit constructor injection and no ambient state | Accepted |
+| [0043](0043-http-api-shape.md) | Versioned REST with server-sent events for progress | Accepted |
+| [0044](0044-concurrency-primitives.md) | Owned goroutines, context-bound subprocesses, persistent locks | Accepted |
+| [0045](0045-threat-model.md) | The repository is untrusted input in every mode | Accepted |
+| [0046](0046-filesystem-boundary.md) | Canonical path containment and product-controlled clone targets | Accepted |
+| [0047](0047-subprocess-hardening.md) | One git chokepoint with hardened invocation and NUL-delimited output | Accepted |
+| [0048](0048-resource-limits.md) | Enforced limits, and truncation is never silent | Accepted |
+| [0049](0049-supply-chain.md) | Dependency budget, reproducible builds and bundle verification | Accepted |
+| [0050](0050-performance-budget-expression.md) | Duration budgets are ratios, memory budgets are absolute | Accepted |
+| [0051](0051-replay-memory-representation.md) | Compact line ownership representation | Accepted |
+| [0052](0052-parallelism-placement.md) | Collect is parallel, replay is sequential, aggregate is parallel by family | Accepted |
+| [0053](0053-frontend-performance-and-cardinality.md) | Bundle budget and report-side cardinality limits | Accepted |
+| [0054](0054-budget-violations-are-gates.md) | Budgets are gates, and loosening one requires a record | Accepted |
+| [0055](0055-enforcement-strategy.md) | Rules are enforced by tooling, and checker messages name the record | Accepted |
+| [0056](0056-enforced-rule-set.md) | The enforced rule set | Accepted |
+| [0057](0057-ci-gate-structure.md) | Two gates and a release path, with duration budgets | Accepted |
+| [0058](0058-conventions-document.md) | Non-enforceable patterns live in a guidance document | Accepted |
+| [0059](0059-decision-to-code-binding.md) | Constraint-bearing code carries record references | Accepted |
 
 No record is currently superseded.
 
@@ -68,14 +96,15 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 | Tier | Records |
 |---|---|
 | 1 | 0001, 0002, 0003, 0005, 0006, 0010, 0013, 0019, 0020, 0021, 0022 |
-| 2 | 0004, 0007, 0008, 0018, 0026, 0028, 0029, 0030, 0031, 0034 |
-| 3 | 0014, 0017, 0024, 0033 |
-| 4 | 0009, 0011, 0012, 0015, 0027, 0032 |
-| 5 | 0016, 0025 |
-| 6 | 0023 |
+| 2 | 0004, 0007, 0008, 0018, 0026, 0028, 0029, 0030, 0031, 0034, 0036, 0042, 0055 |
+| 3 | 0014, 0017, 0024, 0033, 0037, 0038, 0043, 0045, 0049, 0056, 0058, 0059 |
+| 4 | 0009, 0011, 0012, 0015, 0027, 0032, 0035, 0040, 0046, 0052, 0057 |
+| 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053 |
+| 6 | 0023, 0047, 0051, 0054 |
 
-Two records carry partial dependencies stated in prose rather than as a whole-record
-dependency, and are therefore placed earlier than their text implies:
+Two records carry partial dependencies stated in prose rather than as a
+whole-record dependency, and are therefore placed earlier than their text
+implies:
 
 - **0010** can be implemented before 0018, except that multi-identity selection
   produces correct work-type figures only once 0018 exists.
@@ -89,6 +118,8 @@ dependency, and are therefore placed earlier than their text implies:
 Every item below is stated in a record and repeated here so that it can be
 checked without reading the full set. The governing record is authoritative.
 
+**Product and data**
+
 - No hosting provider API is used for analysis data. (0007)
 - No repository credential is stored, encrypted, transmitted or logged, and no
   interface field accepts one. (0016)
@@ -99,16 +130,47 @@ checked without reading the full set. The governing record is authoritative.
 - No contributor list ordered by output volume; no leaderboard, score, rating,
   rank or grade. (0009)
 - A language model never assigns, invents, renames or overrides an archetype or
-  badge, and is never required for any capability. (0014)
-- No external service is required in any mode; the only runtime dependency
-  outside the binary is `git`. (0022)
-- No metric family reads another family's output. (0024)
-- A skipped family is never absent from a report and never zero-filled. (0032)
-- No exported artifact contains a raw email address, absolute local path or
-  hostname. (0033)
+  badge, and is never required for any capability. (0014, 0039)
+- Only archetype, badges and numeric summaries may be sent to a model; never raw
+  messages, paths, identities or addresses. (0039)
+- No skipped family is absent from a report, and none is zero-filled. (0032)
+- No exported artifact, API response or **log line** contains a raw email
+  address, absolute local path or hostname. (0033, 0041)
 - In public mode, person-scoped content is never addressable, indexable or
-  persisted. (0033, 0029)
+  persisted. (0029, 0033)
 - No static HTML generation; the CLI emits one file. (0034)
 - No flag to skip blame exists; replay makes it unnecessary. (0020)
-- No dates, durations, schedules or phase names in any document. (0004)
 - No billing, entitlement, licence-key or quota code. (0003)
+
+**Architecture**
+
+- No metric family reads another family's output, and no metric package imports
+  another metric package. (0024, 0040)
+- No package outside the git package executes a subprocess. (0047)
+- Git is never invoked through a shell, and output is never line-parsed. (0047)
+- No globals, package-level mutable singletons, services in `context`, or direct
+  process clock calls. (0042)
+- No bare `go` statement; every goroutine has an owner. (0044)
+- No panic is reachable from repository content or user input. (0041)
+- No external service is required in any mode; the only runtime dependency
+  outside the binary is `git`. (0022)
+- No JavaScript runtime at runtime; no C toolchain for cross-compilation.
+  (0036, 0035)
+- No visualisation library touches the DOM; no autonomous charting library is
+  used. (0037)
+- No raw colour, spacing, typography or radius value in the frontend. (0038)
+- Replay is never parallelised; parallelism degree never changes the report.
+  (0052)
+- No visualisation renders unbounded cardinality; limits are applied in the
+  report. (0053)
+
+**Process**
+
+- No dates, durations, schedules or phase names in any document. (0004)
+- No accepted record is edited to change meaning; it is superseded. (0001)
+- No checker is disabled, loosened or excepted without a record change. (0055)
+- No budget is loosened without a record; no check is deleted to fit a gate
+  budget. (0054, 0057)
+- No scheduled pipeline is the sole location of any check. (0057)
+- No direct dependency outside the allow list; no committed frontend bundle that
+  does not match its source. (0049)
