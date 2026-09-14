@@ -1,0 +1,358 @@
+# Commitography interpretation taxonomy.
+#
+# Governed by ADR-0013 (three comparison axes, no global corpus),
+# ADR-0014 (one archetype plus bounded badges), ADR-0023 (two subjects),
+# ADR-0030 (ordered rule list, versioned, language-independent ids),
+# ADR-0039 (default descriptions are mandatory).
+#
+# Evaluation: the archetype list for a subject is scanned in order and the
+# first match wins. The final entry is unconditional. Badges are evaluated
+# independently, also first-match per badge, and at most 3 are displayed.
+#
+# Axis values are defined in axes.md. Thresholds here are hand-calibrated;
+# they are not population percentiles and must never be presented as such.
+
+version: 1
+
+archetypes:
+
+  # ---------------------------------------------------------------- person --
+  person:
+
+    - id: night-watchman
+      name: Night Watchman
+      description: >
+        Most of your work lands after the rest of the world has logged off.
+        The repository's quiet hours are your loud ones.
+      when: { nocturnality: ">=0.38" }
+
+    - id: dawn-patrol
+      name: Dawn Patrol
+      description: >
+        You get there first. A large share of your commits land in the early
+        morning, before the day fills up.
+      when: { earliness: ">=0.30" }
+
+    - id: weekend-architect
+      name: Weekend Architect
+      description: >
+        Weekdays keep the lights on; weekends are when you build. A large part
+        of your contribution arrived on Saturdays and Sundays.
+      when: { weekend_presence: ">=0.35" }
+
+    - id: friday-daredevil
+      name: Friday Daredevil
+      description: >
+        You ship into the weekend. A notable share of your commits land on
+        Friday evenings, which takes a certain confidence.
+      when: { friday_evening_share: ">=0.12", cadence: ">=1.5" }
+
+    - id: comet
+      name: Comet
+      description: >
+        You arrived, burned very brightly for a short stretch, and moved on.
+        Concentrated contribution over a narrow span.
+      when: { endurance: "<0.10", cadence: ">=4.0", volume_share: ">=0.05" }
+
+    - id: metronome
+      name: Metronome
+      description: >
+        Same hours, same rhythm, over a long stretch. Your contribution graph
+        has almost no surprises in it, which is its own kind of achievement.
+      when: { regularity: ">=0.55", endurance: ">=0.40", cadence: "0.8..3.0" }
+
+    - id: sprinter
+      name: Sprinter
+      description: >
+        You work in bursts. Few active days, a great deal happening on each of
+        them.
+      when: { cadence: ">=5.0" }
+
+    - id: surgeon
+      name: Surgeon
+      description: >
+        Small, precise, single-file changes. You tend to open one thing, change
+        exactly what needs changing, and close it.
+      when: { granularity: ">=0.55", breadth: "<0.25" }
+
+    - id: avalanche
+      name: Avalanche
+      description: >
+        When you commit, a lot moves at once. Wide changes across many files in
+        a single stroke.
+      when: { breadth: ">=0.65", granularity: "<0.20" }
+
+    - id: founder
+      name: Founder
+      description: >
+        You were here at the beginning and a real part of what you wrote is
+        still here. The shape of this repository is partly your original shape.
+      when: { first_contributor: "true", persistence: ">=0.25" }
+
+    - id: restorer
+      name: Restorer
+      description: >
+        Most of what you touch is old code. You spend your time bringing the
+        past up to date rather than adding to the pile.
+      when: { restoration: ">=0.45" }
+
+    - id: sculptor
+      name: Sculptor
+      description: >
+        You return to your own recent work and reshape it. A high share of your
+        changes revise code you wrote days earlier.
+      when: { revision: ">=0.30" }
+
+    - id: diplomat
+      name: Diplomat
+      description: >
+        A large share of your changes land in other people's recent work.
+        You unblock, review by editing, and keep other threads moving.
+      when: { collaboration: ">=0.30" }
+
+    - id: groundlayer
+      name: Groundlayer
+      description: >
+        You put down foundations that other people then built over. Much of
+        what you wrote has since been rewritten by others, which is what
+        foundations are for.
+      when: { collaboration: ">=0.15", persistence: "<0.15", volume_share: ">=0.05" }
+
+    - id: lighthouse-keeper
+      name: Lighthouse Keeper
+      description: >
+        You own one part of this repository and you have owned it for a long
+        time. If that corner has a question, you are the answer.
+      when: { concentration: ">=0.60", endurance: ">=0.30" }
+
+    - id: cartographer
+      name: Cartographer
+      description: >
+        You have been almost everywhere. Your commits reach across more of the
+        directory tree than anyone's.
+      when: { reach: ">=0.60" }
+
+    - id: firefighter
+      name: Firefighter
+      description: >
+        Your commits skew heavily toward fixes, and they tend to arrive in
+        clusters. Things break; you are who turns up.
+      when: { fix_share: ">=0.45", cadence: ">=2.0" }
+
+    - id: pathfinder
+      name: Pathfinder
+      description: >
+        You start things. A large share of your commits introduce files that
+        did not exist before.
+      when: { creation: ">=0.55", new_file_share: ">=0.30" }
+
+    - id: chronicler
+      name: Chronicler
+      description: >
+        Your commit messages have bodies. Someone reading this history in three
+        years will understand it because of you.
+      when: { verbosity: ">=0.50" }
+
+    - id: telegraphist
+      name: Telegraphist
+      description: >
+        Short. Very short. Your commit subjects do not waste characters, and
+        occasionally they do not use enough of them.
+      when: { verbosity: "<0.12" }
+
+    - id: standard-bearer
+      name: Standard Bearer
+      description: >
+        Almost every one of your subjects follows the convention. The changelog
+        practically writes itself.
+      when: { formality: ">=0.85" }
+
+    - id: cyborg
+      name: Cyborg
+      description: >
+        A substantial part of your commits carry an agent's fingerprints. You
+        work with a machine in the loop and it shows in the history.
+      when: { assistance: ">=0.40" }
+
+    - id: hand-tooled
+      name: Hand Tooled
+      description: >
+        Everyone around you is committing with an agent's help. You are not.
+        Every line here has your fingerprints and no one else's.
+      when: { assistance: "<0.02", repo_assistance: ">=0.25", volume_share: ">=0.05" }
+
+    - id: steady-hand
+      name: Steady Hand
+      description: >
+        No single trait dominates your record. You show up, you contribute
+        across the repository, and nothing about your pattern is extreme.
+      when: {}          # unconditional fallback, required by ADR-0030 clause 3
+
+  # ------------------------------------------------------------ repository --
+  repository:
+
+    - id: nocturnal-workshop
+      name: Nocturnal Workshop
+      description: >
+        This repository does most of its living at night. Its busiest hours are
+        ones most calendars call free time.
+      when: { nocturnality: ">=0.35" }
+
+    - id: weekend-project
+      name: Weekend Project
+      description: >
+        Built on Saturdays and Sundays. Whatever pays the bills, it is not this.
+      when: { weekend_presence: ">=0.40" }
+
+    - id: nine-to-five
+      name: Nine to Five
+      description: >
+        Office hours, weekdays, steady. This repository keeps a working week.
+      when: { office_hours: ">=0.70", weekend_presence: "<0.10" }
+
+    - id: always-on
+      name: Always On
+      description: >
+        Commits arrive around the clock and around the week. Either the
+        contributors are spread across the world or nobody here sleeps.
+      when: { regularity: "<0.32", span_ratio: ">=0.40" }
+
+    - id: sprint-and-sleep
+      name: Sprint and Sleep
+      description: >
+        Long quiet stretches broken by bursts of intense work. This repository
+        moves in seasons.
+      when: { span_ratio: "<0.15", longest_silence_days: ">=90" }
+
+    - id: ghost-town
+      name: Ghost Town
+      description: >
+        Nothing has happened here for a long time. The history is complete; the
+        story appears to be over.
+      when: { days_since_last_commit: ">=365" }
+
+    - id: newborn
+      name: Newborn
+      description: >
+        Young, and still finding its shape. Most of what is here was written
+        very recently.
+      when: { repository_age_days: "<180" }
+
+    - id: solo-vessel
+      name: Solo Vessel
+      description: >
+        One person wrote essentially all of this. That is a strength and a
+        single point of failure at the same time.
+      when: { bus_factor: "==1", identity_count: "<=2" }
+
+    - id: duet
+      name: Duet
+      description: >
+        Two people carry this repository between them, and the code shows the
+        conversation.
+      when: { bus_factor: "<=2", identity_count: "3..6" }
+
+    - id: crowd
+      name: Crowd
+      description: >
+        Many hands. Knowledge is spread widely enough that no single departure
+        would take the map with it.
+      when: { bus_factor: ">=6" }
+
+    - id: fortress
+      name: Fortress
+      description: >
+        Knowledge here is concentrated. A small number of people account for
+        most of the surviving code.
+      when: { knowledge_concentration: ">=0.70", identity_count: ">=6" }
+
+    - id: fossil-bed
+      name: Fossil Bed
+      description: >
+        Much of this code is old and has not been touched in years. It works,
+        and nobody has needed to disturb it.
+      when: { median_line_age_days: ">=1095" }
+
+    - id: shifting-sands
+      name: Shifting Sands
+      description: >
+        Little here stays put. A high share of code is rewritten shortly after
+        it is written.
+      when: { revision: ">=0.30" }
+
+    - id: archipelago
+      name: Archipelago
+      description: >
+        Many directories, weak coupling between them. This repository is
+        several things living under one roof.
+      when: { directory_count: ">=20", coupled_file_ratio: "<0.15" }
+
+    - id: tangle
+      name: Tangle
+      description: >
+        Files here move together. A change in one place reliably means a change
+        in another, whether or not that was the intent.
+      when: { coupled_file_ratio: ">=0.40" }
+
+    - id: machine-assisted
+      name: Machine Assisted
+      description: >
+        A substantial share of this history was written with an agent in the
+        loop. This is one of the first repositories that can say so from its
+        own record.
+      when: { repo_assistance: ">=0.30" }
+
+    - id: working-repository
+      name: Working Repository
+      description: >
+        No single trait dominates. Steady contribution, spread ownership, no
+        extremes worth naming.
+      when: {}          # unconditional fallback
+
+# ------------------------------------------------------------------ badges --
+# Repo-relative by construction (ADR-0013 axis 2). A badge requiring
+# in-repository comparison is reported skipped, not awarded, when the
+# repository has a single contributor (ADR-0013 clause 5).
+
+badges:
+
+  - { id: night-owl,          name: Night Owl,           when: { rank_nocturnality: "==1", identity_count: ">=2" } }
+  - { id: early-bird,         name: Early Bird,          when: { rank_earliness: "==1", identity_count: ">=2" } }
+  - { id: weekender,          name: Weekender,           when: { rank_weekend: "==1", identity_count: ">=2" } }
+  - { id: first-light,        name: First Light,         when: { first_contributor: "true" } }
+  - { id: last-standing,      name: Last One Standing,   when: { most_recent_contributor: "true", identity_count: ">=3" } }
+  - { id: longest-streak,     name: Longest Streak,      when: { rank_streak: "==1", streak_days: ">=7" } }
+  - { id: marathon,           name: Marathon,            when: { streak_days: ">=30" } }
+  - { id: return-of-the-king, name: The Return,          when: { longest_personal_silence_days: ">=180", commits_after_return: ">=10" } }
+  - { id: one-liner,          name: One Liner,           when: { single_line_commits: ">=20" } }
+  - { id: big-bang,           name: Big Bang,            when: { rank_largest_commit: "==1", largest_commit_lines: ">=2000" } }
+  - { id: file-founder,       name: File Founder,        when: { rank_new_files: "==1", new_files_created: ">=25" } }
+  - { id: the-eraser,         name: The Eraser,          when: { deletion_ratio: ">=0.60", volume_share: ">=0.05" } }
+  - { id: typo-hunter,        name: Typo Hunter,         when: { fix_typo_commits: ">=10" } }
+  - { id: reverter,           name: Reverter,            when: { revert_commits: ">=5" } }
+  - { id: essayist,           name: Essayist,            when: { rank_message_length: "==1", mean_subject_length: ">=60" } }
+  - { id: minimalist,         name: Minimalist,          when: { very_short_subjects: ">=25" } }
+  - { id: emoji-enthusiast,   name: Emoji Enthusiast,    when: { emoji_ratio: ">=0.20" } }
+  - { id: conventionalist,    name: Conventionalist,     when: { formality: ">=0.95", commits: ">=50" } }
+  - { id: freestyler,         name: Freestyler,          when: { formality: "<0.05", repo_formality: ">=0.50" } }
+  - { id: deep-diver,         name: Deep Diver,          when: { rank_single_file_focus: "==1", single_file_ratio: ">=0.70" } }
+  - { id: everywhere,         name: Everywhere at Once,  when: { rank_reach: "==1", reach: ">=0.50" } }
+  - { id: the-untouched,      name: Keeper of the Ancients, when: { owns_oldest_untouched_file: "true" } }
+  - { id: survivor,           name: Survivor,            when: { persistence: ">=0.60", volume_share: ">=0.05" } }
+  - { id: ephemeral,          name: Written in Sand,     when: { persistence: "<0.05", volume_share: ">=0.05" } }
+  - { id: bus-factor,         name: Load Bearing,        when: { sole_owner_of_directories: ">=1" } }
+  - { id: helper,             name: The Helper,          when: { rank_collaboration: "==1", collaboration: ">=0.20" } }
+  - { id: refactorer,         name: The Refactorer,      when: { rank_restoration: "==1", restoration: ">=0.35" } }
+  - { id: coupled,            name: Knot Tier,           when: { owns_top_coupled_pair: "true" } }
+  - { id: hotspot-owner,      name: Hotspot Keeper,      when: { owns_top_hotspot: "true" } }
+  - { id: first-assist,       name: First Contact,       when: { first_assisted_commit: "true" } }
+  - { id: cyborg-badge,       name: In the Loop,         when: { assistance: ">=0.50", commits: ">=20" } }
+  - { id: purely-human,       name: Unassisted,          when: { assistance: "==0", repo_assistance: ">=0.30", commits: ">=20" } }
+  - { id: friday-shipper,     name: Friday Shipper,      when: { friday_evening_commits: ">=15" } }
+  - { id: holiday-worker,     name: Off the Clock,       when: { commits_on_dec_25_or_jan_1: ">=1" } }
+  - { id: midnight-exact,     name: Stroke of Midnight,  when: { commits_in_hour_0: ">=5" } }
+  - { id: leap-day,           name: Leap Day,            when: { commits_on_feb_29: ">=1" } }
+  - { id: same-minute,        name: Rapid Fire,          when: { max_commits_in_one_minute: ">=5" } }
+  - { id: long-haul,          name: Long Haul,           when: { personal_span_days: ">=1095" } }
+  - { id: one-day-wonder,     name: One Day Wonder,      when: { active_days: "==1", commits: ">=10" } }
+  - { id: the-completer,      name: The Completer,       when: { rank_volume: "==1", volume_share: ">=0.50" } }
