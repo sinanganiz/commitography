@@ -1,0 +1,114 @@
+# Architecture Decision Index
+
+This file lists every architecture decision record in this directory. It is
+**required reading** before making any change to this repository.
+
+Rules for working with these records are defined in
+[ADR-0001](0001-record-decisions-as-adrs.md). In short:
+
+- One decision per file. Accepted records are never edited to change meaning;
+  they are superseded by a new record.
+- Records contain no dates, durations, schedules or phase names. Ordering is
+  expressed only as implementation dependency.
+- Requirements are written as numbers or prohibitions, never as adjectives.
+
+If a proposed change contradicts an accepted record, the change is wrong unless
+a superseding record is written first.
+
+---
+
+## Records
+
+| # | Title | Status |
+|---|---|---|
+| [0001](0001-record-decisions-as-adrs.md) | Record architecture decisions as ADRs | Accepted |
+| [0002](0002-open-source-mit.md) | The project is open source under the MIT license | Accepted |
+| [0003](0003-monetization-is-not-a-goal.md) | Monetization is not a goal | Accepted |
+| [0004](0004-no-phases-or-schedule.md) | Scope is complete and unphased; no schedules are recorded | Accepted |
+| [0005](0005-hybrid-distribution.md) | Hybrid distribution — self-hosted primary, public instance secondary | Accepted |
+| [0006](0006-repository-first-person-as-lens.md) | The repository is the unit of analysis; the person is a lens | Accepted |
+| [0007](0007-local-clone-is-the-only-data-source.md) | The local git clone is the only data source | Accepted |
+| [0008](0008-wrapped-is-a-mode.md) | Wrapped is a mode of the product, not the product | Accepted |
+| [0009](0009-individual-metric-visibility.md) | Individual metrics are self-first and mode-dependent | Accepted |
+| [0010](0010-no-accounts-client-side-identity-selection.md) | No accounts; identity selection happens in the client | Accepted |
+| [0011](0011-server-mode-with-repository-registry.md) | Server mode with a persistent repository registry | Accepted |
+| [0012](0012-metric-scope.md) | Metric scope includes static analysis as a non-priority capability | Accepted |
+| [0013](0013-three-comparison-axes.md) | Comparison uses three axes and no global corpus | Accepted |
+| [0014](0014-archetype-plus-badges.md) | Interpretation is one archetype plus a bounded set of badges | Accepted |
+| [0015](0015-shareable-artifact-is-a-client-side-image.md) | The shareable artifact is a client-side image export | Accepted |
+| [0016](0016-remote-repositories-without-stored-credentials.md) | Remote repositories are supported without storing credentials | Accepted |
+| [0017](0017-persistence-model.md) | Persistence stores reports, normalized commit records and an incremental checkpoint | Accepted |
+| [0018](0018-dual-breakdown-work-type.md) | Work-type data is stored as a dual breakdown by editor and prior owner | Accepted |
+| [0019](0019-verification-regime.md) | Golden fixtures, invariants and a performance budget | Accepted |
+| [0020](0020-five-stage-pipeline.md) | The pipeline has five stages | Accepted |
+| [0021](0021-report-json-is-the-snapshot-contract.md) | `report.json` is the snapshot contract; history lives behind the API | Accepted |
+| [0022](0022-no-required-external-services.md) | The product never requires an external service | Accepted |
+| [0023](0023-wrapped-subjects.md) | Wrapped exists for two subjects — the repository and the person within it | Accepted |
+| [0024](0024-metric-family-interface.md) | Metric families declare their inputs and never read each other | Accepted |
+| [0025](0025-cross-repository-person-records.md) | Cross-repository person records are data normalization, not accounts | Accepted |
+| [0026](0026-configuration-planes.md) | Configuration is split into an operational plane and an analysis plane | Accepted |
+| [0027](0027-concurrency-model.md) | Two job classes, interactive priority, and one active job per repository | Accepted |
+| [0028](0028-information-architecture.md) | Three levels, and lenses are states rather than pages | Accepted |
+| [0029](0029-mode-and-capability-model.md) | One mode switch selects a fixed capability set | Accepted |
+| [0030](0030-archetype-taxonomy.md) | Archetypes are assigned by an ordered rule list over absolute thresholds | Accepted |
+| [0031](0031-schema-versioning.md) | Document-level and family-level versioning | Accepted |
+| [0032](0032-family-status-reporting.md) | Every family reports a status; absence is never silent | Accepted |
+| [0033](0033-identity-privacy-layers.md) | Raw identities stay internal; exported artifacts carry no raw email | Accepted |
+| [0034](0034-cli-output.md) | The CLI emits `report.json` only | Accepted |
+
+No record is currently superseded.
+
+---
+
+## Dependency tiers
+
+Derived from the `Dependencies` sections. This is an ordering constraint, not a
+schedule (ADR-0004). Records in the same tier have no dependency on each other.
+
+| Tier | Records |
+|---|---|
+| 1 | 0001, 0002, 0003, 0005, 0006, 0010, 0013, 0019, 0020, 0021, 0022 |
+| 2 | 0004, 0007, 0008, 0018, 0026, 0028, 0029, 0030, 0031, 0034 |
+| 3 | 0014, 0017, 0024, 0033 |
+| 4 | 0009, 0011, 0012, 0015, 0027, 0032 |
+| 5 | 0016, 0025 |
+| 6 | 0023 |
+
+Two records carry partial dependencies stated in prose rather than as a whole-record
+dependency, and are therefore placed earlier than their text implies:
+
+- **0010** can be implemented before 0018, except that multi-identity selection
+  produces correct work-type figures only once 0018 exists.
+- **0019** can be established before the records it tests; each invariant
+  becomes assertable when its subject record is implemented.
+
+---
+
+## Prohibitions, collected
+
+Every item below is stated in a record and repeated here so that it can be
+checked without reading the full set. The governing record is authoritative.
+
+- No hosting provider API is used for analysis data. (0007)
+- No repository credential is stored, encrypted, transmitted or logged, and no
+  interface field accepts one. (0016)
+- No user accounts, passwords, sessions or third-party sign-in. (0010)
+- No telemetry, no corpus collection, no transmission of analysis results. (0013)
+- No population percentile, global benchmark or cross-user comparison is stated
+  or implied. (0013)
+- No contributor list ordered by output volume; no leaderboard, score, rating,
+  rank or grade. (0009)
+- A language model never assigns, invents, renames or overrides an archetype or
+  badge, and is never required for any capability. (0014)
+- No external service is required in any mode; the only runtime dependency
+  outside the binary is `git`. (0022)
+- No metric family reads another family's output. (0024)
+- A skipped family is never absent from a report and never zero-filled. (0032)
+- No exported artifact contains a raw email address, absolute local path or
+  hostname. (0033)
+- In public mode, person-scoped content is never addressable, indexable or
+  persisted. (0033, 0029)
+- No static HTML generation; the CLI emits one file. (0034)
+- No flag to skip blame exists; replay makes it unnecessary. (0020)
+- No dates, durations, schedules or phase names in any document. (0004)
+- No billing, entitlement, licence-key or quota code. (0003)
