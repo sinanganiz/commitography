@@ -8,8 +8,12 @@ from it.
 A **wave** is not a time period. It means: nothing in wave *n* can begin before
 everything it requires, which lives in an earlier wave, is done. Packages inside
 one wave have no dependency on each other and may be worked in parallel — but
-only when their `Files` sections do not overlap. Check that before dispatching
-two packages at once.
+only when their `Files` sections do not overlap. Because work happens directly
+on `main` rather than on per-package branches, two packages can only be worked
+at once from separate working copies; check the `Files` sections first.
+
+Status lives in this table only. Package files carry no status field, so the
+two can never disagree.
 
 `Ready` packages carry full step-level detail. `Draft` packages carry goal,
 records and dependencies only; each is expanded into a full package before it is
@@ -41,7 +45,7 @@ dependencies without a stated reason.
 | [0002](0002-neutralise-contradicting-documents.md) | foundation | Neutralise contradicting documents | ADR-0001, ADR-0004, ADR-0021, ADR-0034 | WP-0001 | Ready |
 | [0003](0003-enforcement-skeleton.md) | foundation | Enforcement skeleton | ADR-0055, ADR-0056, ADR-0057 | WP-0001 | Ready |
 | [0004](0004-fixtures-and-golden-harness.md) | foundation | Deterministic fixtures and golden harness | ADR-0019 | WP-0003 | Ready |
-| [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040 | WP-0003, WP-0004 | Ready |
+| [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040, ADR-0060, ADR-0061 | WP-0003, WP-0004 | Ready |
 | 0006 | foundation | Error model and reason codes | ADR-0041, ADR-0032 | WP-0005 | Draft |
 | 0007 | foundation | Dependency wiring and ambient state removal | ADR-0042 | WP-0005 | Draft |
 | 0008 | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032 | WP-0005, WP-0006 | Draft |
@@ -188,6 +192,3 @@ dependencies without a stated reason.
 | 0058 | One image serves both modes; private remotes are documented via host secrets. |
 | 0059 | Release artifacts are reproducible, accompanied by an SBOM and signed. |
 | 0060 | README and user documentation describe what exists, with no invalidated claim. |
-
-Status lives in this table only. Package files do not carry a status field,
-so the two can never disagree.

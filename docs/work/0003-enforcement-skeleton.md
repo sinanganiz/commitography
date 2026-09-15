@@ -33,7 +33,14 @@ gates run within their budgets.
    contents as CI.
 6. Add the dependency allow list required by ADR-0049 clause 2 and 3, populated
    from the WP-0001 audit, and the checker that compares it against the
-   manifests.
+   manifests. The audit records every current direct dependency; entries it
+   marks as forbidden by a record are **not** added to the list, so that the
+   packages removing them are not blocked by their own allow list.
+7. Pin the toolchain versions the gates build with, for Go and for the frontend
+   build, and record them where CI reads them. The audit records that the
+   declared Go version is older than the semantics the tree already relies on;
+   raising the declared version itself is WP-0005 clause 10, but the gates must
+   build with a version that works before that package runs.
 
 ## Out of scope
 - Checkers whose subject does not exist yet: determinism, incremental

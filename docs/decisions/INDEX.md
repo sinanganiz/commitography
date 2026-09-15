@@ -83,6 +83,9 @@ a superseding record is written first.
 | [0057](0057-ci-gate-structure.md) | Two gates and a release path, with duration budgets | Accepted |
 | [0058](0058-conventions-document.md) | Non-enforceable patterns live in a guidance document | Accepted |
 | [0059](0059-decision-to-code-binding.md) | Constraint-bearing code carries record references | Accepted |
+| [0060](0060-package-destinations.md) | Destinations for packages the layout does not name | Accepted |
+| [0061](0061-link-time-build-metadata.md) | Link-time build metadata is the one exception to the no-package-variable rule | Accepted |
+| [0062](0062-metric-catalogue-authority.md) | `docs/metrics.md` is the authoritative metric catalogue | Accepted |
 
 No record is currently superseded.
 
@@ -98,8 +101,8 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 | 1 | 0001, 0002, 0003, 0005, 0006, 0010, 0013, 0019, 0020, 0021, 0022 |
 | 2 | 0004, 0007, 0008, 0018, 0026, 0028, 0029, 0030, 0031, 0034, 0036, 0042, 0055 |
 | 3 | 0014, 0017, 0024, 0033, 0037, 0038, 0043, 0045, 0049, 0056, 0058, 0059 |
-| 4 | 0009, 0011, 0012, 0015, 0027, 0032, 0035, 0040, 0046, 0052, 0057 |
-| 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053 |
+| 4 | 0009, 0011, 0012, 0015, 0027, 0032, 0035, 0040, 0046, 0052, 0057, 0061, 0062 |
+| 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053, 0060 |
 | 6 | 0023, 0047, 0051, 0054 |
 
 Two records carry partial dependencies stated in prose rather than as a
@@ -141,6 +144,12 @@ checked without reading the full set. The governing record is authoritative.
 - No static HTML generation; the CLI emits one file. (0034)
 - No flag to skip blame exists; replay makes it unnecessary. (0020)
 - No billing, entitlement, licence-key or quota code. (0003)
+- No package sits outside the named layout; `internal/checks/` may import
+  anything and nothing may import it. (0060)
+- Exactly one file declares link-time variables, and build metadata never enters
+  a metric, a cache key or a golden comparison. (0061)
+- No metric, reason code or cardinality limit exists that `docs/metrics.md` does
+  not define. (0062)
 
 **Architecture**
 
