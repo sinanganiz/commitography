@@ -18,8 +18,8 @@ interface ReportState {
 }
 
 /**
- * Loads the completed report of a succeeded job and renders it with the
- * repository dashboard components.
+ * Loads the completed report of a succeeded job and renders it with the same
+ * dashboard components as the static CLI page.
  */
 export function JobReport({ id, theme }: { id: string; theme: PaletteMode }): ReactElement {
   const headingId = useId();

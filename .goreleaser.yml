@@ -116,7 +116,7 @@ brews:
       name: homebrew-tap
       token: '{{ .Env.TAP_GITHUB_TOKEN }}'
     homepage: https://github.com/sinanganiz/commitography
-    description: Analyse a git repository's commit history
+    description: Turn a git repository's history into a self-contained static dashboard
     license: MIT
     dependencies:
       - name: git
@@ -130,5 +130,5 @@ scoops:
       name: scoop-bucket
       token: '{{ .Env.TAP_GITHUB_TOKEN }}'
     homepage: https://github.com/sinanganiz/commitography
-    description: Analyse a git repository's commit history
+    description: Turn a git repository's history into a self-contained static dashboard
     license: MIT

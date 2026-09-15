@@ -2,7 +2,7 @@ import type { Report } from '../types';
 
 const DATA_ID = 'commitography-data';
 
-/** Reads the report the Go renderer inlined into a legacy HTML page (removed by ADR-0034). */
+/** Reads the report the Go renderer inlined into a static page. */
 export function readEmbeddedReport(): Report | null {
   const node = document.getElementById(DATA_ID);
   if (!node || !node.textContent) return null;

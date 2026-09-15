@@ -7,9 +7,9 @@
   </head>
   <body>
     <!--
-      This page exists only for `npm run dev`. The built CSS and JS are
-      embedded in the Go binary. internal/render also inlines them into the
-      legacy HTML page, which ADR-0034 removes from the CLI.
+      This page exists only for `npm run dev`. The shipped dashboard is
+      assembled by internal/render, which inlines the built CSS, the built JS
+      and the report JSON into one self-contained file.
     -->
     <div id="commitography-root"></div>
     <script type="application/json" id="commitography-data">

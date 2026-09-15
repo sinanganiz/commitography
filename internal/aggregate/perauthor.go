@@ -27,9 +27,8 @@ type AuthorSummary struct {
 	ActiveDays    int       `json:"activeDays"`
 }
 
-// PerAuthor is the per-contributor section, present only when --per-author was
-// passed. ADR-0009 removes that opt-in: per-person figures are available to the
-// self-hosted operator.
+// PerAuthor is the opt-in per-contributor section, present only when
+// --per-author was passed.
 type PerAuthor struct {
 	Authors []AuthorSummary `json:"authors"`
 }

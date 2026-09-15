@@ -1,5 +1,4 @@
-// Package render writes a report to disk as report.json and as the legacy HTML
-// pages, which ADR-0034 removes from the CLI.
+// Package render turns a report into the self-contained HTML dashboard.
 package render
 
 import (
@@ -26,16 +25,15 @@ var assets embed.FS
 // returned filesystem is read-only and remains backed by the binary.
 func AssetFS() fs.FS { return assets }
 
-// IndexFile and ReportFile are the files Render writes. ADR-0034 permits only
-// ReportFile as CLI output.
+// IndexFile and ReportFile are the only files Render ever writes.
 const (
 	IndexFile  = "index.html"
 	ReportFile = "report.json"
 )
 
-// pageTemplate is the whole document of the legacy HTML page that ADR-0034
-// removes. CSS, JS and the report are inlined into it, with no adjacent files
-// and no network access.
+// pageTemplate is the whole document. CSS, JS and the report are inlined, so
+// the output opens correctly from anywhere with no adjacent files and no
+// network access.
 var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
 <html lang="en" data-mode="{{.Mode}}"{{if .Year}} data-year="{{.Year}}"{{end}}{{if .PreviousYearCommits}} data-previous-year-commits="{{.PreviousYearCommits}}"{{end}}>
 <head>
@@ -67,9 +65,11 @@ type pageData struct {
 	Data template.JS
 }
 
-// Render writes report.json and the legacy index.html page, which ADR-0034
-// removes, to the output directory. No other file is created, and no existing
-// file is removed.
+// Render writes the complete dashboard to the output directory.
+//
+// It produces exactly one page, index.html, with everything inlined, plus
+// report.json as a separate machine-readable artifact that the page does not
+// reference. No other file is created, and no existing file is removed.
 func Render(r *aggregate.Report, outputDir string) error {
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("creating %s: %w", outputDir, err)
@@ -88,8 +88,8 @@ func Render(r *aggregate.Report, outputDir string) error {
 	return writeFile(filepath.Join(outputDir, IndexFile), page)
 }
 
-// RenderWrapped writes the legacy year-in-review HTML page, which ADR-0034
-// removes from the CLI, alongside whatever Render produced.
+// RenderWrapped writes the year-in-review page, again as one self-contained
+// file, alongside whatever the dashboard produced.
 func RenderWrapped(r *aggregate.Report, outputDir string, year int, previousYearCommits *int) error {
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("creating %s: %w", outputDir, err)
@@ -118,7 +118,8 @@ func WrappedFileName(year int) string {
 	return fmt.Sprintf("wrapped-%d.html", year)
 }
 
-// WriteReportJSON writes report.json on its own, without an HTML page.
+// WriteReportJSON writes the report on its own, for --json runs and for tools
+// that consume the artifact rather than the page.
 func WriteReportJSON(r *aggregate.Report, path string) error {
 	if dir := filepath.Dir(path); dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {

@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react';
 import type { HTMLAttributes, ReactElement } from 'react';
 
 /**
- * The heading level of the report's top title. The legacy HTML page starts at h1;
+ * The heading level of the report's top title. The static page starts at h1;
  * inside the local application the job title already owns h2, so the report
  * starts one level lower and the outline stays unbroken either way.
  */

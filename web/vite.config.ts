@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite';
 
-// The bundle is embedded into the Go binary and inlined into the legacy HTML
-// page that ADR-0034 removes, so the build currently produces exactly one JS
-// file and one CSS file with stable names. Hashed filenames and code splitting
-// are both disabled for that reason.
+// The bundle is embedded into the Go binary and then inlined into a single
+// HTML file, so the build must produce exactly one JS file and one CSS file
+// with stable names. Hashed filenames and code splitting are both disabled for
+// that reason.
 export default defineConfig({
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
