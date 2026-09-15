@@ -3,7 +3,6 @@
 **Area:** foundation
 **Implements:** ADR-0001, ADR-0004, ADR-0021, ADR-0034
 **Requires:** WP-0001
-**Status:** Ready
 
 ## Goal
 No document in the repository states a rule that contradicts the accepted

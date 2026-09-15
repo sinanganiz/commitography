@@ -3,7 +3,6 @@
 **Area:** foundation
 **Implements:** ADR-0055, ADR-0056, ADR-0057
 **Requires:** WP-0001
-**Status:** Ready
 
 ## Goal
 Every rule in ADR-0056 whose subject already exists is enforced by tooling, the

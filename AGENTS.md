@@ -70,6 +70,34 @@ treat a record as negotiable.
     reference names and working tree content are attacker-controlled in every
     mode. See ADR-0045.
 
+### Git
+
+- Work directly on `main`. Do not create a branch for a work package.
+- Commit in logical steps as you go. Do not put a whole package in one commit,
+  and do not leave the package uncommitted at the end.
+- Every commit message names its package: `WP-NNNN: <what changed>`.
+- Every commit must leave the repository in a working state: the fast gate
+  passes. Do not commit a broken intermediate step and fix it in the next one.
+- A commit that changes a golden file states why in its body (ADR-0019). A
+  commit that changes a budget value states the measurement behind it
+  (ADR-0054).
+- Do not amend, rebase, reset or force-push a commit that already exists.
+- Do not push without being asked.
+
+### Reporting
+
+When you finish, or when you stop, report exactly this:
+
+1. Each `Definition of done` item, with the evidence that satisfies it.
+2. The actual output of every command in `Verification`. Paste it; do not
+   summarise it and do not describe what it would show.
+3. Anything in `In scope` you did not do, and why.
+4. Anything you noticed that is out of scope and left alone.
+5. If you stopped early, which rule stopped you.
+
+Do not claim an item is satisfied without its evidence. Do not change the
+package's status in `docs/work/INDEX.md`.
+
 ## When a record is silent
 
 If the records do not cover a question, the question is an implementation detail
@@ -103,4 +131,5 @@ If a package contradicts a record, the record wins. Stop and report the
 contradiction rather than choosing.
 
 A package is never marked `Done` by the agent that implemented it. Report the
-result; the status in `INDEX.md` is changed by the author.
+result; status lives only in `docs/work/INDEX.md` and is changed by the author.
+Package files carry no status field.

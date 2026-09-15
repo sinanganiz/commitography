@@ -3,7 +3,6 @@
 **Area:** foundation
 **Implements:** —
 **Requires:** —
-**Status:** Ready
 
 ## Goal
 `docs/work/audit.md` exists and classifies every file currently in the

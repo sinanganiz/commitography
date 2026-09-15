@@ -3,7 +3,6 @@
 **Area:** foundation
 **Implements:** ADR-0040
 **Requires:** WP-0003, WP-0004
-**Status:** Ready
 
 ## Goal
 The source tree matches the layout in ADR-0040, the import direction rule is

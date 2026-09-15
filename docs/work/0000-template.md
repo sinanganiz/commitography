@@ -3,7 +3,6 @@
 **Area:** foundation | core | pipeline | metrics | interpret | storage | server | frontend | wrapped | distribution
 **Implements:** ADR-NNNN, ADR-NNNN
 **Requires:** WP-NNNN, WP-NNNN  (ordering only, never dates — ADR-0004)
-**Status:** Draft | Ready | Done
 
 ## Goal
 One sentence. What is true in the repository once this package is merged.

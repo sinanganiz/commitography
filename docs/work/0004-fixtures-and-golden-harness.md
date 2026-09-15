@@ -3,7 +3,6 @@
 **Area:** foundation
 **Implements:** ADR-0019
 **Requires:** WP-0003
-**Status:** Ready
 
 ## Goal
 Fixture repositories are byte-for-byte reproducible on any machine, and the

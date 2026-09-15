@@ -37,7 +37,7 @@ dependencies without a stated reason.
 
 | # | Area | Title | Implements | Requires | Status |
 |---|---|---|---|---|---|
-| [0001](0001-repository-audit.md) | foundation | Repository audit | — | — | Ready |
+| [0001](0001-repository-audit.md) | foundation | Repository audit | — | — | Done |
 | [0002](0002-neutralise-contradicting-documents.md) | foundation | Neutralise contradicting documents | ADR-0001, ADR-0004, ADR-0021, ADR-0034 | WP-0001 | Ready |
 | [0003](0003-enforcement-skeleton.md) | foundation | Enforcement skeleton | ADR-0055, ADR-0056, ADR-0057 | WP-0001 | Ready |
 | [0004](0004-fixtures-and-golden-harness.md) | foundation | Deterministic fixtures and golden harness | ADR-0019 | WP-0003 | Ready |
@@ -188,3 +188,6 @@ dependencies without a stated reason.
 | 0058 | One image serves both modes; private remotes are documented via host secrets. |
 | 0059 | Release artifacts are reproducible, accompanied by an SBOM and signed. |
 | 0060 | README and user documentation describe what exists, with no invalidated claim. |
+
+Status lives in this table only. Package files do not carry a status field,
+so the two can never disagree.
