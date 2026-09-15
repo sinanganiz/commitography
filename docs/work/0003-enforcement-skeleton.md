@@ -11,7 +11,10 @@ gates run within their budgets.
 
 ## In scope
 1. Configure the linter with every rule in ADR-0056 table 1 whose subject
-   exists in the repository today. A rule whose subject does not yet exist is
+   exists in the repository today. **Every check runs over tracked files only,
+   never over the working tree.** Generated fixture repositories are untracked
+   and are deliberately not valid source; a check that walks the tree reports
+   them and trains everyone to ignore its output. A rule whose subject does not yet exist is
    recorded in a tracking list inside the linter configuration as a comment
    naming the work package that will introduce it.
 2. Create the checker harness: a test package in which each checker is a

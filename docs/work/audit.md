@@ -8,7 +8,7 @@ and proposes no fix.
 clause 1 declares current by construction: `docs/decisions/` (61 files),
 `docs/metrics.md`, `docs/conventions.md`, `AGENTS.md` and
 `internal/pipeline/interpret/taxonomy/` (3 files). 204 tracked files minus 67
-excluded leaves 137 rows in section 1.
+excluded leaves 138 rows in section 1.
 
 **Classification.** `keep`: no record requires the file to change. `change`:
 a record requires its content or its location to change; a move required by
