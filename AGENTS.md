@@ -76,3 +76,31 @@ If the records do not cover a question, the question is an implementation detail
 and your judgement applies. If the question determines an interface, an artifact
 format, or a product guarantee, it is not an implementation detail — write a
 record.
+
+## Work
+
+Work is defined in [`docs/work/INDEX.md`](docs/work/INDEX.md) as numbered work
+packages. There are no phases, sprints or dates.
+
+When you are given a work package number:
+
+1. Read that package file in full before making any change.
+2. Read every record listed in its `Implements` field.
+3. Confirm every package in its `Requires` field has status `Done`. If one does
+   not, stop and say so.
+4. Work only inside its `Files` allow list. If the task cannot be completed
+   without touching a file outside that list, **stop and report it**. Do not
+   widen the list. A package that needs a file it may not touch is either
+   mis-scoped or missing a dependency, and both are decisions for the author,
+   not for you.
+5. Do nothing that is not in `In scope`, including improvements that look
+   obviously correct. Note them at the end of your report instead.
+6. Finish only when every statement in `Definition of done` is satisfied. Run
+   the commands in `Verification` and report their actual output. "It works" is
+   not a completion criterion.
+
+If a package contradicts a record, the record wins. Stop and report the
+contradiction rather than choosing.
+
+A package is never marked `Done` by the agent that implemented it. Report the
+result; the status in `INDEX.md` is changed by the author.
