@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/sinanganiz/commitography/docs/report-schema.json",
+  "$id": "https://github.com/sinanganiz/commitography/docs/legacy/report-schema-v0.json",
   "title": "Commitography report",
   "description": "The analysis artifact written to report.json. Within a schema version, fields are never removed or repurposed, so external tools may depend on this shape.",
   "type": "object",
