@@ -1,7 +1,7 @@
 // Browser audit of the local web dashboard: builds the binary and its own
 // repositories, runs the server, and drives headless Chrome through every job
-// flow, the recent jobs list, keyboard and responsive checks, and the static
-// pages opened offline.
+// flow, the recent jobs list, keyboard and responsive checks, and the legacy
+// HTML pages, which ADR-0034 removes, opened offline.
 //
 //   npm run e2e
 //

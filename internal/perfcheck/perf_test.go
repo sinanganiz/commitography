@@ -82,7 +82,7 @@ func run(m *testing.M) int {
 }
 
 // generateRepository writes a linear history with git fast-import: each commit
-// rewrites one of files files, so blame has real history to walk.
+// rewrites one of files files, so every file has a long history.
 func generateRepository(dir string, commits, files int) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err

@@ -30,9 +30,8 @@ const indexShell = `<!doctype html>
 </html>
 `
 
-// NewHandler serves the embedded local application shell and assets. API paths
-// are reserved for the job server and return 404 until their handlers are
-// registered by the later server milestones.
+// NewHandler serves the embedded local application shell, its assets and the
+// API routes that App.Handler registers.
 func NewHandler() http.Handler {
 	return NewApp(nil).Handler()
 }

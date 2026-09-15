@@ -61,8 +61,8 @@ export function JobView({
 
   const progress = status?.progress ?? null;
 
-  // Record each stage observed during this visit. Blame can run after the
-  // metric stages, so the order shown is the order seen rather than a fixed plan.
+  // Record each stage observed during this visit. Stages are not guaranteed to
+  // report in a fixed order, so the order shown is the order seen.
   useEffect(() => {
     if (!progress) return;
     setStages((current) => {

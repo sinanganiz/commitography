@@ -16,8 +16,8 @@ import (
 const minWrappedCommits = 10
 
 // Run performs one complete analysis without rendering or writing output
-// files. It keeps the Phase 1 pipeline order so CLI and server callers receive
-// the same report for the same inputs.
+// files. It runs one fixed stage order so CLI and server callers receive the
+// same report for the same inputs.
 func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) {
 	if ctx == nil {
 		ctx = context.Background()

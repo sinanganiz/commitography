@@ -137,8 +137,8 @@ func TestDefaultPatternsMatchAtAnyDepth(t *testing.T) {
 
 // Matching stays literal, but the built-in list carries a `**/` form of every
 // root-anchored default so a monorepo's nested lockfiles and dependency trees
-// are excluded too. Without these, exit criterion 4 held only for repositories
-// with a single package at the root.
+// are excluded too. Without these, the defaults excluded generated paths only in
+// repositories with a single package at the root.
 func TestDefaultsCoverNestedMonorepoPaths(t *testing.T) {
 	pf, err := NewPathFilter(config.Default(), t.TempDir())
 	if err != nil {

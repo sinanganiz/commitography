@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	// blameSampleSize caps how many files are blamed. Blame is the most
-	// expensive operation in the pipeline, so it is sampled rather than
-	// exhaustive, and the sample is deterministic so two runs agree.
+	// blameSampleSize caps how many files the legacy code-age metric blames.
+	// ADR-0020 replaces sampled blame with replay over all tracked lines. The
+	// sample is deterministic so two runs agree.
 	blameSampleSize = 300
 
 	// mostTouchedLimit and fileTypeLimit keep the report proportional to the
@@ -30,7 +30,7 @@ const (
 	fileTypeLimit    = 15
 
 	// binarySniffBytes is how much of a file is inspected for a NUL byte when
-	// deciding whether blame would say anything meaningful about it.
+	// deciding whether it is a text file.
 	binarySniffBytes = 8000
 )
 
@@ -90,8 +90,8 @@ type CodeMetrics struct {
 	FileTypeDistribution []FileTypeShare `json:"fileTypeDistribution"`
 	CodeAge              []YearLines     `json:"codeAge"`
 
-	// SurvivingFromFirstYear is null when blame was skipped, so the dashboard
-	// hides the section instead of showing a misleading zero.
+	// SurvivingFromFirstYear is null when the blame step did not run. ADR-0020
+	// removes the option to skip it.
 	SurvivingFromFirstYear *float64 `json:"survivingFromFirstYear"`
 
 	CodeAgeSampledFiles int `json:"codeAgeSampledFiles"`
@@ -313,7 +313,7 @@ func trackedFilesContext(ctx context.Context, repoPath string) ([]string, error)
 	return gitcmd.LinesContext(ctx, repoPath, "ls-tree", "-r", "--name-only", "HEAD")
 }
 
-// textCandidates removes files blame cannot say anything useful about: those
+// textCandidates keeps the files the code-age sample may use: it removes those
 // carrying a NUL byte near the start, and those absent from the working tree.
 // The result is sorted so sampling is reproducible.
 func textCandidates(repoPath string, paths []string) []string {

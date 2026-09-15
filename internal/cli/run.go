@@ -21,7 +21,7 @@ const (
 	ExitOK         = 0
 	ExitInternal   = 1
 	ExitUsage      = 2
-	ExitStrictWarn = 3 // reserved for --strict, not implemented in Phase 1
+	ExitStrictWarn = 3 // never returned; ADR-0034 defines only codes 0, 1 and 2
 )
 
 // minWrappedCommits is the smallest year worth summarizing. Below it the cards

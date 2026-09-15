@@ -46,7 +46,7 @@ const (
 
 // ProgressEvent describes one observable point in an analysis. Fraction is
 // nil when the current stage cannot provide a useful estimate. The JSON names
-// are the Phase 1.5 job status contract consumed by the web application.
+// are the job status contract consumed by the web application.
 type ProgressEvent struct {
 	Sequence  uint64   `json:"sequence"`
 	Stage     string   `json:"stage"`
@@ -60,8 +60,8 @@ type ProgressEvent struct {
 // ProgressSink receives progress events from an analysis run.
 type ProgressSink func(ProgressEvent)
 
-// RunFunc is the callable shape of the shared analysis service. The concrete
-// implementation is added by the orchestration work package.
+// RunFunc is the callable shape of the shared analysis service, which Run
+// implements.
 type RunFunc func(context.Context, Options, ProgressSink) (*Result, error)
 
 // UsageError marks an input, configuration or repository validation failure.

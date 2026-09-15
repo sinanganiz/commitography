@@ -65,7 +65,8 @@ type ChurnHotspot struct {
 }
 
 // KnowledgeShare reports how concentrated a directory's history is. The
-// contributor responsible is named only when --per-author was requested.
+// contributor responsible is named only when --per-author was requested, an
+// opt-in that ADR-0009 removes.
 type KnowledgeShare struct {
 	Path           string  `json:"path"`
 	LargestShare   float64 `json:"largestShare"`

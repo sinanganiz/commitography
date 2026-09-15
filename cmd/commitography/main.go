@@ -1,5 +1,5 @@
-// Command commitography turns a git repository's history into a self-contained
-// static dashboard.
+// Command commitography analyses a git repository's commit history. The HTML
+// pages it still writes are output that ADR-0034 removes from the CLI.
 package main
 
 import (
@@ -27,16 +27,13 @@ func newRootCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "commitography [path] [flags]",
-		Short: "Turn a git repository's history into a static dashboard",
-		Long: `Commitography reads a git repository's commit history and writes a
-self-contained HTML dashboard describing it: when the repository is awake, which
-files it keeps returning to, where knowledge is concentrated, and what its commit
-messages reveal about how the team works.
+		Short: "Analyse a git repository's commit history",
+		Long: `Commitography reads a git repository's commit history and describes the
+repository: when it is awake, which files it keeps returning to, where knowledge
+is concentrated, and what its commit messages reveal about how the team works.
 
-Nothing is uploaded anywhere. The tool reads the repository and writes a file.
-
-Repository-level by default; per-contributor breakdowns are opt-in behind
---per-author.`,
+Nothing is uploaded anywhere. The tool reads the repository and writes to the
+output directory.`,
 		Args:          cobra.MaximumNArgs(1),
 		SilenceUsage:  true,
 		SilenceErrors: true,

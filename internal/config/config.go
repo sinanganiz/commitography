@@ -65,13 +65,13 @@ var DefaultExcludeAuthors = []string{
 // DefaultExcludePaths are the generated, vendored and bundled paths that would
 // otherwise dominate every line-based metric.
 //
-// Patterns are matched literally with doublestar.Match, as Task 3.2 requires,
-// which anchors an unprefixed pattern to the repository root. A monorepo keeps
-// its lockfiles and dependency trees one level down — web/pnpm-lock.yaml,
+// Patterns are matched literally with doublestar.Match, which anchors an
+// unprefixed pattern to the repository root. A monorepo keeps its lockfiles and
+// dependency trees one level down — web/pnpm-lock.yaml,
 // packages/api/node_modules/ — so each root-anchored default is paired with a
-// `**/` form that reaches any depth. Without the pair, exit criterion 4 held
-// only for single-package repositories. The matching rule is unchanged; only
-// this list is.
+// `**/` form that reaches any depth. Without the pair, the defaults excluded
+// generated paths only in single-package repositories. The matching rule is
+// unchanged; only this list is.
 var DefaultExcludePaths = []string{
 	"**/*.lock",
 	"package-lock.json",

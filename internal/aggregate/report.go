@@ -71,8 +71,8 @@ type Input struct {
 	Resolver   *identity.Resolver
 	PathFilter *filter.PathFilter
 
-	// NoBlame skips the sampled-blame metrics, which dominate runtime on large
-	// repositories.
+	// NoBlame skips the sampled-blame metrics. ADR-0020 removes this option;
+	// replay makes blame unnecessary.
 	NoBlame bool
 	// PerAuthor populates the opt-in per-contributor section.
 	PerAuthor bool

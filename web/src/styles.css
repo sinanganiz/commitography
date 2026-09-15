@@ -1,8 +1,9 @@
 /* System font stack only. The page loads nothing from the network, so a web
    font is not an option and would not be worth the weight if it were.
 
-   The report renders in two hosts: the static CLI page, whose <html> carries
-   .cg-static, and the local application, where MUI owns the page. Rules that
+   The report renders in two hosts: the legacy HTML page that ADR-0034 removes,
+   whose <html> carries .cg-static, and the local application, where MUI owns
+   the page. Rules that
    touch bare elements are therefore scoped to one of those two roots so they
    never restyle the application around an embedded report. */
 

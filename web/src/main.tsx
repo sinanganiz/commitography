@@ -12,8 +12,9 @@ function mount(): void {
   const root = createRoot(container);
   const html = document.documentElement;
 
-  // The Go renderer marks every static page with its mode; the local server's
-  // application shell carries no mode and bootstraps from the API instead.
+  // The Go renderer marks each legacy HTML page, which ADR-0034 removes, with
+  // its mode; the local server's application shell carries no mode and
+  // bootstraps from the API instead.
   const mode = html.dataset.mode;
   if (mode !== 'dashboard' && mode !== 'wrapped') {
     root.render(<AppShell />);

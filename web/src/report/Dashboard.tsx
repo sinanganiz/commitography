@@ -16,13 +16,13 @@ interface ReportDashboardProps {
    * owns the theme, the page landmarks and the footer's claim about files.
    */
   embedded?: boolean;
-  /** The embedding application's theme. The static page follows the system. */
+  /** The embedding application's theme. The legacy HTML page follows the system. */
   theme?: ReportTheme;
 }
 
 /**
- * The repository dashboard. The static CLI page and the local application
- * render this same component, so both show the same sections for a report.
+ * The repository dashboard. The local application and the legacy HTML page,
+ * which ADR-0034 removes from the CLI, render this same component.
  */
 export function ReportDashboard({ report, embedded = false, theme }: ReportDashboardProps): ReactElement {
   const sections = dashboardSections.map((Section, index) => <Section key={index} report={report} />);
@@ -96,7 +96,7 @@ function Summary({ report, embedded = false }: { report: Report; embedded?: bool
   );
 }
 
-/** Switches the static page theme. Held in memory only: the page uses no storage API. */
+/** Switches the legacy HTML page theme. Held in memory only: the page uses no storage API. */
 function ThemeToggle(): ReactElement {
   const [label, setLabel] = useState<string>();
   const toggle = () => {

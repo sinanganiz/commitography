@@ -1,5 +1,5 @@
-// Mirrors the Phase 1.5 local API contract in docs/phase-1.5/m0-contracts.md.
-// The report body itself is typed by ../types and is not duplicated here.
+// Types and calls for the local HTTP API. The report body itself is typed by
+// ../types and is not duplicated here.
 
 import type { Report } from '../types';
 

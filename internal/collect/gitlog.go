@@ -93,9 +93,8 @@ func (o Options) progress(current, total int) {
 // commit list across cores is the only lever that moves it, and it is what
 // makes the 100,000-commits-in-60-seconds requirement reachable.
 //
-// This is a deliberate departure from the letter of Task 1.3 ("a single git
-// invocation"). The rule exists to forbid per-commit git calls, which are the
-// actual pathology; the sharded read keeps the one-diff-per-commit property.
+// A single pass does not mean a single git invocation. What must be avoided is
+// a git call per commit; the sharded read keeps the one-diff-per-commit property.
 // Small repositories still take the single-invocation path.
 func Collect(opts Options) (*model.History, error) {
 	info, err := PreflightContext(opts.context(), opts.RepoPath)
