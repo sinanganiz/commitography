@@ -51,7 +51,7 @@ archives:
     files:
       - README.md
       - LICENSE
-      - docs/report-schema.json
+      - docs/legacy/report-schema-v0.json
 
 checksum:
   name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'

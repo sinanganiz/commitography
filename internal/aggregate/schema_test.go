@@ -25,7 +25,7 @@ import (
 
 func loadSchema(t *testing.T) map[string]any {
 	t.Helper()
-	path := filepath.Join("..", "..", "docs", "report-schema.json")
+	path := filepath.Join("..", "..", "docs", "legacy", "report-schema-v0.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("reading %s: %v", path, err)
@@ -121,7 +121,7 @@ func TestReportValidatesAgainstCommittedSchema(t *testing.T) {
 			}
 
 			if problems := validate(schema, decoded, "$", schema); len(problems) > 0 {
-				t.Errorf("report does not validate against docs/report-schema.json:\n  %s",
+				t.Errorf("report does not validate against docs/legacy/report-schema-v0.json:\n  %s",
 					strings.Join(problems, "\n  "))
 			}
 		})
