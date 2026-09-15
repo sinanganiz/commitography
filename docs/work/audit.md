@@ -31,6 +31,7 @@ information is stated.
 | `Dockerfile` | change | ADR-0034, ADR-0046, ADR-0047, ADR-0029 | Default command writes a dashboard into `/repo/out` inside the analysed repository; system-level `safe.directory` relies on system git config; no mode switch. |
 | `LICENSE` | keep | ADR-0002 | |
 | `Makefile` | change | ADR-0049, ADR-0057, ADR-0040 | `BUILD_DATE` from the clock makes builds non-reproducible; no gate targets; targets name `internal/dockersmoke` and `internal/perfcheck`. |
+| `PROMPTS.md` | keep | — | |
 | `README.md` | change | ADR-0034, ADR-0020, ADR-0009, ADR-0011, ADR-0004, ADR-0031 | Documents static HTML output, `--no-blame`, `--wrapped` HTML, `--json`, opt-in per-author framing, phase documents and dead links. |
 | `cmd/commitography/main.go` | change | ADR-0034, ADR-0020, ADR-0009, ADR-0041 | Flags `--wrapped`, `--json`, `--no-blame`, `--per-author`; help text describes a static HTML dashboard. |
 | `cmd/commitography/serve.go` | change | ADR-0029, ADR-0010, ADR-0042 | No mode switch; non-loopback bind has no operator passphrase; job manager constructed implicitly inside the server package. |
