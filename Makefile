@@ -110,7 +110,8 @@ lint: lint-go
 #                      record integrity, taxonomy integrity, decision
 #                      reference, dependency allow list, goroutine ownership,
 #                      fixture conditions, golden comparison on small
-#                      fixtures, frontend type check and unit tests
+#                      fixtures, golden commit messages, frontend type
+#                      check and unit tests
 #   full (15 minutes)  everything in fast, plus vulnerability scanning,
 #                      golden comparison on the large fixture and fixture
 #                      determinism (on every supported platform)

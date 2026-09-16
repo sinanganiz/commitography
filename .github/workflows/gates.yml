@@ -7,11 +7,11 @@
 # faster (ADR-0057 clause 3).
 #
 # Measured durations
-#   fast 41s to 1m26s, full 47s to 49s, over four runs on the author's Windows
-#   machine. The upper figures are a cold npm install; the lower ones have warm
-#   module, build and npm caches. Those full figures predate fixture
-#   determinism, which took 43s to 44s on its own over three runs on the same
-#   machine.
+#   On the author's Windows machine, with warm module, build and npm caches,
+#   after WP-0004 (fixture generation, golden comparison, fixture
+#   determinism), one timed run each: fast 1m38s, full 3m09s. Fixture
+#   generation takes 25s of each; fixture determinism takes 56s of the full
+#   gate.
 #
 #   Neither gate has been measured on this runner: this workflow has not run
 #   yet. The first run measures both, and these numbers are replaced by that
@@ -35,7 +35,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # The golden commit message checker reads every commit that changed a
+      # golden file, so it needs full history (ADR-0064 clause 1).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - id: toolchain
         run: make toolchain-versions >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -54,6 +58,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - id: toolchain
         run: make toolchain-versions >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
