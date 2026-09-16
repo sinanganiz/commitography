@@ -7,20 +7,41 @@ import (
 	"testing"
 )
 
-// bindingSubjects are the files of ADR-0059 clause 1 that exist today at their
-// layout location and therefore must carry a record reference.
+// bindingSubjects are the files of ADR-0059 clause 1 that exist and therefore
+// must carry a record reference. For a package, the file is the one holding
+// its package comment.
 //
-// Narrowed scope: the clause 1 subjects that exist only in their pre-layout
-// form are not listed yet, because adding their references is application
-// source this checker's package may not touch. WP-0005 clause 8 adds the
-// references and widens this list: the git invocation package
-// (internal/gitcmd), the report type definitions (internal/aggregate/report.go)
-// and the pipeline stage packages (internal/collect, internal/aggregate). The
-// remaining subjects (metric family packages, storage, the mode switch and
-// capability matrix, frontend design tokens) are added by the package that
-// creates each one.
+// Subjects that do not exist yet are added by the package that creates each:
+// the storage interface and its implementation (WP-0032), the mode switch and
+// capability matrix (WP-0045) and the frontend design tokens (WP-0047).
+// internal/storage exists only as a reserved, empty package.
 func bindingSubjects() []string {
 	return []string{
+		// Each metric family package.
+		"internal/metrics/commitsize/commitsize.go",
+		"internal/metrics/coupling/coupling.go",
+		"internal/metrics/files/files.go",
+		"internal/metrics/hotspot/hotspot.go",
+		"internal/metrics/messages/messages.go",
+		"internal/metrics/ownership/ownership.go",
+		"internal/metrics/temporal/temporal.go",
+		// Each pipeline stage package.
+		"internal/pipeline/collect/gitlog.go",
+		"internal/pipeline/replay/doc.go",
+		"internal/pipeline/aggregate/aggregate.go",
+		"internal/pipeline/interpret/doc.go",
+		"internal/pipeline/render/render.go",
+		// The git invocation package.
+		"internal/git/git.go",
+		// The report type definitions.
+		"internal/core/report.go",
+		"internal/core/code.go",
+		"internal/core/temporal.go",
+		"internal/core/messages.go",
+		"internal/core/social.go",
+		"internal/core/notables.go",
+		"internal/core/perauthor.go",
+		// The archetype taxonomy definition file.
 		"internal/pipeline/interpret/taxonomy/taxonomy.yml",
 	}
 }

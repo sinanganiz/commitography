@@ -1,3 +1,6 @@
+// Report types for the notables section, part of the report.json contract
+// (ADR-0021, ADR-0031).
+
 package core
 
 import "github.com/sinanganiz/commitography/internal/core/filter"

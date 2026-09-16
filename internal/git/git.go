@@ -1,6 +1,8 @@
-// Package git is the single place commitography shells out to git. Every
-// invocation goes through here so that flags like core.quotePath are applied
-// uniformly and stderr is always turned into a useful error.
+// Package git is the single place commitography shells out to git (ADR-0065
+// clause 1). Every invocation goes through here so that flags like
+// core.quotePath are applied uniformly and stderr is always turned into a
+// useful error. The invocation hardening of ADR-0065 clause 2 and the context
+// binding of ADR-0044 belong here and nowhere else.
 package git
 
 import (

@@ -1,7 +1,9 @@
 // Package core holds what every other package may depend on: the report
 // types, privacy rewriting and the shared definitions the metric families
-// compute over (ADR-0040 clause 1). Configuration, identity, the domain model
-// and filtering live in subpackages beneath it (ADR-0066 clause 2).
+// compute over (ADR-0040 clause 1). The report types are the snapshot
+// contract of ADR-0021 and are versioned under ADR-0031. Configuration,
+// identity, the domain model and filtering live in subpackages beneath it
+// (ADR-0066 clause 2).
 package core
 
 import "time"

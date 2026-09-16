@@ -1,4 +1,5 @@
-// Package render turns a report into the self-contained HTML dashboard.
+// Package render is the render stage (ADR-0020): it turns a report into its
+// output files and holds the embedded frontend bundle (ADR-0034, ADR-0036).
 package render
 
 import (

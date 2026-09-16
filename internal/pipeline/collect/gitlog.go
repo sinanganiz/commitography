@@ -1,3 +1,6 @@
+// Package collect is the collect stage (ADR-0020): one pass over the history
+// that produces the normalized commit records, read in parallel (ADR-0052)
+// through the git package (ADR-0065).
 package collect
 
 import (

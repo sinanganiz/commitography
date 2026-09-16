@@ -1,3 +1,6 @@
+// Report types for the messages section, part of the report.json contract
+// (ADR-0021, ADR-0031).
+
 package core
 
 // LongestSubject describes the most verbose commit message in the history.
