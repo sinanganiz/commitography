@@ -65,16 +65,19 @@ init_repo() {
 	git -C "$dir" config core.precomposeunicode true
 }
 
-# commit <dir> <timestamp> <tz> <author-name> <author-email> <subject>
+# commit <dir> <timestamp> <tz> <author-name> <author-email> <subject> [body]
 commit() {
 	dir="$1"; ts="$2"; tz="$3"; name="$4"; email="$5"; subject="$6"
+	shift 6
+	# The optional body becomes a second -m, i.e. a separate paragraph.
+	set -- -m "$subject" ${1+-m "$1"}
 	GIT_AUTHOR_NAME="$name" \
 	GIT_AUTHOR_EMAIL="$email" \
 	GIT_AUTHOR_DATE="$ts $tz" \
 	GIT_COMMITTER_NAME="$name" \
 	GIT_COMMITTER_EMAIL="$email" \
 	GIT_COMMITTER_DATE="$ts $tz" \
-	git -C "$dir" commit -q --no-verify -m "$subject"
+	git -C "$dir" commit -q --no-verify "$@"
 }
 
 # The i-th author. Ada appears under two addresses so identity resolution has
@@ -415,5 +418,37 @@ printf 'token_21 = 21\n' >>"$dir/src/syntax/parser.go"
 git -C "$dir" add -A
 commit "$dir" "$((BASE_TS + 4 * DAY))" "+0000" "Ada Lovelace" "ada@example.com" \
 	"feat: add a token"
+
+# --------------------------------------------------------------------------
+# agent-coauthor-trailers/ - commits carrying coding-agent co-author trailers,
+# in the spellings agents actually emit, interleaved with unassisted commits
+# and with a commit co-authored by a person
+# --------------------------------------------------------------------------
+echo "building agent-coauthor-trailers/"
+dir="$root/agent-coauthor-trailers"
+init_repo "$dir"
+n=0
+for kind in none claude none copilot person cursor none claude-lower none; do
+	printf 'change %d\n' "$n" >>"$dir/app.txt"
+	git -C "$dir" add -A
+	case $kind in
+		claude) body="Co-Authored-By: Claude <noreply@anthropic.com>" ;;
+		claude-lower) body="Explains the change.
+
+Co-authored-by: claude <noreply@anthropic.com>" ;;
+		copilot) body="Co-authored-by: Copilot <198982749+Copilot@users.noreply.github.com>" ;;
+		cursor) body="Co-authored-by: Cursor Agent <cursoragent@cursor.com>" ;;
+		person) body="Co-authored-by: Grace Hopper <grace@example.com>" ;;
+		*) body="" ;;
+	esac
+	if [ -n "$body" ]; then
+		commit "$dir" "$((BASE_TS + n * DAY))" "+0200" "Ada Lovelace" \
+			"ada@example.com" "feat: change $n" "$body"
+	else
+		commit "$dir" "$((BASE_TS + n * DAY))" "+0200" "Ada Lovelace" \
+			"ada@example.com" "feat: change $n"
+	fi
+	n=$((n + 1))
+done
 
 echo "fixtures built under $root"

@@ -1,5 +1,8 @@
 # Commit hashes of the generated fixtures (ADR-0019 clause 1).
 # Written by COMMITOGRAPHY_UPDATE_FIXTURE_HASHES=1 make fixture-determinism.
+agent-coauthor-trailers HEAD refs/heads/main
+agent-coauthor-trailers refs/heads/main 78b372a66bbd808f8a31cc0582d7b4864864906b
+agent-coauthor-trailers commits 9
 basic HEAD refs/heads/main
 basic refs/heads/main 3e75c9c7359e3e5f996743ec8943dffa09411104
 basic commits 50
