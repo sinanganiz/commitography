@@ -49,7 +49,7 @@ GO_UNIT_PACKAGES := $(shell go list ./... | grep -v '/internal/checks$$')
 
 .PHONY: build web test fixtures lint clean docker-image docker-smoke perfcheck \
 	gate-fast gate-full toolchain-versions build-go lint-go test-go checks \
-	test-web vulncheck-go vulncheck-web
+	test-web vulncheck-go vulncheck-web fixture-determinism
 
 build: web
 	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/commitography
@@ -107,7 +107,8 @@ lint: lint-go
 #                      record integrity, taxonomy integrity, decision
 #                      reference, dependency allow list, goroutine ownership,
 #                      frontend type check and unit tests
-#   full (15 minutes)  everything in fast, plus vulnerability scanning
+#   full (15 minutes)  everything in fast, plus vulnerability scanning and
+#                      fixture determinism (on every supported platform)
 #
 # Checks ADR-0057 assigns to a gate whose subject does not exist yet — golden
 # comparison, invariants, family contract, namespace violation, goroutine leak,
@@ -116,7 +117,10 @@ lint: lint-go
 # count, cross-compilation, bundle integrity — are added by the package that
 # creates each subject. WP-0004 clause 8 adds the golden comparisons.
 FAST_CHECKS := build-go lint-go test-go checks test-web
-FULL_CHECKS := vulncheck-go vulncheck-web
+FULL_CHECKS := vulncheck-go vulncheck-web fixture-determinism
+
+# Checkers that belong to the full gate and are therefore skipped by `checks`.
+FULL_CHECKERS := ^TestFixtureDeterminism$$
 
 gate-fast: $(FAST_CHECKS)
 
@@ -140,7 +144,21 @@ test-go:
 # The checkers read tracked files, so their result depends on the index rather
 # than on package sources alone; -count=1 keeps the test cache out of it.
 checks:
-	go test -count=1 ./internal/checks
+	go test -count=1 -skip '$(FULL_CHECKERS)' ./internal/checks
+
+# ADR-0019 clause 1. Generates the fixture set twice, outside the default
+# fixture root, and compares both generations with each other and with
+# testdata/fixture-hashes.txt. The runs sit under a directory named testdata
+# so that the go tool does not load the generated .go files.
+FIXTURE_RUNS := out/testdata/fixture-determinism
+
+fixture-determinism:
+	rm -rf $(FIXTURE_RUNS)
+	sh testdata/build-fixtures.sh $(FIXTURE_RUNS)/first >/dev/null
+	sh testdata/build-fixtures.sh $(FIXTURE_RUNS)/second >/dev/null
+	COMMITOGRAPHY_FIXTURES_FIRST='$(CURDIR)/$(FIXTURE_RUNS)/first' \
+	COMMITOGRAPHY_FIXTURES_SECOND='$(CURDIR)/$(FIXTURE_RUNS)/second' \
+	go test -count=1 -v -run '$(FULL_CHECKERS)' ./internal/checks
 
 test-web:
 	cd web && npm ci && npm run typecheck && npm test
