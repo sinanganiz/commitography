@@ -1,12 +1,14 @@
 package server
 
 import (
+	"encoding/binary"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+	"unicode/utf16"
 
 	"github.com/sinanganiz/commitography/internal/git"
 )
@@ -37,8 +39,8 @@ func TestWindowsJunctionOutOfTheRootIsRejected(t *testing.T) {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 	link := filepath.Join(root, "junction")
-	if out, err := exec.Command("cmd", "/c", "mklink", "/J", link, outside).CombinedOutput(); err != nil {
-		t.Skipf("mklink /J unavailable: %v: %s", err, out)
+	if err := createJunction(link, outside); err != nil {
+		t.Skipf("creating a junction is unavailable: %v", err)
 	}
 	app, err := NewAppWithAllowedRoots(nil, []string{root})
 	if err != nil {
@@ -127,4 +129,66 @@ func TestWindowsExtendedAndUNCPathsCannotLeaveTheRoot(t *testing.T) {
 	} else {
 		t.Logf("the UNC spelling of the allowed root %s was refused: %v", inside, err)
 	}
+}
+
+// Reparse point constants from the Windows SDK (winnt.h, winioctl.h).
+const (
+	ioReparseTagMountPoint = 0xA0000003
+	fsctlSetReparsePoint   = 0x000900A4
+)
+
+// createJunction makes link a directory junction to target through the
+// Windows API, as `mklink /J` does, without starting a process or a shell
+// (ADR-0065 clause 4). The reparse data is a MOUNT_POINT_REPARSE_BUFFER whose
+// substitute name is the NT path of target and whose print name is target.
+func createJunction(link, target string) error {
+	target, err := filepath.Abs(target)
+	if err != nil {
+		return err
+	}
+	if err := os.Mkdir(link, 0o755); err != nil {
+		return err
+	}
+
+	substitute := utf16.Encode([]rune(`\??\` + target))
+	print := utf16.Encode([]rune(target))
+	const nul = 2 // bytes of one UTF-16 terminator
+	pathBytes := 2*len(substitute) + nul + 2*len(print) + nul
+
+	buf := make([]byte, 16+pathBytes)
+	binary.LittleEndian.PutUint32(buf[0:], ioReparseTagMountPoint)
+	binary.LittleEndian.PutUint16(buf[4:], uint16(8+pathBytes))            // ReparseDataLength
+	binary.LittleEndian.PutUint16(buf[8:], 0)                              // SubstituteNameOffset
+	binary.LittleEndian.PutUint16(buf[10:], uint16(2*len(substitute)))     // SubstituteNameLength
+	binary.LittleEndian.PutUint16(buf[12:], uint16(2*len(substitute)+nul)) // PrintNameOffset
+	binary.LittleEndian.PutUint16(buf[14:], uint16(2*len(print)))          // PrintNameLength
+	offset := 16
+	for _, u := range substitute {
+		binary.LittleEndian.PutUint16(buf[offset:], u)
+		offset += 2
+	}
+	offset += nul
+	for _, u := range print {
+		binary.LittleEndian.PutUint16(buf[offset:], u)
+		offset += 2
+	}
+
+	name, err := syscall.UTF16PtrFromString(link)
+	if err != nil {
+		return err
+	}
+	handle, err := syscall.CreateFile(name, syscall.GENERIC_WRITE, 0, nil, syscall.OPEN_EXISTING,
+		syscall.FILE_FLAG_OPEN_REPARSE_POINT|syscall.FILE_FLAG_BACKUP_SEMANTICS, 0)
+	if err != nil {
+		_ = os.Remove(link)
+		return err
+	}
+	defer syscall.CloseHandle(handle)
+
+	var returned uint32
+	if err := syscall.DeviceIoControl(handle, fsctlSetReparsePoint, &buf[0], uint32(len(buf)), nil, 0, &returned, nil); err != nil {
+		_ = os.Remove(link)
+		return err
+	}
+	return nil
 }

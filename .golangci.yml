@@ -168,18 +168,22 @@ linters:
           deny:
             - pkg: github.com/sinanganiz/commitography/internal/checks
               desc: "ADR-0060 clause 2: nothing may import internal/checks"
+        # Process execution is imported by the git package and by the closed
+        # set of sites in ADR-0065 clause 3, tests included (clause 7): the
+        # verification packages under internal/checks/ and the browser
+        # opener. The one test that needed a platform construct creates it
+        # through the Windows API and starts no process. Adding a site here
+        # requires a superseding record (ADR-0065 clause 6).
         process-execution:
           list-mode: lax
           files:
             - $all
             - "!**/internal/git/**"
-            # Narrowed until WP-0005 clause 6 confines the remaining non-git
-            # process execution to the sites ADR-0065 clause 3 permits.
-            - "!**/internal/server/listener.go"
-            - "!**/internal/server/path_windows_test.go"
+            - "!**/internal/checks/**"
+            - "!**/internal/server/browser.go"
           deny:
             - pkg: os/exec
-              desc: "ADR-0047: only the git package may import process execution"
+              desc: "ADR-0065: only the git package and the clause 3 sites may import process execution"
 
     forbidigo:
       analyze-types: true

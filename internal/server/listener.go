@@ -9,8 +9,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
-	"runtime"
 	"strconv"
 	"time"
 )
@@ -66,7 +64,7 @@ func Serve(ctx context.Context, opts Options) error {
 	if opts.Open {
 		opener := opts.OpenBrowser
 		if opener == nil {
-			opener = openBrowser
+			opener = func(url string) error { return openBrowser(ctx, listener.Addr(), url) }
 		}
 		if err := opener(url); err != nil {
 			fmt.Fprintf(opts.Errors, "warning: could not open browser: %v\n", err)
@@ -133,21 +131,4 @@ func shutdownOnContext(ctx context.Context, httpServer *http.Server, onShutdown 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = httpServer.Shutdown(shutdownCtx)
-}
-
-func openBrowser(url string) error {
-	var command string
-	var args []string
-	switch runtime.GOOS {
-	case "windows":
-		command = "rundll32"
-		args = []string{"url.dll,FileProtocolHandler", url}
-	case "darwin":
-		command = "open"
-		args = []string{url}
-	default:
-		command = "xdg-open"
-		args = []string{url}
-	}
-	return exec.Command(command, args...).Run()
 }

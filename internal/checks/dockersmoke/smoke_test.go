@@ -1,9 +1,14 @@
 //go:build dockersmoke
 
+// Process execution in this file is permitted by ADR-0065 clause 3: it runs the
+// toolchain, the container runtime and the built binary. Every process gets a
+// fixed argument vector, no shell and a timeout (ADR-0065 clause 4).
+
 package dockersmoke
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -83,7 +88,9 @@ func buildImage(root, tag string) error {
 	}
 	defer os.RemoveAll(dir)
 
-	build := exec.Command("go", "build", "-trimpath", "-o", filepath.Join(dir, "commitography"), "./cmd/commitography")
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-o", filepath.Join(dir, "commitography"), "./cmd/commitography")
 	build.Dir = root
 	build.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS=linux", "GOARCH="+arch)
 	if out, err := build.CombinedOutput(); err != nil {
@@ -137,7 +144,7 @@ func TestImageKeepsTheCLIContract(t *testing.T) {
 	if !strings.HasPrefix(out, "git version") {
 		t.Errorf("git --version = %q", out)
 	}
-	out, err = docker("run", "--rm", "--entrypoint", "sh", image, "-c", "ls /usr/local/bin")
+	out, err = docker("run", "--rm", "--entrypoint", "ls", image, "/usr/local/bin")
 	must(t, err, out)
 	if out != "commitography" {
 		t.Errorf("/usr/local/bin holds %q, want only commitography", out)
@@ -369,9 +376,14 @@ func requireEnvironment(t *testing.T) {
 	}
 }
 
+// commandTimeout bounds every process these tests start (ADR-0065 clause 4).
+const commandTimeout = 10 * time.Minute
+
 // docker runs the Docker CLI and returns its combined, trimmed output.
 func docker(args ...string) (string, error) {
-	out, err := exec.Command("docker", args...).CombinedOutput()
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "docker", args...).CombinedOutput()
 	return strings.TrimSpace(string(out)), err
 }
 

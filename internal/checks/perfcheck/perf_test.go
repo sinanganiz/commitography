@@ -1,5 +1,9 @@
 //go:build perfcheck
 
+// Process execution in this file is permitted by ADR-0065 clause 3: it runs the
+// toolchain, the container runtime and the built binary. Every process gets a
+// fixed argument vector, no shell and a timeout (ADR-0065 clause 4).
+
 package perfcheck
 
 import (
@@ -423,7 +427,9 @@ func buildBinary(t *testing.T, goos, goarch string) string {
 	if goos == "windows" {
 		name += ".exe"
 	}
-	build := exec.Command("go", "build", "-trimpath", "-o", filepath.Join(dir, name), "./cmd/commitography")
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-o", filepath.Join(dir, name), "./cmd/commitography")
 	build.Dir = checkout
 	build.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+goos, "GOARCH="+goarch)
 	if out, err := build.CombinedOutput(); err != nil {
@@ -440,14 +446,17 @@ func TestNativeStartupAndCLI(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		port := freePort(t)
 		started := time.Now()
-		cmd := exec.Command(binary, "serve", "--listen", fmt.Sprintf("127.0.0.1:%d", port), "--allowed-root", repos)
+		ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+		cmd := exec.CommandContext(ctx, binary, "serve", "--listen", fmt.Sprintf("127.0.0.1:%d", port), "--allowed-root", repos)
 		if err := cmd.Start(); err != nil {
+			cancel()
 			t.Fatal(err)
 		}
 		ok := waitForOK(fmt.Sprintf("http://127.0.0.1:%d/", port), 30*time.Second)
 		startups = append(startups, time.Since(started))
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
+		cancel()
 		if !ok {
 			t.Fatal("the native server did not answer")
 		}
@@ -461,7 +470,10 @@ func TestNativeStartupAndCLI(t *testing.T) {
 				args = append(args, "--no-blame")
 			}
 			started := time.Now()
-			if out, err := exec.Command(binary, args...).CombinedOutput(); err != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+			out, err := exec.CommandContext(ctx, binary, args...).CombinedOutput()
+			cancel()
+			if err != nil {
 				t.Fatalf("native CLI on %s: %v: %s", target.name, err, out)
 			}
 			t.Logf("native CLI %-26s no-blame=%-5v %s", target.name, noBlame, time.Since(started).Round(time.Millisecond))
@@ -469,8 +481,14 @@ func TestNativeStartupAndCLI(t *testing.T) {
 	}
 }
 
+// commandTimeout bounds every process these tests start (ADR-0065 clause 4).
+const commandTimeout = 10 * time.Minute
+
+// docker runs the Docker CLI and returns its combined, trimmed output.
 func docker(args ...string) (string, error) {
-	out, err := exec.Command("docker", args...).CombinedOutput()
+	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "docker", args...).CombinedOutput()
 	return strings.TrimSpace(string(out)), err
 }
 
