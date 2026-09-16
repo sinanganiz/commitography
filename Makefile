@@ -45,11 +45,11 @@ GOVULNCHECK   := go run golang.org/x/vuln/cmd/govulncheck@v1.8.0
 
 # Unit tests and checkers are separate gate entries, so the checker package is
 # not also run as part of the unit test target.
-GO_UNIT_PACKAGES := $(shell go list ./... | grep -v '/internal/checks$$')
+GO_UNIT_PACKAGES := $(shell go list ./... | grep -vE '/internal/checks(/|$$)')
 
 .PHONY: build web test fixtures lint clean docker-image docker-smoke perfcheck \
 	gate-fast gate-full toolchain-versions build-go lint-go test-go checks \
-	test-web vulncheck-go vulncheck-web fixture-determinism
+	typecheck-web test-web vulncheck-go vulncheck-web fixture-determinism
 
 build: web
 	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/commitography
@@ -118,18 +118,38 @@ lint: lint-go
 # capability matrix, model-free equivalence, performance budgets, subprocess
 # count, cross-compilation, bundle integrity — are added by the package that
 # creates each subject. WP-0004 clause 8 adds the golden comparisons.
-FAST_CHECKS := build-go lint-go test-go checks test-web
+FAST_CHECKS := build-go lint-go test-go checks typecheck-web test-web
 FULL_CHECKS := vulncheck-go vulncheck-web fixture-determinism
 
 # Checkers that belong to the full gate and are therefore skipped by `checks`.
 FULL_CHECKERS := ^TestFixtureDeterminism$$
 
+# Every gate prints the number of checks run, passed, failed and skipped
+# (ADR-0064 clause 4). Go tests and frontend tests count one per test; every
+# other step is one check. All steps run even after one fails, so the summary
+# is complete; the gate then fails if any step did.
+GATE_DIR    := out/gate
+GATESUMMARY := go run ./internal/checks/gatesummary
+
+define run-gate
+	@rm -rf $(GATE_DIR) && mkdir -p $(GATE_DIR)
+	@status=0; \
+	for step in $(1); do \
+		if $(MAKE) --no-print-directory $$step; then result=pass; else result=fail; status=1; fi; \
+		$(GATESUMMARY) step $(GATE_DIR) $$step $$result || status=1; \
+	done; \
+	$(GATESUMMARY) report $(GATE_DIR) $(2) || status=1; \
+	exit $$status
+endef
+
 # Fixture generation is gate setup, not a check: every fixture-dependent test
 # needs it, and a gate establishes its checks' preconditions first (ADR-0064
-# clause 1). Make builds prerequisites in the order listed.
-gate-fast: fixtures $(FAST_CHECKS)
+# clause 1). A generation failure stops the gate before any check runs.
+gate-fast: fixtures
+	$(call run-gate,$(FAST_CHECKS),fast)
 
-gate-full: fixtures $(FAST_CHECKS) $(FULL_CHECKS)
+gate-full: fixtures
+	$(call run-gate,$(FAST_CHECKS) $(FULL_CHECKS),full)
 
 # Read by CI to pin its toolchain to the versions above.
 toolchain-versions:
@@ -144,12 +164,12 @@ lint-go:
 	$(GOLANGCI_LINT) run ./...
 
 test-go:
-	go test $(GO_UNIT_PACKAGES)
+	go test -json $(GO_UNIT_PACKAGES) | $(GATESUMMARY) gotest $(GATE_DIR) test-go
 
 # The checkers read tracked files, so their result depends on the index rather
 # than on package sources alone; -count=1 keeps the test cache out of it.
 checks:
-	go test -count=1 -skip '$(FULL_CHECKERS)' ./internal/checks
+	go test -json -count=1 -skip '$(FULL_CHECKERS)' ./internal/checks/... | $(GATESUMMARY) gotest $(GATE_DIR) checks
 
 # ADR-0019 clause 1. Generates the fixture set twice, outside the default
 # fixture root, and compares both generations with each other and with
@@ -163,10 +183,17 @@ fixture-determinism:
 	sh testdata/build-fixtures.sh $(FIXTURE_RUNS)/second >/dev/null
 	COMMITOGRAPHY_FIXTURES_FIRST='$(CURDIR)/$(FIXTURE_RUNS)/first' \
 	COMMITOGRAPHY_FIXTURES_SECOND='$(CURDIR)/$(FIXTURE_RUNS)/second' \
-	go test -count=1 -v -run '$(FULL_CHECKERS)' ./internal/checks
+	go test -json -count=1 -run '$(FULL_CHECKERS)' ./internal/checks \
+		| $(GATESUMMARY) gotest $(GATE_DIR) fixture-determinism
+
+typecheck-web:
+	cd web && npm ci && npm run typecheck
 
 test-web:
-	cd web && npm ci && npm run typecheck && npm test
+	rm -f $(GATE_DIR)/vitest-report.json
+	cd web && npm ci && npm test -- --reporter=default --reporter=json \
+		--outputFile.json=../$(GATE_DIR)/vitest-report.json
+	$(GATESUMMARY) vitest $(GATE_DIR) test-web $(GATE_DIR)/vitest-report.json
 
 vulncheck-go:
 	$(GOVULNCHECK) ./...
