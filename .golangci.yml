@@ -33,8 +33,8 @@ version: "2"
 
 run:
   # Checkers and unit tests are linted with the code they check. The two
-  # build-tagged packages (dockersmoke, perfcheck) are not loaded without their
-  # tags; WP-0005 moves them under internal/checks/.
+  # build-tagged packages under internal/checks/ (dockersmoke, perfcheck) are
+  # not loaded without their tags.
   tests: true
 
 linters:

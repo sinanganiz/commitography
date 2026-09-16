@@ -51,7 +51,7 @@ func TestMain(m *testing.M) {
 }
 
 func run(m *testing.M) int {
-	root, err := filepath.Abs(filepath.Join("..", ".."))
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

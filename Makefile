@@ -77,13 +77,13 @@ docker-image:
 # their own image, or test COMMITOGRAPHY_IMAGE when it is set, and need Docker
 # and `make fixtures`.
 docker-smoke:
-	go test -tags dockersmoke -count=1 -v ./internal/dockersmoke
+	go test -tags dockersmoke -count=1 -v ./internal/checks/dockersmoke
 
 # Measures analysis time, server responsiveness, cancellation latency, retained
 # memory, startup and Docker overhead against generated repositories. Set
 # COMMITOGRAPHY_PERF_REPO to add a real repository.
 perfcheck:
-	go test -tags perfcheck -count=1 -v -timeout 60m ./internal/perfcheck
+	go test -tags perfcheck -count=1 -v -timeout 60m ./internal/checks/perfcheck
 
 # Full-gate checkers need inputs their own targets prepare, so they are left
 # to those targets.
