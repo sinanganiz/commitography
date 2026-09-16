@@ -1,0 +1,49 @@
+# What each generated fixture exercises. One "<fixture> <condition>" pair per
+# line; a fixture may exercise several conditions.
+#
+# The fixture names predate this list and are kept because application tests
+# refer to them. This list, not the names, keeps coverage visible (WP-0004
+# clause 4a). TestFixtureConditions fails when a required condition has no
+# fixture, when a generated fixture has no condition, or when a line names a
+# fixture the generator does not produce.
+#
+# Required conditions (WP-0004 clause 4):
+#   single-contributor            one person makes every commit
+#   one-person-two-addresses      one person commits under two addresses
+#   renames-and-copied-block      renamed files and a block copied between files
+#   hostile-names                 path names legal on every supported platform
+#                                 but awkward to handle (ADR-0019 clause 1)
+#   above-outlier-threshold       a commit large enough to count as bulk
+#   generated-and-vendored-paths  lockfiles, vendored, bundled and generated code
+#   agent-coauthor-trailers       agent co-author trailers among unassisted commits
+#   multi-year-gap                years without any commit
+#   shallow-clone                 a clone with truncated history
+#   large-fixture                 the fixture used for performance measurement;
+#                                 exactly one, compared in the full gate only
+
+basic                     one-person-two-addresses
+basic                     timezone-offsets
+basic                     conventional-and-free-form-subjects
+basic                     year-boundary
+mailmap                   one-person-two-addresses
+mailmap                   mailmap-file
+merges                    merge-commits
+merges                    squash-commits
+binary                    hostile-names
+binary                    binary-content
+binary                    markup-in-subject
+noise                     above-outlier-threshold
+noise                     generated-and-vendored-paths
+bots                      bot-authors
+coupling                  single-contributor
+coupling                  co-changing-files
+shallow                   shallow-clone
+empty                     no-commits
+single                    single-contributor
+single                    single-commit
+renames-and-copied-block  renames-and-copied-block
+agent-coauthor-trailers   agent-coauthor-trailers
+agent-coauthor-trailers   human-coauthor-trailer
+multi-year-gap            multi-year-gap
+multi-year-gap            single-contributor
+large-history             large-fixture

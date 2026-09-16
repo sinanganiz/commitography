@@ -108,7 +108,7 @@ lint: lint-go
 #   fast (5 minutes)   build, format, vet, configuration rules, unit tests,
 #                      record integrity, taxonomy integrity, decision
 #                      reference, dependency allow list, goroutine ownership,
-#                      frontend type check and unit tests
+#                      fixture conditions, frontend type check and unit tests
 #   full (15 minutes)  everything in fast, plus vulnerability scanning and
 #                      fixture determinism (on every supported platform)
 #
