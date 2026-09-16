@@ -472,4 +472,49 @@ for start in 1488362400 1672653600; do
 	done
 done
 
+# --------------------------------------------------------------------------
+# large-history/ - the designated large fixture for performance measurement
+#
+# LARGE_COMMITS commits by twelve authors over forty files, one commit every
+# six hours. Each file has thirty lines and line j changes on every (j+1)-th
+# rewrite, so some lines churn and some stay put. Every tenth commit touches
+# two files. The history is written through git fast-import, which produces
+# the same objects as committing one by one, at a fraction of the cost.
+# LC_ALL=C makes awk's length() count bytes, which fast-import requires.
+# --------------------------------------------------------------------------
+LARGE_COMMITS=20000
+echo "building large-history/"
+dir="$root/large-history"
+init_repo "$dir"
+LC_ALL=C awk -v n="$LARGE_COMMITS" -v base="$BASE_TS" '
+function data(s) { printf "data %d\n%s", length(s), s }
+function content(k, rev,    j, s) {
+	s = ""
+	for (j = 0; j < 30; j++) s = s sprintf("file %d line %d rev %d\n", k, j, int(rev / (j + 1)))
+	return s
+}
+function touch(k) {
+	rev[k]++
+	printf "M 100644 inline pkg%d/file%d.go\n", k % 8, k
+	data(content(k, rev[k]))
+}
+BEGIN {
+	split("feat fix refactor docs test chore", kind, " ")
+	split("+0000 +0530 -0700", zone, " ")
+	for (i = 1; i <= n; i++) {
+		a = i % 12
+		ts = base - (n - i) * 21600
+		tz = zone[i % 3 + 1]
+		printf "commit refs/heads/main\nmark :%d\n", i
+		printf "author Developer %d <dev%d@example.com> %d %s\n", a, a, ts, tz
+		printf "committer Developer %d <dev%d@example.com> %d %s\n", a, a, ts, tz
+		data(sprintf("%s: change %d\n", kind[i % 6 + 1], i))
+		if (i > 1) printf "from :%d\n", i - 1
+		touch((i * 7) % 40)
+		if (i % 10 == 0) touch((i * 3 + 1) % 40)
+		printf "\n"
+	}
+}' | git -C "$dir" fast-import --quiet
+git -C "$dir" reset -q --hard
+
 echo "fixtures built under $root"
