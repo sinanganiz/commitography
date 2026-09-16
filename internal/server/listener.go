@@ -13,8 +13,6 @@ import (
 	"runtime"
 	"strconv"
 	"time"
-
-	"github.com/sinanganiz/commitography/internal/container"
 )
 
 const defaultListenAddress = "127.0.0.1:8080"
@@ -62,7 +60,7 @@ func Serve(ctx context.Context, opts Options) error {
 
 	inContainer := opts.InContainer
 	if inContainer == nil {
-		inContainer = container.Running
+		inContainer = Running
 	}
 	url := announce(listener.Addr(), opts.ListenAddress, inContainer(), opts.Output, opts.Errors)
 	if opts.Open {

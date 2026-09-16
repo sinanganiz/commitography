@@ -15,7 +15,7 @@ import (
 func goroutineOwnershipNarrowing() map[string]string {
 	return map[string]string{
 		"internal/collect/gitlog.go":       "WP-0012 rewrites the sharded collect read",
-		"internal/jobs/jobs.go":            "WP-0038 rewrites the job manager",
+		"internal/server/jobs.go":          "WP-0038 rewrites the job manager",
 		"internal/server/listener.go":      "WP-0037 rewrites the server surface",
 		"internal/server/listener_test.go": "WP-0037 rewrites the server surface",
 		"internal/analysis/run_test.go":    "WP-0011 onward rewrite the orchestrator this test drives",

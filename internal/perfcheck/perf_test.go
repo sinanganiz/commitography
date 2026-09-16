@@ -25,7 +25,6 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/analysis"
 	"github.com/sinanganiz/commitography/internal/git"
-	"github.com/sinanganiz/commitography/internal/jobs"
 	"github.com/sinanganiz/commitography/internal/server"
 )
 
@@ -179,7 +178,7 @@ type jobStatus struct {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	app, err := server.NewAppWithAllowedRoots(jobs.New(jobs.Options{}), []string{repos})
+	app, err := server.NewAppWithAllowedRoots(server.NewManager(server.ManagerOptions{}), []string{repos})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +190,7 @@ func newHarness(t *testing.T) *harness {
 		for i := 0; i < 300; i++ {
 			active := false
 			for _, job := range app.Jobs.List() {
-				active = active || job.Status == jobs.StatusQueued || job.Status == jobs.StatusRunning
+				active = active || job.Status == server.StatusQueued || job.Status == server.StatusRunning
 			}
 			if !active {
 				break

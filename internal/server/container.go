@@ -1,7 +1,8 @@
-// Package container detects whether the process runs inside a container, so
+// Container detection reports whether the process runs inside a container, so
 // messages can explain causes that only a container has, such as a folder
 // that was never mounted.
-package container
+
+package server
 
 import "os"
 

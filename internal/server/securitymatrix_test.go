@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/analysis"
-	"github.com/sinanganiz/commitography/internal/jobs"
 )
 
 // These tests are the WP-6.7 security matrix: path traversal through routes,
@@ -20,7 +19,7 @@ import (
 // session cookie, raw data in responses and the default listener.
 
 func TestRouteTraversalReadsNoFiles(t *testing.T) {
-	app := testApp(t, jobs.New(jobs.Options{}))
+	app := testApp(t, NewManager(ManagerOptions{}))
 	goMod, err := os.ReadFile(filepath.Join(testRepoPath(t), "go.mod"))
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +74,7 @@ func TestRouteTraversalReadsNoFiles(t *testing.T) {
 func TestStateChangingRoutesRequireSessionAndSameOrigin(t *testing.T) {
 	app, outcomes, started := controlledApp(t)
 	id := createdID(t, expect(t, "create", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: jobBody(t, "")}), http.StatusAccepted, ""))
-	waitForStatus(t, app, id, jobs.StatusRunning)
+	waitForStatus(t, app, id, StatusRunning)
 
 	for _, route := range []apiCall{
 		{method: http.MethodPost, path: "/api/v1/jobs", body: jobBody(t, "")},
@@ -103,14 +102,14 @@ func TestStateChangingRoutesRequireSessionAndSameOrigin(t *testing.T) {
 	}
 
 	// Every refused request left the job running and started nothing else.
-	if status := waitForStatus(t, app, id, jobs.StatusRunning); status.Status != jobs.StatusRunning {
+	if status := waitForStatus(t, app, id, StatusRunning); status.Status != StatusRunning {
 		t.Fatalf("the job is %s after refused requests", status.Status)
 	}
 	if n := started.Load(); n != 1 || len(app.Jobs.List()) != 1 {
 		t.Fatalf("refused requests changed state: %d analyses, %d jobs", n, len(app.Jobs.List()))
 	}
 	outcomes <- outcome{result: &analysis.Result{}}
-	waitForStatus(t, app, id, jobs.StatusSucceeded)
+	waitForStatus(t, app, id, StatusSucceeded)
 }
 
 func requireSecurityHeaders(t *testing.T, label string, res *httptest.ResponseRecorder) {
@@ -181,7 +180,7 @@ func TestSecurityHeadersOnEveryResponseClass(t *testing.T) {
 }
 
 func TestSessionCookieIsProcessScopedAndStrict(t *testing.T) {
-	first := NewApp(jobs.New(jobs.Options{}))
+	first := NewApp(NewManager(ManagerOptions{}))
 	res := httptest.NewRecorder()
 	first.Handler().ServeHTTP(res, localRequest(http.MethodGet, "/api/v1/capabilities", nil))
 	cookies := res.Result().Cookies()
@@ -198,7 +197,7 @@ func TestSessionCookieIsProcessScopedAndStrict(t *testing.T) {
 	if !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(cookie.Value) {
 		t.Errorf("session value %q is not a 256-bit random hex token", cookie.Value)
 	}
-	if second := NewApp(jobs.New(jobs.Options{})); second.sessionToken == first.sessionToken {
+	if second := NewApp(NewManager(ManagerOptions{})); second.sessionToken == first.sessionToken {
 		t.Error("two server processes share a session secret")
 	}
 }
@@ -220,7 +219,7 @@ func jsonKeys(t *testing.T, data []byte) map[string]bool {
 // list contracts, and a report whose top-level fields are the report schema's.
 // Raw history, cache files and plaintext e-mail addresses have no place in them.
 func TestResponsesCarryOnlyDocumentedData(t *testing.T) {
-	app := testApp(t, jobs.New(jobs.Options{}))
+	app := testApp(t, NewManager(ManagerOptions{}))
 	id := createdID(t, expect(t, "create", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: jobBody(t, `,"options":{"noBlame":true}`)}), http.StatusAccepted, ""))
 	deadline := time.Now().Add(2 * time.Minute)
 	var statusBody []byte
@@ -231,10 +230,10 @@ func TestResponsesCarryOnlyDocumentedData(t *testing.T) {
 		if err := json.Unmarshal(statusBody, &status); err != nil {
 			t.Fatal(err)
 		}
-		if status.Status == jobs.StatusSucceeded {
+		if status.Status == StatusSucceeded {
 			break
 		}
-		if status.Status != jobs.StatusQueued && status.Status != jobs.StatusRunning {
+		if status.Status != StatusQueued && status.Status != StatusRunning {
 			t.Fatalf("analysis of the repository ended %s: %+v", status.Status, status.Error)
 		}
 		if time.Now().After(deadline) {

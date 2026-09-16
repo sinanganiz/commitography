@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/analysis"
-	"github.com/sinanganiz/commitography/internal/jobs"
 )
 
 type capabilitiesResponse struct {
@@ -27,18 +26,18 @@ type jobsResponse struct {
 }
 
 type jobSummary struct {
-	ID           string      `json:"id"`
-	Status       jobs.Status `json:"status"`
-	RepoName     string      `json:"repoName"`
-	CreatedAt    time.Time   `json:"createdAt"`
-	StartedAt    *time.Time  `json:"startedAt"`
-	FinishedAt   *time.Time  `json:"finishedAt"`
-	WarningCount int         `json:"warningCount"`
+	ID           string     `json:"id"`
+	Status       Status     `json:"status"`
+	RepoName     string     `json:"repoName"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	StartedAt    *time.Time `json:"startedAt"`
+	FinishedAt   *time.Time `json:"finishedAt"`
+	WarningCount int        `json:"warningCount"`
 }
 
 type jobStatusResponse struct {
 	ID                  string                  `json:"id"`
-	Status              jobs.Status             `json:"status"`
+	Status              Status                  `json:"status"`
 	RepoName            string                  `json:"repoName"`
 	RepoPath            string                  `json:"repoPath"`
 	CreatedAt           time.Time               `json:"createdAt"`
@@ -47,7 +46,7 @@ type jobStatusResponse struct {
 	ElapsedMilliseconds int64                   `json:"elapsedMilliseconds"`
 	Progress            *analysis.ProgressEvent `json:"progress"`
 	Warnings            []string                `json:"warnings"`
-	Error               *jobs.Failure           `json:"error"`
+	Error               *Failure                `json:"error"`
 }
 
 type createJobRequest struct {
@@ -66,8 +65,8 @@ type createJobOptions struct {
 }
 
 type createJobResponse struct {
-	ID     string      `json:"id"`
-	Status jobs.Status `json:"status"`
+	ID     string `json:"id"`
+	Status Status `json:"status"`
 }
 
 type apiError struct {
@@ -167,7 +166,7 @@ func (a *App) createJob(w http.ResponseWriter, r *http.Request) {
 	}
 	snapshot, err := a.Jobs.Start(canonicalPath, options)
 	if err != nil {
-		if errors.Is(err, jobs.ErrActiveJob) {
+		if errors.Is(err, ErrActiveJob) {
 			writeAPIError(w, http.StatusConflict, "active_job", "another analysis job is already active")
 			return
 		}
@@ -196,7 +195,7 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusOK, statusResponse(snapshot))
 		case http.MethodDelete:
 			if err := a.Jobs.Delete(id); err != nil {
-				if errors.Is(err, jobs.ErrJobNotFound) {
+				if errors.Is(err, ErrJobNotFound) {
 					writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
 				} else {
 					writeAPIError(w, http.StatusConflict, "invalid_job_state", "active jobs must be cancelled before deletion")
@@ -221,7 +220,7 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 		}
 		report, err := a.Jobs.Report(id)
 		if err != nil {
-			if errors.Is(err, jobs.ErrJobNotFound) {
+			if errors.Is(err, ErrJobNotFound) {
 				writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
 			} else {
 				writeAPIError(w, http.StatusConflict, "report_not_ready", "job has no current report")
@@ -236,12 +235,12 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 		}
 		// Cancellation is idempotent: repeating it for a job that has already
 		// stopped reports the terminal state instead of a conflict.
-		if snapshot, err := a.Jobs.Get(id); err == nil && snapshot.Status == jobs.StatusCancelled {
+		if snapshot, err := a.Jobs.Get(id); err == nil && snapshot.Status == StatusCancelled {
 			writeJSON(w, http.StatusOK, statusResponse(snapshot))
 			return
 		}
 		if err := a.Jobs.Cancel(id); err != nil {
-			if errors.Is(err, jobs.ErrJobNotFound) {
+			if errors.Is(err, ErrJobNotFound) {
 				writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
 			} else {
 				writeAPIError(w, http.StatusConflict, "invalid_job_state", "job cannot be cancelled in its current state")
@@ -271,7 +270,7 @@ func writeDecodeError(w http.ResponseWriter, err error, message string) {
 	writeAPIError(w, http.StatusBadRequest, "invalid_json", message)
 }
 
-func statusResponse(snapshot jobs.Snapshot) jobStatusResponse {
+func statusResponse(snapshot Snapshot) jobStatusResponse {
 	warnings := append([]string{}, snapshot.Warnings...)
 	return jobStatusResponse{
 		ID:                  snapshot.ID,
@@ -288,7 +287,7 @@ func statusResponse(snapshot jobs.Snapshot) jobStatusResponse {
 	}
 }
 
-func summarizeJob(snapshot jobs.Snapshot) jobSummary {
+func summarizeJob(snapshot Snapshot) jobSummary {
 	return jobSummary{
 		ID:           snapshot.ID,
 		Status:       snapshot.Status,

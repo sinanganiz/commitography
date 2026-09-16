@@ -1,4 +1,4 @@
-package jobs
+package server
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 
 func TestManagerAllowsOneActiveJobAndRetainsTerminalHistory(t *testing.T) {
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
-	manager := New(Options{
+	manager := NewManager(ManagerOptions{
 		Limit: 2,
 		Now: func() time.Time {
 			clock = clock.Add(time.Second)
@@ -59,7 +59,7 @@ func TestManagerAllowsOneActiveJobAndRetainsTerminalHistory(t *testing.T) {
 func TestManagerEvictsOldestTerminalJob(t *testing.T) {
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
 	next := 0
-	manager := New(Options{
+	manager := NewManager(ManagerOptions{
 		Limit: 2,
 		Now: func() time.Time {
 			clock = clock.Add(time.Second)
@@ -90,7 +90,7 @@ func TestManagerEvictsOldestTerminalJob(t *testing.T) {
 
 func TestStartRunsWorkerAndCancellationReleasesSlot(t *testing.T) {
 	started := make(chan struct{}, 1)
-	manager := New(Options{
+	manager := NewManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ analysis.Options, sink analysis.ProgressSink) (*analysis.Result, error) {
 			sink(analysis.ProgressEvent{Sequence: 1, Stage: analysis.StageCollecting})
 			started <- struct{}{}
@@ -133,7 +133,7 @@ func TestStartRunsWorkerAndCancellationReleasesSlot(t *testing.T) {
 
 func TestProgressSequenceIsMonotonicAndSnapshotsProjectElapsed(t *testing.T) {
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
-	manager := New(Options{
+	manager := NewManager(ManagerOptions{
 		Now: func() time.Time {
 			clock = clock.Add(time.Second)
 			return clock
@@ -166,7 +166,7 @@ func TestProgressSequenceIsMonotonicAndSnapshotsProjectElapsed(t *testing.T) {
 }
 
 func TestOnlySucceededJobsExposeReports(t *testing.T) {
-	manager := New(Options{NewID: func() (string, error) { return "report-job", nil }})
+	manager := NewManager(ManagerOptions{NewID: func() (string, error) { return "report-job", nil }})
 	job, err := manager.Create("/repos/report")
 	if err != nil {
 		t.Fatal(err)
@@ -178,7 +178,7 @@ func TestOnlySucceededJobsExposeReports(t *testing.T) {
 		t.Fatalf("failed report error = %v, want ErrInvalidState", err)
 	}
 
-	manager = New(Options{NewID: func() (string, error) { return "success-job", nil }})
+	manager = NewManager(ManagerOptions{NewID: func() (string, error) { return "success-job", nil }})
 	job, err = manager.Create("/repos/report")
 	if err != nil {
 		t.Fatal(err)
@@ -194,7 +194,7 @@ func TestOnlySucceededJobsExposeReports(t *testing.T) {
 
 func TestCancelAllRequestsWorkerCancellation(t *testing.T) {
 	started := make(chan struct{}, 1)
-	manager := New(Options{
+	manager := NewManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
 			started <- struct{}{}
 			<-ctx.Done()
@@ -231,7 +231,7 @@ func TestCancelAllRequestsWorkerCancellation(t *testing.T) {
 func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
 	release := make(chan struct{})
 	warned := make(chan struct{})
-	manager := New(Options{
+	manager := NewManager(ManagerOptions{
 		Runner: func(_ context.Context, opts analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
 			opts.OnWarning("config: unknown key")
 			opts.OnWarning("history: skipped commit")
@@ -279,7 +279,7 @@ func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
 }
 
 func TestWarningsAreBounded(t *testing.T) {
-	manager := New(Options{})
+	manager := NewManager(ManagerOptions{})
 	job, err := manager.Create("/repos/project")
 	if err != nil {
 		t.Fatal(err)
@@ -305,7 +305,7 @@ func TestWarningsAreBounded(t *testing.T) {
 // a cancelled job into a succeeded one.
 func TestCancellationWinsOverALateResult(t *testing.T) {
 	started := make(chan struct{})
-	manager := New(Options{
+	manager := NewManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
 			close(started)
 			<-ctx.Done()
@@ -344,7 +344,7 @@ func TestTerminalStatesCannotBeOverwritten(t *testing.T) {
 		{name: "failed", finish: func(m *Manager, id string) error { return m.Fail(id, Failure{Code: "test"}, time.Time{}) }, want: StatusFailed},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			manager := New(Options{})
+			manager := NewManager(ManagerOptions{})
 			job, err := manager.Create("/repos/project")
 			if err != nil {
 				t.Fatal(err)
@@ -373,7 +373,7 @@ func TestTerminalStatesCannotBeOverwritten(t *testing.T) {
 func TestHistoryKeepsExactlyTheTenNewestJobs(t *testing.T) {
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
 	next := 0
-	manager := New(Options{
+	manager := NewManager(ManagerOptions{
 		Now: func() time.Time {
 			clock = clock.Add(time.Second)
 			return clock
@@ -433,7 +433,7 @@ func TestStaleFailureNeverCarriesUnderlyingErrors(t *testing.T) {
 			want:   analysis.StaleRevalidationFailed,
 		},
 	} {
-		manager := New(Options{})
+		manager := NewManager(ManagerOptions{})
 		job, err := manager.Create("/repos/project")
 		if err != nil {
 			t.Fatal(err)

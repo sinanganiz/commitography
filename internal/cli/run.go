@@ -10,7 +10,6 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/analysis"
 	"github.com/sinanganiz/commitography/internal/collect"
-	"github.com/sinanganiz/commitography/internal/container"
 	"github.com/sinanganiz/commitography/internal/render"
 	"github.com/sinanganiz/commitography/internal/server"
 )
@@ -176,7 +175,7 @@ func ExitCode(err error) int {
 
 // Report prints an error in the form the exit code implies.
 func Report(err error) {
-	report(os.Stderr, err, container.Running())
+	report(os.Stderr, err, server.Running())
 }
 
 // report prints err and, inside a container, a hint for the mistake a

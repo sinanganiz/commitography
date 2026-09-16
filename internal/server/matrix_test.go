@@ -16,7 +16,6 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/aggregate"
 	"github.com/sinanganiz/commitography/internal/analysis"
-	"github.com/sinanganiz/commitography/internal/jobs"
 )
 
 // apiCall is one request in the endpoint matrix. Requests carry the session
@@ -83,7 +82,7 @@ func controlledApp(t *testing.T) (*App, chan<- outcome, *atomic.Int32) {
 	t.Helper()
 	outcomes := make(chan outcome)
 	var started atomic.Int32
-	manager := jobs.New(jobs.Options{
+	manager := NewManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ analysis.Options, sink analysis.ProgressSink) (*analysis.Result, error) {
 			started.Add(1)
 			sink(analysis.ProgressEvent{Sequence: 1, Stage: analysis.StageCollecting, Detail: "reading history"})
@@ -141,7 +140,7 @@ func TestAPIEndpointMatrix(t *testing.T) {
 
 	// POST /api/v1/jobs success, then a second start while it is active.
 	first := createdID(t, expect(t, "create", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: valid}), http.StatusAccepted, ""))
-	waitForStatus(t, app, first, jobs.StatusRunning)
+	waitForStatus(t, app, first, StatusRunning)
 	expect(t, "second create while active", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: valid}), http.StatusConflict, "active_job")
 	if n := started.Load(); n != 1 {
 		t.Fatalf("%d analyses started, want exactly one while a job is active", n)
@@ -168,16 +167,16 @@ func TestAPIEndpointMatrix(t *testing.T) {
 	expect(t, "cancel without session", call(t, app, apiCall{method: http.MethodPost, path: statusPath + "/cancel", noSession: true}), http.StatusUnauthorized, "invalid_session")
 	expect(t, "cancel GET", call(t, app, apiCall{method: http.MethodGet, path: statusPath + "/cancel"}), http.StatusMethodNotAllowed, "method_not_allowed")
 	expect(t, "cancel", call(t, app, apiCall{method: http.MethodPost, path: statusPath + "/cancel"}), http.StatusAccepted, "")
-	waitForStatus(t, app, first, jobs.StatusCancelled)
+	waitForStatus(t, app, first, StatusCancelled)
 	expect(t, "cancel again", call(t, app, apiCall{method: http.MethodPost, path: statusPath + "/cancel"}), http.StatusOK, "")
 	expect(t, "cancel unknown job", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs/unknown/cancel"}), http.StatusNotFound, "not_found")
 	expect(t, "report of cancelled job", call(t, app, apiCall{method: http.MethodGet, path: statusPath + "/report"}), http.StatusConflict, "report_not_ready")
 
 	// A succeeded job has a report and can no longer be cancelled.
 	second := createdID(t, expect(t, "create second", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: valid}), http.StatusAccepted, ""))
-	waitForStatus(t, app, second, jobs.StatusRunning)
+	waitForStatus(t, app, second, StatusRunning)
 	outcomes <- outcome{result: &analysis.Result{Report: &aggregate.Report{SchemaVersion: aggregate.SchemaVersion}}}
-	waitForStatus(t, app, second, jobs.StatusSucceeded)
+	waitForStatus(t, app, second, StatusSucceeded)
 	secondPath := "/api/v1/jobs/" + second
 	expect(t, "report", call(t, app, apiCall{method: http.MethodGet, path: secondPath + "/report"}), http.StatusOK, "")
 	expect(t, "report POST", call(t, app, apiCall{method: http.MethodPost, path: secondPath + "/report"}), http.StatusMethodNotAllowed, "method_not_allowed")
@@ -193,9 +192,9 @@ func TestAPIEndpointMatrix(t *testing.T) {
 
 	// A failed job reports its failure code and has no report.
 	third := createdID(t, expect(t, "create third", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: valid}), http.StatusAccepted, ""))
-	waitForStatus(t, app, third, jobs.StatusRunning)
+	waitForStatus(t, app, third, StatusRunning)
 	outcomes <- outcome{err: errors.New("git log failed: fatal: bad object")}
-	failed := waitForStatus(t, app, third, jobs.StatusFailed)
+	failed := waitForStatus(t, app, third, StatusFailed)
 	if failed.Error == nil || failed.Error.Code != "analysis_failed" || strings.Contains(failed.Error.Message, "bad object") {
 		t.Errorf("failed job error = %+v, want analysis_failed without Git output", failed.Error)
 	}
@@ -203,9 +202,9 @@ func TestAPIEndpointMatrix(t *testing.T) {
 
 	// A stale job reports the change and has no report.
 	fourth := createdID(t, expect(t, "create fourth", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: valid}), http.StatusAccepted, ""))
-	waitForStatus(t, app, fourth, jobs.StatusRunning)
+	waitForStatus(t, app, fourth, StatusRunning)
 	outcomes <- outcome{result: &analysis.Result{Report: &aggregate.Report{}, Stale: true, StaleReason: analysis.StaleHeadChanged}}
-	stale := waitForStatus(t, app, fourth, jobs.StatusStale)
+	stale := waitForStatus(t, app, fourth, StatusStale)
 	if stale.Error == nil || stale.Error.Code != "repository_changed" {
 		t.Errorf("stale job error = %+v, want repository_changed", stale.Error)
 	}
@@ -242,7 +241,7 @@ func TestAPIRejectsAFolderThatIsNotARepository(t *testing.T) {
 	if err := os.Mkdir(folder, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	app, err := NewAppWithAllowedRoots(jobs.New(jobs.Options{}), []string{root})
+	app, err := NewAppWithAllowedRoots(NewManager(ManagerOptions{}), []string{root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +258,7 @@ func TestAPIRejectsAFolderThatIsNotARepository(t *testing.T) {
 }
 
 func TestAPIHistoryEvictsTheOldestFinishedJob(t *testing.T) {
-	manager := jobs.New(jobs.Options{
+	manager := NewManager(ManagerOptions{
 		Limit: 2,
 		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
 			return &analysis.Result{Report: &aggregate.Report{}}, nil
@@ -269,7 +268,7 @@ func TestAPIHistoryEvictsTheOldestFinishedJob(t *testing.T) {
 	var ids []string
 	for i := 0; i < 3; i++ {
 		id := createdID(t, expect(t, "create", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: jobBody(t, "")}), http.StatusAccepted, ""))
-		waitForStatus(t, app, id, jobs.StatusSucceeded)
+		waitForStatus(t, app, id, StatusSucceeded)
 		ids = append(ids, id)
 	}
 	var list jobsResponse

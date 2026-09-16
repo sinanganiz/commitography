@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/sinanganiz/commitography/internal/jobs"
 	"github.com/sinanganiz/commitography/internal/render"
 )
 
@@ -38,7 +37,7 @@ func NewHandler() http.Handler {
 
 // App is the local HTTP application and its in-memory job manager.
 type App struct {
-	Jobs         *jobs.Manager
+	Jobs         *Manager
 	sessionToken string
 	allowedRoots []string
 	allowedHosts map[string]bool
@@ -46,7 +45,7 @@ type App struct {
 
 // NewApp constructs an application around a job manager. A default manager is
 // created when manager is nil.
-func NewApp(manager *jobs.Manager) *App {
+func NewApp(manager *Manager) *App {
 	app, err := NewAppWithAllowedRoots(manager, nil)
 	if err != nil {
 		panic(err)
@@ -56,9 +55,9 @@ func NewApp(manager *jobs.Manager) *App {
 
 // NewAppWithAllowedRoots constructs an application with canonical filesystem
 // roots used to validate repository requests.
-func NewAppWithAllowedRoots(manager *jobs.Manager, roots []string) (*App, error) {
+func NewAppWithAllowedRoots(manager *Manager, roots []string) (*App, error) {
 	if manager == nil {
-		manager = jobs.New(jobs.Options{})
+		manager = NewManager(ManagerOptions{})
 	}
 	allowedRoots, err := canonicalRoots(roots)
 	if err != nil {

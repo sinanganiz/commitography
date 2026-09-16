@@ -12,11 +12,10 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/aggregate"
 	"github.com/sinanganiz/commitography/internal/analysis"
-	"github.com/sinanganiz/commitography/internal/jobs"
 )
 
 func TestAPICapabilitiesAndJobList(t *testing.T) {
-	app := NewApp(jobs.New(jobs.Options{}))
+	app := NewApp(NewManager(ManagerOptions{}))
 	handler := app.Handler()
 
 	req := localRequest(http.MethodGet, "/api/v1/capabilities", nil)
@@ -50,7 +49,7 @@ func TestAPICapabilitiesAndJobList(t *testing.T) {
 }
 
 func TestAPILifecycleRoutesAreVersioned(t *testing.T) {
-	app := NewApp(jobs.New(jobs.Options{}))
+	app := NewApp(NewManager(ManagerOptions{}))
 	handler := app.Handler()
 	for _, tc := range []struct {
 		method string
@@ -71,7 +70,7 @@ func TestAPILifecycleRoutesAreVersioned(t *testing.T) {
 }
 
 func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
-	manager := jobs.New(jobs.Options{
+	manager := NewManager(ManagerOptions{
 		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
 			return &analysis.Result{}, nil
 		},
@@ -91,13 +90,13 @@ func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
 	if err := json.Unmarshal(res.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
-	if created.ID == "" || created.Status != jobs.StatusQueued {
+	if created.ID == "" || created.Status != StatusQueued {
 		t.Fatalf("created = %+v", created)
 	}
 
 	// Wait for the fake worker to release the active slot before the next case.
 	for i := 0; i < 100; i++ {
-		if current, err := manager.Get(created.ID); err == nil && current.Status == jobs.StatusSucceeded {
+		if current, err := manager.Get(created.ID); err == nil && current.Status == StatusSucceeded {
 			break
 		}
 		time.Sleep(time.Millisecond)
@@ -114,7 +113,7 @@ func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
 }
 
 func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
-	manager := jobs.New(jobs.Options{
+	manager := NewManager(ManagerOptions{
 		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
 			return &analysis.Result{Report: &aggregate.Report{}}, nil
 		},
@@ -123,8 +122,8 @@ func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
 	handler := app.Handler()
 	id := createAPIJob(t, app)
 
-	status := waitForStatus(t, app, id, jobs.StatusSucceeded)
-	if status.Status != jobs.StatusSucceeded {
+	status := waitForStatus(t, app, id, StatusSucceeded)
+	if status.Status != StatusSucceeded {
 		t.Fatalf("status = %+v", status)
 	}
 
@@ -147,7 +146,7 @@ func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
 
 func TestAPICreatePassesOptionsToAnalysis(t *testing.T) {
 	received := make(chan analysis.Options, 1)
-	manager := jobs.New(jobs.Options{
+	manager := NewManager(ManagerOptions{
 		Runner: func(_ context.Context, opts analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
 			received <- opts
 			return &analysis.Result{}, nil
@@ -181,7 +180,7 @@ func TestAPICreatePassesOptionsToAnalysis(t *testing.T) {
 
 func TestAPIStatusUsesContractProgressFields(t *testing.T) {
 	fraction := 0.42
-	manager := jobs.New(jobs.Options{
+	manager := NewManager(ManagerOptions{
 		Runner: func(_ context.Context, _ analysis.Options, sink analysis.ProgressSink) (*analysis.Result, error) {
 			sink(analysis.ProgressEvent{
 				Sequence:  1,
@@ -197,7 +196,7 @@ func TestAPIStatusUsesContractProgressFields(t *testing.T) {
 	})
 	app := testApp(t, manager)
 	id := createAPIJob(t, app)
-	waitForStatus(t, app, id, jobs.StatusSucceeded)
+	waitForStatus(t, app, id, StatusSucceeded)
 
 	req := localRequest(http.MethodGet, "/api/v1/jobs/"+id, nil)
 	req.AddCookie(app.sessionCookie())
@@ -223,7 +222,7 @@ func TestAPIStatusUsesContractProgressFields(t *testing.T) {
 
 func TestAPICancelTransitionsJob(t *testing.T) {
 	started := make(chan struct{}, 1)
-	manager := jobs.New(jobs.Options{
+	manager := NewManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
 			started <- struct{}{}
 			<-ctx.Done()
@@ -246,7 +245,7 @@ func TestAPICancelTransitionsJob(t *testing.T) {
 	if res.Code != http.StatusAccepted {
 		t.Fatalf("cancel status = %d, want 202", res.Code)
 	}
-	waitForStatus(t, app, id, jobs.StatusCancelled)
+	waitForStatus(t, app, id, StatusCancelled)
 
 	// A repeated cancel is idempotent and reports the terminal state.
 	req = localRequest(http.MethodPost, "/api/v1/jobs/"+id+"/cancel", nil)
@@ -260,20 +259,20 @@ func TestAPICancelTransitionsJob(t *testing.T) {
 	if err := json.Unmarshal(res.Body.Bytes(), &status); err != nil {
 		t.Fatal(err)
 	}
-	if status.Status != jobs.StatusCancelled {
+	if status.Status != StatusCancelled {
 		t.Fatalf("repeated cancel status body = %+v", status)
 	}
 }
 
 func TestAPICancelRejectsCompletedJob(t *testing.T) {
-	manager := jobs.New(jobs.Options{
+	manager := NewManager(ManagerOptions{
 		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
 			return &analysis.Result{Report: &aggregate.Report{}}, nil
 		},
 	})
 	app := testApp(t, manager)
 	id := createAPIJob(t, app)
-	waitForStatus(t, app, id, jobs.StatusSucceeded)
+	waitForStatus(t, app, id, StatusSucceeded)
 
 	req := localRequest(http.MethodPost, "/api/v1/jobs/"+id+"/cancel", nil)
 	req.AddCookie(app.sessionCookie())
@@ -285,7 +284,7 @@ func TestAPICancelRejectsCompletedJob(t *testing.T) {
 }
 
 func TestSessionBootstrapAndOriginProtection(t *testing.T) {
-	app := testApp(t, jobs.New(jobs.Options{
+	app := testApp(t, NewManager(ManagerOptions{
 		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
 			return &analysis.Result{}, nil
 		},
@@ -333,7 +332,7 @@ func createAPIJob(t *testing.T, app *App) string {
 	return created.ID
 }
 
-func testApp(t *testing.T, manager *jobs.Manager) *App {
+func testApp(t *testing.T, manager *Manager) *App {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -364,7 +363,7 @@ func testRepoPath(t *testing.T) string {
 	return path
 }
 
-func waitForStatus(t *testing.T, app *App, id string, want jobs.Status) jobStatusResponse {
+func waitForStatus(t *testing.T, app *App, id string, want Status) jobStatusResponse {
 	t.Helper()
 	handler := app.Handler()
 	deadline := time.After(2 * time.Second)

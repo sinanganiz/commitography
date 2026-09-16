@@ -1,6 +1,7 @@
-// Package jobs manages the bounded in-memory lifecycle state used by the local
-// web runner. It deliberately does not start workers or serve HTTP.
-package jobs
+// The job manager holds the bounded in-memory lifecycle state used by the
+// local web runner. It deliberately does not serve HTTP.
+
+package server
 
 import (
 	"context"
@@ -70,9 +71,9 @@ type Snapshot struct {
 	Result       *analysis.Result
 }
 
-// Options configures a Manager. Test hooks are intentionally small and do not
-// alter production behavior.
-type Options struct {
+// ManagerOptions configures a Manager. Test hooks are intentionally small and
+// do not alter production behavior.
+type ManagerOptions struct {
 	Limit  int
 	NewID  func() (string, error)
 	Now    func() time.Time
@@ -98,8 +99,8 @@ type job struct {
 	cancel   context.CancelFunc
 }
 
-// New constructs a bounded in-memory job manager.
-func New(options Options) *Manager {
+// NewManager constructs a bounded in-memory job manager.
+func NewManager(options ManagerOptions) *Manager {
 	limit := options.Limit
 	if limit <= 0 {
 		limit = maxRecentJobs
