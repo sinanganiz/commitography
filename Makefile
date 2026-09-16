@@ -122,9 +122,12 @@ FULL_CHECKS := vulncheck-go vulncheck-web fixture-determinism
 # Checkers that belong to the full gate and are therefore skipped by `checks`.
 FULL_CHECKERS := ^TestFixtureDeterminism$$
 
-gate-fast: $(FAST_CHECKS)
+# Fixture generation is gate setup, not a check: every fixture-dependent test
+# needs it, and a gate establishes its checks' preconditions first (ADR-0064
+# clause 1). Make builds prerequisites in the order listed.
+gate-fast: fixtures $(FAST_CHECKS)
 
-gate-full: $(FAST_CHECKS) $(FULL_CHECKS)
+gate-full: fixtures $(FAST_CHECKS) $(FULL_CHECKS)
 
 # Read by CI to pin its toolchain to the versions above.
 toolchain-versions:
