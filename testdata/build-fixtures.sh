@@ -367,4 +367,53 @@ git -C "$root/single" add -A
 commit "$root/single" "$BASE_TS" "+0000" "Ada Lovelace" "ada@example.com" \
 	"feat: the one and only commit"
 
+# --------------------------------------------------------------------------
+# renames-and-copied-block/ - a pure rename, a rename with an edit, and a
+# ten-line block copied from one file into a new one
+# --------------------------------------------------------------------------
+echo "building renames-and-copied-block/"
+dir="$root/renames-and-copied-block"
+init_repo "$dir"
+mkdir -p "$dir/src"
+i=1
+while [ "$i" -le 20 ]; do
+	printf 'token_%02d = %d\n' "$i" "$i" >>"$dir/src/parser.go"
+	i=$((i + 1))
+done
+i=1
+while [ "$i" -le 10 ]; do
+	printf 'scan step %d\n' "$i" >>"$dir/src/lexer.go"
+	i=$((i + 1))
+done
+git -C "$dir" add -A
+commit "$dir" "$BASE_TS" "+0000" "Ada Lovelace" "ada@example.com" \
+	"feat: add parser and lexer"
+
+mkdir -p "$dir/src/syntax"
+git -C "$dir" mv src/parser.go src/syntax/parser.go
+commit "$dir" "$((BASE_TS + DAY))" "+0000" "Grace Hopper" "grace@example.com" \
+	"refactor: move the parser into the syntax package"
+
+git -C "$dir" mv src/lexer.go src/syntax/scanner.go
+printf 'scan step 11\n' >>"$dir/src/syntax/scanner.go"
+git -C "$dir" add -A
+commit "$dir" "$((BASE_TS + 2 * DAY))" "+0000" "Grace Hopper" "grace@example.com" \
+	"refactor: rename the lexer to scanner and add a step"
+
+# Lines 5 to 14 of the parser, copied verbatim between two lines of its own.
+mkdir -p "$dir/src/format"
+{
+	printf 'printer header\n'
+	sed -n '5,14p' "$dir/src/syntax/parser.go"
+	printf 'printer footer\n'
+} >"$dir/src/format/printer.go"
+git -C "$dir" add -A
+commit "$dir" "$((BASE_TS + 3 * DAY))" "+0000" "Alan Turing" "alan@example.com" \
+	"feat: add a printer reusing the parser's token table"
+
+printf 'token_21 = 21\n' >>"$dir/src/syntax/parser.go"
+git -C "$dir" add -A
+commit "$dir" "$((BASE_TS + 4 * DAY))" "+0000" "Ada Lovelace" "ada@example.com" \
+	"feat: add a token"
+
 echo "fixtures built under $root"
