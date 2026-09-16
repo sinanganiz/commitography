@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/analysis"
+	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
 // These tests are the WP-6.7 security matrix: path traversal through routes,
@@ -108,7 +108,7 @@ func TestStateChangingRoutesRequireSessionAndSameOrigin(t *testing.T) {
 	if n := started.Load(); n != 1 || len(app.Jobs.List()) != 1 {
 		t.Fatalf("refused requests changed state: %d analyses, %d jobs", n, len(app.Jobs.List()))
 	}
-	outcomes <- outcome{result: &analysis.Result{}}
+	outcomes <- outcome{result: &pipeline.Result{}}
 	waitForStatus(t, app, id, StatusSucceeded)
 }
 
@@ -176,7 +176,7 @@ func TestSecurityHeadersOnEveryResponseClass(t *testing.T) {
 	}
 	requireSecurityHeaders(t, "foreign host", res)
 
-	outcomes <- outcome{result: &analysis.Result{}}
+	outcomes <- outcome{result: &pipeline.Result{}}
 }
 
 func TestSessionCookieIsProcessScopedAndStrict(t *testing.T) {

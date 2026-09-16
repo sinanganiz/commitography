@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sinanganiz/commitography/internal/analysis"
+	"github.com/sinanganiz/commitography/internal/pipeline"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/server"
 )
 
 func TestReportExplainsMissingMountsOnlyInsideContainers(t *testing.T) {
-	notRepository := &UsageError{err: &analysis.UsageError{Err: &collect.NotRepositoryError{Path: "/repo"}}}
+	notRepository := &UsageError{err: &pipeline.UsageError{Err: &collect.NotRepositoryError{Path: "/repo"}}}
 	missingRoot := &server.MissingRootError{Root: "/repos"}
 
 	for _, tc := range []struct {

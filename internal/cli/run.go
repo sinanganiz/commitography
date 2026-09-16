@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sinanganiz/commitography/internal/analysis"
+	"github.com/sinanganiz/commitography/internal/pipeline"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/render"
 	"github.com/sinanganiz/commitography/internal/server"
@@ -76,7 +76,7 @@ func Run(opts Options) error {
 
 	progress := NewProgress(opts.Quiet, opts.Verbose)
 
-	analysisOpts := analysis.Options{
+	analysisOpts := pipeline.Options{
 		RepoPath:       opts.RepoPath,
 		ConfigPath:     opts.ConfigPath,
 		Since:          opts.Since,
@@ -90,7 +90,7 @@ func Run(opts Options) error {
 		Year:           opts.Wrapped,
 		OnWarning:      func(message string) { progress.Warn("%s", message) },
 	}
-	result, err := analysis.Run(context.Background(), analysisOpts, func(event analysis.ProgressEvent) {
+	result, err := pipeline.Run(context.Background(), analysisOpts, func(event pipeline.ProgressEvent) {
 		progress.Stage(cliStage(event.Stage), event.Detail)
 	})
 	if err != nil {
@@ -131,11 +131,11 @@ func Run(opts Options) error {
 }
 
 func adaptAnalysisError(err error) error {
-	var usage *analysis.UsageError
+	var usage *pipeline.UsageError
 	if errors.As(err, &usage) {
 		return &UsageError{err}
 	}
-	var year *analysis.YearError
+	var year *pipeline.YearError
 	if errors.As(err, &year) {
 		return &UsageError{err}
 	}
@@ -144,17 +144,17 @@ func adaptAnalysisError(err error) error {
 
 func cliStage(stage string) string {
 	switch stage {
-	case analysis.StagePreflight:
+	case pipeline.StagePreflight:
 		return "Validating repository"
-	case analysis.StageCollecting:
+	case pipeline.StageCollecting:
 		return "Reading history"
-	case analysis.StageIdentity:
+	case pipeline.StageIdentity:
 		return "Resolving identities"
-	case analysis.StageFiltering:
+	case pipeline.StageFiltering:
 		return "Filtering"
-	case analysis.StageCode:
+	case pipeline.StageCode:
 		return "Computing metrics"
-	case analysis.StageFinalizing:
+	case pipeline.StageFinalizing:
 		return "Finalizing"
 	default:
 		return "Computing metrics"

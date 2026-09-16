@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/aggregate"
-	"github.com/sinanganiz/commitography/internal/analysis"
+	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
 func TestAPICapabilitiesAndJobList(t *testing.T) {
@@ -71,8 +71,8 @@ func TestAPILifecycleRoutesAreVersioned(t *testing.T) {
 
 func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
 	manager := NewManager(ManagerOptions{
-		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
-			return &analysis.Result{}, nil
+		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
+			return &pipeline.Result{}, nil
 		},
 	})
 	app := testApp(t, manager)
@@ -114,8 +114,8 @@ func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
 
 func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
 	manager := NewManager(ManagerOptions{
-		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
-			return &analysis.Result{Report: &aggregate.Report{}}, nil
+		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
+			return &pipeline.Result{Report: &aggregate.Report{}}, nil
 		},
 	})
 	app := testApp(t, manager)
@@ -145,11 +145,11 @@ func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
 }
 
 func TestAPICreatePassesOptionsToAnalysis(t *testing.T) {
-	received := make(chan analysis.Options, 1)
+	received := make(chan pipeline.Options, 1)
 	manager := NewManager(ManagerOptions{
-		Runner: func(_ context.Context, opts analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
+		Runner: func(_ context.Context, opts pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			received <- opts
-			return &analysis.Result{}, nil
+			return &pipeline.Result{}, nil
 		},
 	})
 	app := testApp(t, manager)
@@ -162,7 +162,7 @@ func TestAPICreatePassesOptionsToAnalysis(t *testing.T) {
 		t.Fatalf("create status = %d: %s", res.Code, res.Body.String())
 	}
 
-	var opts analysis.Options
+	var opts pipeline.Options
 	select {
 	case opts = <-received:
 	case <-time.After(2 * time.Second):
@@ -181,17 +181,17 @@ func TestAPICreatePassesOptionsToAnalysis(t *testing.T) {
 func TestAPIStatusUsesContractProgressFields(t *testing.T) {
 	fraction := 0.42
 	manager := NewManager(ManagerOptions{
-		Runner: func(_ context.Context, _ analysis.Options, sink analysis.ProgressSink) (*analysis.Result, error) {
-			sink(analysis.ProgressEvent{
+		Runner: func(_ context.Context, _ pipeline.Options, sink pipeline.ProgressSink) (*pipeline.Result, error) {
+			sink(pipeline.ProgressEvent{
 				Sequence:  1,
-				Stage:     analysis.StageCollecting,
+				Stage:     pipeline.StageCollecting,
 				Detail:    "4200 of 10000 commits",
 				Fraction:  &fraction,
 				Current:   4200,
 				Total:     10000,
 				Estimated: true,
 			})
-			return &analysis.Result{Report: &aggregate.Report{}}, nil
+			return &pipeline.Result{Report: &aggregate.Report{}}, nil
 		},
 	})
 	app := testApp(t, manager)
@@ -223,7 +223,7 @@ func TestAPIStatusUsesContractProgressFields(t *testing.T) {
 func TestAPICancelTransitionsJob(t *testing.T) {
 	started := make(chan struct{}, 1)
 	manager := NewManager(ManagerOptions{
-		Runner: func(ctx context.Context, _ analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
+		Runner: func(ctx context.Context, _ pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			started <- struct{}{}
 			<-ctx.Done()
 			return nil, ctx.Err()
@@ -266,8 +266,8 @@ func TestAPICancelTransitionsJob(t *testing.T) {
 
 func TestAPICancelRejectsCompletedJob(t *testing.T) {
 	manager := NewManager(ManagerOptions{
-		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
-			return &analysis.Result{Report: &aggregate.Report{}}, nil
+		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
+			return &pipeline.Result{Report: &aggregate.Report{}}, nil
 		},
 	})
 	app := testApp(t, manager)
@@ -285,8 +285,8 @@ func TestAPICancelRejectsCompletedJob(t *testing.T) {
 
 func TestSessionBootstrapAndOriginProtection(t *testing.T) {
 	app := testApp(t, NewManager(ManagerOptions{
-		Runner: func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error) {
-			return &analysis.Result{}, nil
+		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
+			return &pipeline.Result{}, nil
 		},
 	}))
 	handler := app.Handler()

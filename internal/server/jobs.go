@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/aggregate"
-	"github.com/sinanganiz/commitography/internal/analysis"
+	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
 // Status is the externally meaningful state of an analysis job.
@@ -64,11 +64,11 @@ type Snapshot struct {
 	StartedAt    *time.Time
 	FinishedAt   *time.Time
 	Elapsed      time.Duration
-	Progress     *analysis.ProgressEvent
+	Progress     *pipeline.ProgressEvent
 	Warnings     []string
 	WarningCount int
 	Failure      *Failure
-	Result       *analysis.Result
+	Result       *pipeline.Result
 }
 
 // ManagerOptions configures a Manager. Test hooks are intentionally small and
@@ -81,7 +81,7 @@ type ManagerOptions struct {
 }
 
 // Runner is the shared analysis operation executed by a worker.
-type Runner func(context.Context, analysis.Options, analysis.ProgressSink) (*analysis.Result, error)
+type Runner func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error)
 
 // Manager owns at most one active job and a bounded terminal history.
 type Manager struct {
@@ -115,7 +115,7 @@ func NewManager(options ManagerOptions) *Manager {
 	}
 	runner := options.Runner
 	if runner == nil {
-		runner = analysis.Run
+		runner = pipeline.Run
 	}
 	return &Manager{
 		limit:  limit,
@@ -156,7 +156,7 @@ func (m *Manager) Create(repoPath string) (Snapshot, error) {
 
 // Start creates a job and runs the configured analysis asynchronously. The
 // returned snapshot is the state observed immediately after reservation.
-func (m *Manager) Start(repoPath string, options analysis.Options) (Snapshot, error) {
+func (m *Manager) Start(repoPath string, options pipeline.Options) (Snapshot, error) {
 	snapshot, err := m.Create(repoPath)
 	if err != nil {
 		return Snapshot{}, err
@@ -179,11 +179,11 @@ func (m *Manager) Start(repoPath string, options analysis.Options) (Snapshot, er
 	return snapshot, nil
 }
 
-func (m *Manager) run(id string, ctx context.Context, options analysis.Options) {
+func (m *Manager) run(id string, ctx context.Context, options pipeline.Options) {
 	if err := m.MarkRunning(id, m.now()); err != nil {
 		return
 	}
-	result, err := m.runner(ctx, options, func(event analysis.ProgressEvent) {
+	result, err := m.runner(ctx, options, func(event pipeline.ProgressEvent) {
 		_ = m.UpdateProgress(id, event)
 	})
 	// A requested cancellation wins over whatever the runner returned after it,
@@ -281,7 +281,7 @@ func (m *Manager) MarkRunning(id string, startedAt time.Time) error {
 }
 
 // UpdateProgress stores the latest progress event for a queued or running job.
-func (m *Manager) UpdateProgress(id string, event analysis.ProgressEvent) error {
+func (m *Manager) UpdateProgress(id string, event pipeline.ProgressEvent) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	entry, err := m.lookupLocked(id)
@@ -331,7 +331,7 @@ func appendWarnings(snapshot *Snapshot, messages ...string) {
 
 // Complete stores an analysis result and releases the active slot. Stale
 // results are retained for diagnosis but are never reported as current.
-func (m *Manager) Complete(id string, result *analysis.Result, finishedAt time.Time) error {
+func (m *Manager) Complete(id string, result *pipeline.Result, finishedAt time.Time) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	entry, err := m.lookupLocked(id)
@@ -392,11 +392,11 @@ func FailureFromError(err error) Failure {
 	if err == nil {
 		return Failure{Code: "analysis_failed", Message: "analysis failed"}
 	}
-	var usage *analysis.UsageError
+	var usage *pipeline.UsageError
 	if errors.As(err, &usage) {
 		return Failure{Code: "invalid_analysis_request", Message: "analysis request or repository validation failed"}
 	}
-	var year *analysis.YearError
+	var year *pipeline.YearError
 	if errors.As(err, &year) {
 		return Failure{Code: "invalid_wrapped_year", Message: err.Error()}
 	}
@@ -407,10 +407,10 @@ func FailureFromError(err error) Failure {
 // failure carries the underlying error, which may include Git stderr.
 func staleMessage(reason string) string {
 	switch reason {
-	case analysis.StaleHeadChanged, analysis.StaleCheckoutChanged, analysis.StaleHistoryChanged:
+	case pipeline.StaleHeadChanged, pipeline.StaleCheckoutChanged, pipeline.StaleHistoryChanged:
 		return reason
 	default:
-		return analysis.StaleRevalidationFailed
+		return pipeline.StaleRevalidationFailed
 	}
 }
 

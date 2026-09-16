@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/analysis"
+	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
 type capabilitiesResponse struct {
@@ -44,7 +44,7 @@ type jobStatusResponse struct {
 	StartedAt           *time.Time              `json:"startedAt"`
 	FinishedAt          *time.Time              `json:"finishedAt"`
 	ElapsedMilliseconds int64                   `json:"elapsedMilliseconds"`
-	Progress            *analysis.ProgressEvent `json:"progress"`
+	Progress            *pipeline.ProgressEvent `json:"progress"`
 	Warnings            []string                `json:"warnings"`
 	Error               *Failure                `json:"error"`
 }
@@ -152,7 +152,7 @@ func (a *App) createJob(w http.ResponseWriter, r *http.Request) {
 
 	// countMerges mirrors the CLI flag: true overrides the repository config,
 	// false leaves the repository's count_merges setting in charge.
-	options := analysis.Options{
+	options := pipeline.Options{
 		RepoPath:         canonicalPath,
 		NoBlame:          request.Options.NoBlame,
 		PerAuthor:        request.Options.PerAuthor,

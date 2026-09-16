@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/aggregate"
-	"github.com/sinanganiz/commitography/internal/analysis"
+	"github.com/sinanganiz/commitography/internal/pipeline"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/render"
 )
@@ -98,12 +98,12 @@ func TestCLIAndAnalysisServiceProduceTheSameReport(t *testing.T) {
 		t.Fatalf("decode CLI report: %v", err)
 	}
 
-	serviceResult, err := analysis.Run(context.Background(), analysis.Options{
+	serviceResult, err := pipeline.Run(context.Background(), pipeline.Options{
 		RepoPath: opts.RepoPath,
 		NoBlame:  true,
 	}, nil)
 	if err != nil {
-		t.Fatalf("analysis.Run: %v", err)
+		t.Fatalf("pipeline.Run: %v", err)
 	}
 
 	// Generation time is intentionally different because the CLI renders after

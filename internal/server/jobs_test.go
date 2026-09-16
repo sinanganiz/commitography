@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/aggregate"
-	"github.com/sinanganiz/commitography/internal/analysis"
+	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
 func TestManagerAllowsOneActiveJobAndRetainsTerminalHistory(t *testing.T) {
@@ -37,10 +37,10 @@ func TestManagerAllowsOneActiveJobAndRetainsTerminalHistory(t *testing.T) {
 	if err := manager.MarkRunning(first.ID, time.Time{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := manager.UpdateProgress(first.ID, analysis.ProgressEvent{Sequence: 1, Stage: analysis.StageCollecting}); err != nil {
+	if err := manager.UpdateProgress(first.ID, pipeline.ProgressEvent{Sequence: 1, Stage: pipeline.StageCollecting}); err != nil {
 		t.Fatal(err)
 	}
-	if err := manager.Complete(first.ID, &analysis.Result{}, time.Time{}); err != nil {
+	if err := manager.Complete(first.ID, &pipeline.Result{}, time.Time{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -91,15 +91,15 @@ func TestManagerEvictsOldestTerminalJob(t *testing.T) {
 func TestStartRunsWorkerAndCancellationReleasesSlot(t *testing.T) {
 	started := make(chan struct{}, 1)
 	manager := NewManager(ManagerOptions{
-		Runner: func(ctx context.Context, _ analysis.Options, sink analysis.ProgressSink) (*analysis.Result, error) {
-			sink(analysis.ProgressEvent{Sequence: 1, Stage: analysis.StageCollecting})
+		Runner: func(ctx context.Context, _ pipeline.Options, sink pipeline.ProgressSink) (*pipeline.Result, error) {
+			sink(pipeline.ProgressEvent{Sequence: 1, Stage: pipeline.StageCollecting})
 			started <- struct{}{}
 			<-ctx.Done()
 			return nil, ctx.Err()
 		},
 	})
 
-	job, err := manager.Start("/repos/cancellable", analysis.Options{})
+	job, err := manager.Start("/repos/cancellable", pipeline.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,10 +147,10 @@ func TestProgressSequenceIsMonotonicAndSnapshotsProjectElapsed(t *testing.T) {
 	if err := manager.MarkRunning(job.ID, time.Time{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := manager.UpdateProgress(job.ID, analysis.ProgressEvent{Sequence: 2, Stage: analysis.StageCode}); err != nil {
+	if err := manager.UpdateProgress(job.ID, pipeline.ProgressEvent{Sequence: 2, Stage: pipeline.StageCode}); err != nil {
 		t.Fatal(err)
 	}
-	if err := manager.UpdateProgress(job.ID, analysis.ProgressEvent{Sequence: 1, Stage: analysis.StageCollecting}); !errors.Is(err, ErrInvalidState) {
+	if err := manager.UpdateProgress(job.ID, pipeline.ProgressEvent{Sequence: 1, Stage: pipeline.StageCollecting}); !errors.Is(err, ErrInvalidState) {
 		t.Fatalf("out-of-order progress error = %v, want ErrInvalidState", err)
 	}
 	snapshot, err := manager.Get(job.ID)
@@ -183,7 +183,7 @@ func TestOnlySucceededJobsExposeReports(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := &analysis.Result{Report: &aggregate.Report{}}
+	result := &pipeline.Result{Report: &aggregate.Report{}}
 	if err := manager.Complete(job.ID, result, time.Time{}); err != nil {
 		t.Fatal(err)
 	}
@@ -195,13 +195,13 @@ func TestOnlySucceededJobsExposeReports(t *testing.T) {
 func TestCancelAllRequestsWorkerCancellation(t *testing.T) {
 	started := make(chan struct{}, 1)
 	manager := NewManager(ManagerOptions{
-		Runner: func(ctx context.Context, _ analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
+		Runner: func(ctx context.Context, _ pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			started <- struct{}{}
 			<-ctx.Done()
 			return nil, ctx.Err()
 		},
 	})
-	job, err := manager.Start("/repos/shutdown", analysis.Options{})
+	job, err := manager.Start("/repos/shutdown", pipeline.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,17 +232,17 @@ func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
 	release := make(chan struct{})
 	warned := make(chan struct{})
 	manager := NewManager(ManagerOptions{
-		Runner: func(_ context.Context, opts analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
+		Runner: func(_ context.Context, opts pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			opts.OnWarning("config: unknown key")
 			opts.OnWarning("history: skipped commit")
 			opts.OnWarning("history: skipped commit")
 			close(warned)
 			<-release
 			report := &aggregate.Report{Warnings: []string{"history: skipped commit", "blame: sampled"}}
-			return &analysis.Result{Report: report}, nil
+			return &pipeline.Result{Report: report}, nil
 		},
 	})
-	job, err := manager.Start("/repos/project", analysis.Options{})
+	job, err := manager.Start("/repos/project", pipeline.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,13 +306,13 @@ func TestWarningsAreBounded(t *testing.T) {
 func TestCancellationWinsOverALateResult(t *testing.T) {
 	started := make(chan struct{})
 	manager := NewManager(ManagerOptions{
-		Runner: func(ctx context.Context, _ analysis.Options, _ analysis.ProgressSink) (*analysis.Result, error) {
+		Runner: func(ctx context.Context, _ pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			close(started)
 			<-ctx.Done()
-			return &analysis.Result{Report: &aggregate.Report{}}, nil
+			return &pipeline.Result{Report: &aggregate.Report{}}, nil
 		},
 	})
-	job, err := manager.Start("/repos/late", analysis.Options{})
+	job, err := manager.Start("/repos/late", pipeline.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +333,7 @@ func TestCancellationWinsOverALateResult(t *testing.T) {
 }
 
 func TestTerminalStatesCannotBeOverwritten(t *testing.T) {
-	report := func() *analysis.Result { return &analysis.Result{Report: &aggregate.Report{}} }
+	report := func() *pipeline.Result { return &pipeline.Result{Report: &aggregate.Report{}} }
 	for _, tc := range []struct {
 		name   string
 		finish func(*Manager, string) error
@@ -425,12 +425,12 @@ func TestStaleFailureNeverCarriesUnderlyingErrors(t *testing.T) {
 		reason string
 		want   string
 	}{
-		{reason: analysis.StaleHeadChanged, want: analysis.StaleHeadChanged},
-		{reason: analysis.StaleCheckoutChanged, want: analysis.StaleCheckoutChanged},
-		{reason: analysis.StaleHistoryChanged, want: analysis.StaleHistoryChanged},
+		{reason: pipeline.StaleHeadChanged, want: pipeline.StaleHeadChanged},
+		{reason: pipeline.StaleCheckoutChanged, want: pipeline.StaleCheckoutChanged},
+		{reason: pipeline.StaleHistoryChanged, want: pipeline.StaleHistoryChanged},
 		{
-			reason: analysis.StaleRevalidationFailed + ": fatal: not a git repository: /home/user/secret/.git",
-			want:   analysis.StaleRevalidationFailed,
+			reason: pipeline.StaleRevalidationFailed + ": fatal: not a git repository: /home/user/secret/.git",
+			want:   pipeline.StaleRevalidationFailed,
 		},
 	} {
 		manager := NewManager(ManagerOptions{})
@@ -438,7 +438,7 @@ func TestStaleFailureNeverCarriesUnderlyingErrors(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		result := &analysis.Result{Report: &aggregate.Report{}, Stale: true, StaleReason: tc.reason}
+		result := &pipeline.Result{Report: &aggregate.Report{}, Stale: true, StaleReason: tc.reason}
 		if err := manager.Complete(job.ID, result, time.Time{}); err != nil {
 			t.Fatal(err)
 		}

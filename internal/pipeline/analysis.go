@@ -1,6 +1,7 @@
-// Package analysis contains the shared, output-free analysis service used by
-// the command-line and local web adapters.
-package analysis
+// Package pipeline is the pipeline root. It contains the shared, output-free
+// analysis service used by the command-line and local web adapters, and
+// composes the stages beneath it (ADR-0060 clause 1).
+package pipeline
 
 import (
 	"context"
