@@ -9,7 +9,9 @@
 # Measured durations
 #   fast 41s to 1m26s, full 47s to 49s, over four runs on the author's Windows
 #   machine. The upper figures are a cold npm install; the lower ones have warm
-#   module, build and npm caches.
+#   module, build and npm caches. Those full figures predate fixture
+#   determinism, which took 43s to 44s on its own over three runs on the same
+#   machine.
 #
 #   Neither gate has been measured on this runner: this workflow has not run
 #   yet. The first run measures both, and these numbers are replaced by that
@@ -63,3 +65,29 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: make gate-full
+
+  # Part of the full gate. Fixture hashes must be identical on every supported
+  # platform (ADR-0019 clause 1), so the determinism checker, which the full
+  # job above runs on Linux, also runs on the other two release platforms
+  # against the same committed list.
+  fixture-determinism:
+    name: full gate (fixture determinism, ${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: runner.os == 'Windows'
+        run: choco install make --version=4.4.1 --no-progress -y
+      - id: toolchain
+        run: make toolchain-versions >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ steps.toolchain.outputs.go }}
+      - run: make fixture-determinism
