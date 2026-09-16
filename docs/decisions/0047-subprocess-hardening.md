@@ -1,6 +1,7 @@
 # ADR-0047: One git chokepoint with hardened invocation and NUL-delimited output
 
-**Status:** Accepted
+**Status:** Superseded
+**Superseded by:** ADR-0065
 
 ## Context
 Git is invoked as a subprocess against untrusted repositories (ADR-0045). Two
