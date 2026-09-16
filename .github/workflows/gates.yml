@@ -7,10 +7,13 @@
 # faster (ADR-0057 clause 3).
 #
 # Measured durations
-#   fast   1m26s, full 49s, on the author's Windows machine with warm module,
-#          build and npm caches. Neither gate has been measured on this runner
-#          yet: this workflow has not run. The first run records its own
-#          duration, and the numbers above are replaced by it.
+#   fast 41s to 1m26s, full 47s to 49s, over four runs on the author's Windows
+#   machine. The upper figures are a cold npm install; the lower ones have warm
+#   module, build and npm caches.
+#
+#   Neither gate has been measured on this runner: this workflow has not run
+#   yet. The first run measures both, and these numbers are replaced by that
+#   measurement.
 #
 # Third-party actions are pinned to commit revisions, never to tags
 # (ADR-0049 clause 8).
