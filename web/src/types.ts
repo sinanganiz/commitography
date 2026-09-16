@@ -1,4 +1,4 @@
-// Mirrors internal/aggregate. Kept in sync by hand: the report is a documented
+// Mirrors internal/core. Kept in sync by hand: the report is a documented
 // stable artifact, so its shape changes rarely and never within a schema
 // version.
 

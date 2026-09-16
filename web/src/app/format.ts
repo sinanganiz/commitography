@@ -1,4 +1,4 @@
-// Stage identifiers mirror internal/analysis. Unknown stages are shown as-is so
+// Stage identifiers mirror internal/pipeline. Unknown stages are shown as-is so
 // a newer server never renders an empty label.
 const stageLabels: Record<string, string> = {
   preflight: 'Checking the repository',
