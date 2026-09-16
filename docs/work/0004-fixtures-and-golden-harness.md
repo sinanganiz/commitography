@@ -1,14 +1,15 @@
 # WP-0004: Deterministic fixtures and golden harness
 
 **Area:** foundation
-**Implements:** ADR-0019
+**Implements:** ADR-0019, ADR-0057, ADR-0064
 **Requires:** WP-0003
 
 ## Goal
 Fixture repositories are byte-for-byte reproducible on every supported platform,
-generating them leaves the tracked tree clean, and the golden harness fails the
-build when any analysis output changes without its golden file changing in the
-same commit.
+generating them leaves the tracked tree clean, every gate generates them before
+running tests that need them, a missing fixture fails rather than skips, and the
+golden harness fails the build when any analysis output changes without its
+golden file changing in the same commit.
 
 ## In scope
 1. **Generating fixtures must not modify tracked files.** The generator
@@ -26,15 +27,32 @@ same commit.
    fixture that is generated identically everywhere or not at all: prefer names
    that are legal on every supported platform, and if a name is not, drop it and
    record the gap in the fixture's comment.
-4. Reconcile the fixture set. The existing fixtures are `basic`, `mailmap`,
+4. Reconcile the fixture set **without renaming any existing fixture.** Around
+   forty application tests reference the current names, and this package may not
+   edit their logic; renaming would turn them into skips. Names are cosmetic and
+   carry no verification value, so the existing names stay: `basic`, `mailmap`,
    `merges`, `binary`, `noise`, `bots`, `coupling`, `shallow`, `empty`,
-   `single`. Keep each one that exercises a condition, renaming it to state that
-   condition, and add the missing ones. The resulting set must cover at least:
-   single contributor; one person committing under two addresses; renames and a
-   copied block; hostile names within clause 3's constraint; a commit above the
-   outlier threshold; generated and vendored paths; agent co-author trailers
-   mixed with unassisted commits; a multi-year gap; a shallow clone; and a
-   designated large fixture for performance measurement.
+   `single`. Add the fixtures the set lacks, naming each for the condition it
+   exercises. The set must cover at least: single contributor; one person
+   committing under two addresses; renames and a copied block; hostile names
+   within clause 3's constraint; a commit above the outlier threshold; generated
+   and vendored paths; agent co-author trailers mixed with unassisted commits; a
+   multi-year gap; a shallow clone; and a designated large fixture for
+   performance measurement.
+4a. Record the mapping from fixture name to the condition it exercises in a
+   tracked manifest next to the generator. Add a checker that fails when a
+   condition in clause 4 has no fixture, or when a fixture has no condition.
+   The manifest replaces naming as the mechanism that keeps coverage visible.
+4b. **Every gate that runs a fixture-dependent test MUST generate the fixtures
+   first** (ADR-0064 clause 1). The fast gate currently does not, so its
+   fixture-dependent tests all skip and it reports success.
+4c. **A missing fixture MUST fail, not skip** (ADR-0064 clause 2). Change the
+   fixture lookup the application tests share so that absence is a failure
+   naming the missing fixture. Change nothing else in those tests: no assertion,
+   no name, no input. If the lookup is duplicated rather than shared, introduce
+   one shared helper and have each test call it, changing nothing else.
+4d. Add the gate execution summary required by ADR-0064 clause 4: each gate
+   prints counts of checks run, passed, failed and skipped.
 5. Add the fixture determinism checker (ADR-0056): generate twice, compare
    hashes. It must run on every supported platform in the full gate.
 6. Create the golden harness: for each fixture, the produced analysis output is
@@ -48,6 +66,10 @@ same commit.
 ## Out of scope
 - Changing any metric, output format or behaviour to make a golden file smaller
   or tidier.
+- Renaming any existing fixture.
+- Changing what an application test asserts, which fixture it uses, or any input
+  it supplies. Clause 4c permits one change and one only: absence becomes a
+  failure instead of a skip.
 - Fixtures for metrics that do not exist yet. Adding a metric family adds its
   fixture in the same package (ADR-0024 clause 6).
 - The performance budget itself. This package produces the large fixture; the
@@ -56,9 +78,10 @@ same commit.
 
 ## Files
 **May create or modify:** `testdata/**`, `internal/checks/**`, `Makefile`,
-`.gitignore`, CI workflow files.
-**Must not touch:** application source, `docs/decisions/**`, `docs/metrics.md`,
-`internal/pipeline/interpret/taxonomy/**`.
+`.gitignore`, CI workflow files, and **test files only** for the single change
+in clause 4c.
+**Must not touch:** non-test application source, `docs/decisions/**`,
+`docs/metrics.md`, `internal/pipeline/interpret/taxonomy/**`.
 
 ## Steps
 1. Fix the tracked-file deletion first, and confirm `git status` is clean after
@@ -84,7 +107,14 @@ same commit.
 - Altering any analysis output without updating its golden file fails the build.
 - Updating a golden file without a stated reason in the commit body fails the
   build.
-- Every condition in clause 4 is covered by a fixture whose name states it.
+- Every condition in clause 4 is covered by a fixture, and the manifest checker
+  fails when one is not.
+- Deleting a fixture makes the tests that need it fail, naming the fixture. No
+  test skips because a fixture is absent.
+- Both gates generate fixtures before running fixture-dependent tests.
+- Each gate prints counts of checks run, passed, failed and skipped.
+- Each checker added by this package has been observed failing and then passing
+  again (ADR-0064 clause 6); state the evidence in the report.
 
 ## Verification
 ```
@@ -92,6 +122,9 @@ make fixtures && git status --porcelain          # empty
 make fixtures && <record hashes>                  # identical to previous run
 make gate-fast                                    # golden comparison passes
 grep -rnE 'uname|OSTYPE|\$OS|case .*mingw' testdata/   # no platform branches
+
+rm -rf testdata/fixtures/basic && make gate-fast   # fails naming 'basic', does not skip
+git grep -nE 't\.Skip' -- '*_test.go' | grep -i fixture   # no output
 ```
 
 ## Note on golden content

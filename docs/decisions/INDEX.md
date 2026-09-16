@@ -87,6 +87,7 @@ a superseding record is written first.
 | [0061](0061-link-time-build-metadata.md) | Link-time build metadata is the one exception to the no-package-variable rule | Accepted |
 | [0062](0062-metric-catalogue-authority.md) | `docs/metrics.md` is the authoritative metric catalogue | Accepted |
 | [0063](0063-enforced-rule-set-corrected.md) | The enforced rule set | Accepted |
+| [0064](0064-checks-must-be-able-to-fail.md) | A check that cannot fail is not a check | Accepted |
 
 ADR-0056 is superseded by ADR-0063.
 
@@ -103,7 +104,7 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 | 2 | 0004, 0007, 0008, 0018, 0026, 0028, 0029, 0030, 0031, 0034, 0036, 0042, 0055 |
 | 3 | 0014, 0017, 0024, 0033, 0037, 0038, 0043, 0045, 0049, 0056, 0058, 0059, 0063 |
 | 4 | 0009, 0011, 0012, 0015, 0027, 0032, 0035, 0040, 0046, 0052, 0057, 0061, 0062 |
-| 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053, 0060 |
+| 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053, 0060, 0064 |
 | 6 | 0023, 0047, 0051, 0054 |
 
 Two records carry partial dependencies stated in prose rather than as a
@@ -154,6 +155,9 @@ checked without reading the full set. The governing record is authoritative.
 - No build metadata is derived from the clock; two builds of one commit are
   identical. (0063)
 - No check runs over the working tree; tracked files only. (0063)
+- No check skips because the gate failed to provide its precondition; a missing
+  precondition fails. (0064)
+- No check is accepted until it has been observed failing. (0064)
 
 **Architecture**
 
