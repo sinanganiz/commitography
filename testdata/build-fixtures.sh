@@ -451,4 +451,25 @@ Co-authored-by: claude <noreply@anthropic.com>" ;;
 	n=$((n + 1))
 done
 
+# --------------------------------------------------------------------------
+# multi-year-gap/ - six commits in 2017, nothing for more than five years,
+# then six commits in 2023, alternating between +0100 and +0200 offsets
+# --------------------------------------------------------------------------
+echo "building multi-year-gap/"
+dir="$root/multi-year-gap"
+init_repo "$dir"
+# 2017-03-01T10:00:00Z and 2023-01-02T10:00:00Z, stepping 30 days.
+for start in 1488362400 1672653600; do
+	n=0
+	while [ "$n" -lt 6 ]; do
+		ts=$((start + n * 30 * DAY))
+		if [ $((n % 2)) -eq 0 ]; then tz="+0100"; else tz="+0200"; fi
+		printf 'entry %d\n' "$ts" >>"$dir/log.txt"
+		git -C "$dir" add -A
+		commit "$dir" "$ts" "$tz" "Grace Hopper" "grace@example.com" \
+			"docs: record entry $ts"
+		n=$((n + 1))
+	done
+done
+
 echo "fixtures built under $root"

@@ -28,6 +28,9 @@ merges refs/heads/topic-3 69bc0e51e290161f61e25c4b0aeb6f20db2ed051
 merges refs/heads/topic-4 58c0287370dc8fc111f02c9b5893f40c46a473b3
 merges refs/heads/topic-5 1a0fe24d543c342b9e0038fa226fb11302324e48
 merges commits 16
+multi-year-gap HEAD refs/heads/main
+multi-year-gap refs/heads/main 5fc7a0b4361542db9a56d1e3af9795dbc46facd4
+multi-year-gap commits 12
 noise HEAD refs/heads/main
 noise refs/heads/main 58e68513d8354836ab59a1de123f7546e0127ff2
 noise commits 5
