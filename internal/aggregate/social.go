@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/filter"
-	"github.com/sinanganiz/commitography/internal/model"
+	"github.com/sinanganiz/commitography/internal/core/filter"
+	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
 const (

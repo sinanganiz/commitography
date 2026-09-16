@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/collect"
-	"github.com/sinanganiz/commitography/internal/config"
-	"github.com/sinanganiz/commitography/internal/identity"
-	"github.com/sinanganiz/commitography/internal/model"
+	"github.com/sinanganiz/commitography/internal/core/config"
+	"github.com/sinanganiz/commitography/internal/core/identity"
+	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
 func fixture(t *testing.T, name string) string {
 	t.Helper()
-	path, err := filepath.Abs(filepath.Join("..", "..", "testdata", "fixtures", name))
+	path, err := filepath.Abs(filepath.Join("..", "..", "..", "testdata", "fixtures", name))
 	if err != nil {
 		t.Fatalf("resolving fixture path: %v", err)
 	}

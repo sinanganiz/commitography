@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sinanganiz/commitography/internal/config"
+	"github.com/sinanganiz/commitography/internal/core/config"
 )
 
 // emailHashLength is how much of the SHA-256 digest is kept. Sixteen hex

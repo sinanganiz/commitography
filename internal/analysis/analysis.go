@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/sinanganiz/commitography/internal/aggregate"
-	"github.com/sinanganiz/commitography/internal/config"
-	"github.com/sinanganiz/commitography/internal/model"
+	"github.com/sinanganiz/commitography/internal/core/config"
+	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
 // Options contains analysis behavior that is independent of the output

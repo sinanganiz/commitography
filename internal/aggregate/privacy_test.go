@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/config"
+	"github.com/sinanganiz/commitography/internal/core/config"
 )
 
 // emailShaped is deliberately loose: the point is that nothing resembling an

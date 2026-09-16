@@ -93,7 +93,7 @@ linters:
       - path: internal/jobs/jobs\.go
         linters: [forbidigo]
         text: "ADR-0042: read the clock"
-      - path: internal/filter/filter_test\.go
+      - path: internal/core/filter/filter_test\.go
         linters: [forbidigo]
         text: "ADR-0042: read the clock"
       - path: internal/jobs/jobs_test\.go
@@ -109,11 +109,11 @@ linters:
         linters: [gochecknoglobals]
       - path: internal/aggregate/stopwords\.go
         linters: [gochecknoglobals]
-      - path: internal/config/config\.go
+      - path: internal/core/config/config\.go
         linters: [gochecknoglobals]
       - path: internal/container/container\.go
         linters: [gochecknoglobals]
-      - path: internal/filter/paths\.go
+      - path: internal/core/filter/paths\.go
         linters: [gochecknoglobals]
       - path: internal/render/render\.go
         linters: [gochecknoglobals]

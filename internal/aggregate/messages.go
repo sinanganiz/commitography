@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/sinanganiz/commitography/internal/model"
+	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
 const (

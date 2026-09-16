@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/sinanganiz/commitography/internal/config"
+	"github.com/sinanganiz/commitography/internal/core/config"
 )
 
 // caseInsensitiveFS mirrors git's own default: path comparisons ignore case on

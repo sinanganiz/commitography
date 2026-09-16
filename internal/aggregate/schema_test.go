@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"github.com/sinanganiz/commitography/internal/collect"
-	"github.com/sinanganiz/commitography/internal/config"
-	"github.com/sinanganiz/commitography/internal/filter"
-	"github.com/sinanganiz/commitography/internal/identity"
+	"github.com/sinanganiz/commitography/internal/core/config"
+	"github.com/sinanganiz/commitography/internal/core/filter"
+	"github.com/sinanganiz/commitography/internal/core/identity"
 )
 
 // The report is a documented, stable artifact, so the committed schema is part

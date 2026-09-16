@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/config"
-	"github.com/sinanganiz/commitography/internal/model"
+	"github.com/sinanganiz/commitography/internal/core/config"
+	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
 // at builds a commit at a given local wall-clock time and UTC offset.

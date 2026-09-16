@@ -4,7 +4,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/model"
+	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
 // dateLayout is the calendar-date form used everywhere in the report.

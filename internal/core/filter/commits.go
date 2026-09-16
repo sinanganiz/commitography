@@ -3,9 +3,9 @@ package filter
 import (
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/config"
-	"github.com/sinanganiz/commitography/internal/identity"
-	"github.com/sinanganiz/commitography/internal/model"
+	"github.com/sinanganiz/commitography/internal/core/config"
+	"github.com/sinanganiz/commitography/internal/core/identity"
+	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
 // CouplingMaxFilesPerCommit caps how many files a commit may touch before the

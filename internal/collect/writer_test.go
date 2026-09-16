@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/model"
+	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
 func syntheticHistory(commits int) *model.History {

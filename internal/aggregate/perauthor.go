@@ -4,8 +4,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/filter"
-	"github.com/sinanganiz/commitography/internal/model"
+	"github.com/sinanganiz/commitography/internal/core/filter"
+	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
 // AuthorSummary is one contributor's activity.

@@ -4,8 +4,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/filter"
-	"github.com/sinanganiz/commitography/internal/model"
+	"github.com/sinanganiz/commitography/internal/core/filter"
+	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
 // bulkCommitsShown caps the notable-events list. Beyond a handful, bulk commits

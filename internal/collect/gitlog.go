@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sinanganiz/commitography/internal/core/model"
 	"github.com/sinanganiz/commitography/internal/git"
-	"github.com/sinanganiz/commitography/internal/model"
 	"github.com/sinanganiz/commitography/internal/version"
 )
 

@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sinanganiz/commitography/internal/core/model"
 	"github.com/sinanganiz/commitography/internal/git"
-	"github.com/sinanganiz/commitography/internal/model"
 )
 
 // MinGitVersion is the oldest git release commitography supports. Older

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sinanganiz/commitography/internal/model"
+	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
 func TestRepositoryChangedDetectsRelevantMutations(t *testing.T) {

@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/filter"
+	"github.com/sinanganiz/commitography/internal/core/filter"
+	"github.com/sinanganiz/commitography/internal/core/model"
 	"github.com/sinanganiz/commitography/internal/git"
-	"github.com/sinanganiz/commitography/internal/model"
 )
 
 const (
