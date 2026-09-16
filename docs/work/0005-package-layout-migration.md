@@ -38,7 +38,11 @@ rule is enforced by the linter, and every golden file is unchanged by the move.
    needs its own non-git mechanism rather than a move.
 7. Apply ADR-0061: build metadata becomes one file under `internal/core/` with
    one lint suppression naming that record. Its value is read at composition and
-   injected onward.
+   injected onward. **The release configuration's three linker flags name the
+   old package path directly.** The linker ignores a flag naming a variable that
+   does not exist, without an error, so leaving them would silently produce
+   release binaries reporting a default version. Repoint all three at the new
+   location in the same commit as the move.
 8. Add the file-level record references required by ADR-0059 clause 1 to every
    file in that list that now exists, and enable the decision reference checker
    for the files that exist.
@@ -50,11 +54,16 @@ rule is enforced by the linter, and every golden file is unchanged by the move.
     newer than the declared version. WP-0003 pinned the gates to a working
     toolchain without editing the manifest; this package makes the manifest
     agree.
-11. **Remove the clock-derived build timestamp.** The build currently injects a
-    value read from the clock, so two builds of one commit differ, which
-    ADR-0049 forbids and ADR-0063 clause 3 now prohibits by name. Replace it
-    with the analysed commit's own timestamp, and enable the reproducible build
-    checker from ADR-0063 table 2.
+11. **Remove every clock-derived build timestamp.** Two builds of one commit
+    currently differ, which ADR-0049 forbids and ADR-0063 clause 3 prohibits by
+    name. Replace the value with the commit's own timestamp **in both the local
+    build and the release configuration**; fixing only one leaves a binding
+    record broken in the other. Enable the reproducible build checker from
+    ADR-0063 table 2.
+12. Update the citations in the linter configuration header from ADR-0056 to
+    ADR-0063, which supersedes it.
+13. Correct the three comments in the frontend that name packages this package
+    moves. These are comment-only edits and change no behaviour.
 
 ## Out of scope
 - Any behavioural change. This package moves, splits and renames; it does not
@@ -71,10 +80,13 @@ rule is enforced by the linter, and every golden file is unchanged by the move.
 
 ## Files
 **May create or modify:** `internal/**`, `cmd/**`, `Makefile`, `go.mod`,
-`go.sum`, `.gitattributes`, `.gitignore`, linter configuration, and
-`web/vite.config.ts` **for its output directory only**.
-**Must not touch:** `testdata/**`, golden files, `docs/**`, `web/**` other than
-the single setting in clause 4.
+`go.sum`, `.gitattributes`, `.gitignore`, linter configuration,
+`web/vite.config.ts` **for its output directory only**, the release
+configuration **for its three linker flags and its build date only**, and
+`web/index.html`, `web/src/types.ts`, `web/src/app/format.ts` **for their
+package-name comments only**.
+**Must not touch:** `testdata/**`, golden files, `docs/**`, and `web/**` other
+than the four files named above, each for the single reason named.
 
 ## Steps
 1. Create the empty package tree.
@@ -101,11 +113,20 @@ the single setting in clause 4.
   reference.
 - `make fixtures` still leaves `git status --porcelain` empty.
 - Two builds of the same commit produce identical binaries, verified by the
-  reproducible build checker.
+  reproducible build checker, for the local build and the release build alike.
+- Every linker flag names a variable that exists. A build with the release
+  configuration reports a real version, not a default.
+- No comment anywhere names a package path this package moved.
 
 ## Verification
 ```
 git diff --stat <base> -- testdata/     # empty: no golden file changed
 make gate-full                           # passes
 git grep -l '"os/exec"' -- internal cmd  # only internal/git
+
+# every -X flag target must exist
+git grep -ohE '\-X [^ "]+' .goreleaser.yml Makefile | sed 's/-X //;s/=.*//' |
+  while read -r s; do git grep -q "${s##*.}" -- internal || echo "MISSING: $s"; done
+
+git grep -nE 'internal/(version|aggregate|analysis|render)' -- web  # no output
 ```

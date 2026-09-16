@@ -35,6 +35,23 @@ dependencies without a stated reason.
 5. A package that changes analysis output updates its golden files in the same
    change, with the reason stated in the commit body (ADR-0019 clause 2).
 
+## Writing a package
+
+These are notes for whoever writes the packages, learned from packages that had
+to be amended mid-flight.
+
+- **A package that moves or renames anything must allow every file that names
+  the old location**, including build and release configuration, ignore and
+  attribute files, and comments. A build tool that silently accepts a flag
+  pointing at a name that no longer exists turns a move into a silent
+  behavioural change.
+- **A package must define its own boundary, not delegate it to another
+  document.** "Fix everything in the audit" made WP-0002 unsatisfiable, because
+  the audit listed work the package was forbidden to do.
+- **A name is not a verification mechanism.** WP-0004 required renaming
+  fixtures to state their conditions; the rename cost forty test references and
+  verified nothing. A manifest plus a checker does the job.
+
 ---
 
 ## Packages
@@ -45,7 +62,7 @@ dependencies without a stated reason.
 | [0002](0002-neutralise-contradicting-documents.md) | foundation | Neutralise contradicting documents | ADR-0001, ADR-0004, ADR-0021, ADR-0034 | WP-0001 | Done |
 | [0003](0003-enforcement-skeleton.md) | foundation | Enforcement skeleton | ADR-0055, ADR-0056, ADR-0057 | WP-0001 | Done |
 | [0004](0004-fixtures-and-golden-harness.md) | foundation | Deterministic fixtures and golden harness | ADR-0019 | WP-0003 | Done |
-| [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040, ADR-0060, ADR-0061 | WP-0003, WP-0004 | Ready |
+| [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040, ADR-0049, ADR-0060, ADR-0061, ADR-0063 | WP-0003, WP-0004 | Ready |
 | 0006 | foundation | Error model and reason codes | ADR-0041, ADR-0032 | WP-0005 | Draft |
 | 0007 | foundation | Dependency wiring and ambient state removal | ADR-0042 | WP-0005 | Draft |
 | 0008 | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032 | WP-0005, WP-0006 | Draft |
