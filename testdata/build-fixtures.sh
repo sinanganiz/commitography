@@ -25,7 +25,14 @@ for var in $(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p'); do
 done
 GIT_CONFIG_NOSYSTEM=1
 GIT_CONFIG_GLOBAL=/dev/null
-export GIT_CONFIG_NOSYSTEM GIT_CONFIG_GLOBAL
+# core.longpaths lets Git for Windows write below a deep output root, where the
+# shallow clone's pack files otherwise exceed the Windows path length limit.
+# Other platforms ignore the key. It changes no object.
+GIT_CONFIG_COUNT=1
+GIT_CONFIG_KEY_0=core.longpaths
+GIT_CONFIG_VALUE_0=true
+export GIT_CONFIG_NOSYSTEM GIT_CONFIG_GLOBAL \
+	GIT_CONFIG_COUNT GIT_CONFIG_KEY_0 GIT_CONFIG_VALUE_0
 
 # The default output root holds a tracked placeholder, so only the generated
 # entries beside it are removed. Deleting the root would delete the

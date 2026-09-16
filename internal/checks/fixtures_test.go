@@ -78,19 +78,24 @@ func fixtureManifest(t *testing.T, root string) string {
 		fixtures++
 		name := e.Name()
 		dir := filepath.Join(root, name)
-		head, err := gitcmd.RunContext(ctx, dir, "symbolic-ref", "HEAD")
+		// As in the generator: a deep checkout otherwise exceeds the Windows
+		// path length limit when git reads objects. Other platforms ignore it.
+		git := func(args ...string) []string {
+			return append([]string{"-c", "core.longpaths=true"}, args...)
+		}
+		head, err := gitcmd.RunContext(ctx, dir, git("symbolic-ref", "HEAD")...)
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}
 		b.WriteString(name + " HEAD " + head + "\n")
-		refs, err := gitcmd.LinesContext(ctx, dir, "for-each-ref", "--format=%(refname) %(objectname)")
+		refs, err := gitcmd.LinesContext(ctx, dir, git("for-each-ref", "--format=%(refname) %(objectname)")...)
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}
 		for _, ref := range refs {
 			b.WriteString(name + " " + ref + "\n")
 		}
-		count, err := gitcmd.RunContext(ctx, dir, "rev-list", "--count", "--all")
+		count, err := gitcmd.RunContext(ctx, dir, git("rev-list", "--count", "--all")...)
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}
