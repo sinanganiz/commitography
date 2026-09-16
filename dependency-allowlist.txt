@@ -1,0 +1,27 @@
+# Direct dependency allow list. (ADR-0049 clause 2 and 3)
+#
+# Every direct dependency declared in a tracked go.mod or package.json must
+# appear here, or the build fails (internal/checks, TestDependencyAllowList).
+# The list is kept narrow: add an entry in the same change that adds the
+# dependency, and remove it when the dependency is removed.
+#
+# Format: one "<ecosystem> <name>" per line; ecosystem is go or npm.
+#
+# Populated from docs/work/audit.md section 4. Direct dependencies the audit
+# marks as forbidden by a record (@mui/material, @emotion/react,
+# @emotion/styled; ADR-0038 clause 1) are deliberately absent.
+
+go github.com/bmatcuk/doublestar/v4
+go github.com/spf13/cobra
+go gopkg.in/yaml.v3
+
+npm react
+npm react-dom
+npm typescript
+npm vite
+npm vitest
+npm jsdom
+npm @testing-library/dom
+npm @testing-library/react
+npm @types/react
+npm @types/react-dom
