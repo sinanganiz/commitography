@@ -52,19 +52,13 @@ linters:
   settings:
     depguard:
       rules:
-        # internal/gitcmd is the git package until WP-0005 moves it to
-        # internal/git/.
         process-execution:
           list-mode: lax
           files:
             - $all
-            - "!**/internal/gitcmd/**"
-            # Narrowed until WP-0005 clause 6 moves process execution out of
-            # every package except internal/git/.
-            - "!**/internal/collect/git.go"
-            - "!**/internal/collect/preflight.go"
-            - "!**/internal/collect/collect_test.go"
-            - "!**/internal/identity/identity_test.go"
+            - "!**/internal/git/**"
+            # Narrowed until WP-0005 clause 6 confines the remaining non-git
+            # process execution to the sites ADR-0065 clause 3 permits.
             - "!**/internal/server/listener.go"
             - "!**/internal/server/path_windows_test.go"
           deny:

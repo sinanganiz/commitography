@@ -2,11 +2,12 @@ package collect
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/sinanganiz/commitography/internal/git"
 )
 
 // fixture returns the path to a built fixture repository, failing the test
@@ -24,9 +25,9 @@ func fixture(t *testing.T, name string) string {
 	return path
 }
 
-func git(t *testing.T, repo string, args ...string) string {
+func gitOutput(t *testing.T, repo string, args ...string) string {
 	t.Helper()
-	out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).Output()
+	out, err := git.Command(repo, args...).Output()
 	if err != nil {
 		t.Fatalf("git %s: %v", strings.Join(args, " "), err)
 	}
@@ -40,7 +41,7 @@ func TestCollectCommitCountMatchesRevList(t *testing.T) {
 		t.Fatalf("Collect: %v", err)
 	}
 
-	want, err := strconv.Atoi(git(t, repo, "rev-list", "--all", "--count"))
+	want, err := strconv.Atoi(gitOutput(t, repo, "rev-list", "--all", "--count"))
 	if err != nil {
 		t.Fatalf("parsing rev-list output: %v", err)
 	}
@@ -64,7 +65,7 @@ func TestCollectTotalAddedLinesMatchesGit(t *testing.T) {
 	}
 
 	// Independent recomputation straight from git, not reusing the parser.
-	raw := git(t, repo, "log", "--all", "--numstat", "--no-renames", "--pretty=format:")
+	raw := gitOutput(t, repo, "log", "--all", "--numstat", "--no-renames", "--pretty=format:")
 	var want int
 	for _, line := range strings.Split(raw, "\n") {
 		parts := strings.SplitN(strings.TrimSpace(line), "\t", 3)
@@ -92,7 +93,7 @@ func TestCollectPreservesAuthorTimezoneOffsets(t *testing.T) {
 
 	// Raw %aI strings, keyed by hash, straight from git.
 	raw := map[string]string{}
-	for _, line := range strings.Split(git(t, repo, "log", "--all", "--pretty=format:%H %aI"), "\n") {
+	for _, line := range strings.Split(gitOutput(t, repo, "log", "--all", "--pretty=format:%H %aI"), "\n") {
 		hash, iso, ok := strings.Cut(strings.TrimSpace(line), " ")
 		if ok {
 			raw[hash] = iso
@@ -158,7 +159,7 @@ func TestCollectRootCommitHasNoParents(t *testing.T) {
 	}
 
 	roots := map[string]bool{}
-	for _, line := range strings.Split(git(t, repo, "rev-list", "--all", "--max-parents=0"), "\n") {
+	for _, line := range strings.Split(gitOutput(t, repo, "rev-list", "--all", "--max-parents=0"), "\n") {
 		if line = strings.TrimSpace(line); line != "" {
 			roots[line] = true
 		}
@@ -276,7 +277,7 @@ func TestCollectMailmapReconcilesWithShortlog(t *testing.T) {
 	}
 
 	want := map[string]int{}
-	for _, line := range strings.Split(git(t, repo, "shortlog", "-sn", "--all"), "\n") {
+	for _, line := range strings.Split(gitOutput(t, repo, "shortlog", "-sn", "--all"), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

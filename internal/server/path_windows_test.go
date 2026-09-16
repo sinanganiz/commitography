@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sinanganiz/commitography/internal/git"
 )
 
 // These tests cover the Windows path forms of WP-3.5 and WP-6.5: junctions,
@@ -31,7 +33,7 @@ func requireForbidden(t *testing.T, app *App, path string) {
 func TestWindowsJunctionOutOfTheRootIsRejected(t *testing.T) {
 	root := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "outside-repository")
-	if out, err := exec.Command("git", "init", "-q", outside).CombinedOutput(); err != nil {
+	if out, err := git.Command("", "init", "-q", outside).CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 	link := filepath.Join(root, "junction")
@@ -75,7 +77,7 @@ func TestWindowsParentTraversalLeavesTheRoot(t *testing.T) {
 	if err := os.Mkdir(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if out, err := exec.Command("git", "init", "-q", filepath.Join(parent, "sibling")).CombinedOutput(); err != nil {
+	if out, err := git.Command("", "init", "-q", filepath.Join(parent, "sibling")).CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 	app, err := NewAppWithAllowedRoots(nil, []string{root})
@@ -99,7 +101,7 @@ func TestWindowsExtendedAndUNCPathsCannotLeaveTheRoot(t *testing.T) {
 	root := filepath.Join(parent, "root")
 	outside := filepath.Join(parent, "outside")
 	for _, dir := range []string{root, outside} {
-		if out, err := exec.Command("git", "init", "-q", dir).CombinedOutput(); err != nil {
+		if out, err := git.Command("", "init", "-q", dir).CombinedOutput(); err != nil {
 			t.Fatalf("git init: %v: %s", err, out)
 		}
 	}

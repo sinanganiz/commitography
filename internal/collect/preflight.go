@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/sinanganiz/commitography/internal/git"
 	"github.com/sinanganiz/commitography/internal/model"
 )
 
@@ -66,7 +66,7 @@ func PreflightContext(ctx context.Context, repoPath string) (model.RepositoryInf
 	var info model.RepositoryInfo
 
 	// 1. git availability.
-	if _, err := exec.LookPath("git"); err != nil {
+	if _, err := git.LookPath(); err != nil {
 		return info, ErrGitNotFound
 	}
 	raw, err := runGitContext(ctx, "", "--version")

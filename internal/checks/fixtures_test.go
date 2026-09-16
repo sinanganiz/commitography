@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sinanganiz/commitography/internal/gitcmd"
+	"github.com/sinanganiz/commitography/internal/git"
 )
 
 const fixtureHashes = "testdata/fixture-hashes.txt"
@@ -81,22 +81,22 @@ func fixtureManifest(t *testing.T, root string) string {
 		dir := filepath.Join(root, name)
 		// As in the generator: a deep checkout otherwise exceeds the Windows
 		// path length limit when git reads objects. Other platforms ignore it.
-		git := func(args ...string) []string {
+		withLongPaths := func(args ...string) []string {
 			return append([]string{"-c", "core.longpaths=true"}, args...)
 		}
-		head, err := gitcmd.RunContext(ctx, dir, git("symbolic-ref", "HEAD")...)
+		head, err := git.RunContext(ctx, dir, withLongPaths("symbolic-ref", "HEAD")...)
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}
 		b.WriteString(name + " HEAD " + head + "\n")
-		refs, err := gitcmd.LinesContext(ctx, dir, git("for-each-ref", "--format=%(refname) %(objectname)")...)
+		refs, err := git.LinesContext(ctx, dir, withLongPaths("for-each-ref", "--format=%(refname) %(objectname)")...)
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}
 		for _, ref := range refs {
 			b.WriteString(name + " " + ref + "\n")
 		}
-		count, err := gitcmd.RunContext(ctx, dir, git("rev-list", "--count", "--all")...)
+		count, err := git.RunContext(ctx, dir, withLongPaths("rev-list", "--count", "--all")...)
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}

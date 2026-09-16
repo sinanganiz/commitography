@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sinanganiz/commitography/internal/gitcmd"
+	"github.com/sinanganiz/commitography/internal/git"
 )
 
 // TestGoldenCommitMessages enforces ADR-0019 clause 2: every commit that
@@ -19,7 +19,7 @@ import (
 func TestGoldenCommitMessages(t *testing.T) {
 	repo := openRepository(t)
 	ctx := context.Background()
-	shallow, err := gitcmd.RunContext(ctx, repo.root, "rev-parse", "--is-shallow-repository")
+	shallow, err := git.RunContext(ctx, repo.root, "rev-parse", "--is-shallow-repository")
 	if err != nil {
 		fatal(t, 19, "cannot tell whether the history is complete: %v", err)
 	}
@@ -27,7 +27,7 @@ func TestGoldenCommitMessages(t *testing.T) {
 		fatal(t, 64, "the repository is a shallow clone, so commits changing %s cannot all be read; "+
 			"check out full history (fetch-depth: 0)", goldenDir)
 	}
-	out, err := gitcmd.RunContext(ctx, repo.root, "log", "-z", "--no-merges", "--format=%H%n%B", "--", goldenDir)
+	out, err := git.RunContext(ctx, repo.root, "log", "-z", "--no-merges", "--format=%H%n%B", "--", goldenDir)
 	if err != nil {
 		fatal(t, 19, "cannot read the history of %s: %v", goldenDir, err)
 	}

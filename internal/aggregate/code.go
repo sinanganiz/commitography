@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/filter"
-	"github.com/sinanganiz/commitography/internal/gitcmd"
+	"github.com/sinanganiz/commitography/internal/git"
 	"github.com/sinanganiz/commitography/internal/model"
 )
 
@@ -310,7 +310,7 @@ func trackedFiles(repoPath string) ([]string, error) {
 }
 
 func trackedFilesContext(ctx context.Context, repoPath string) ([]string, error) {
-	return gitcmd.LinesContext(ctx, repoPath, "ls-tree", "-r", "--name-only", "HEAD")
+	return git.LinesContext(ctx, repoPath, "ls-tree", "-r", "--name-only", "HEAD")
 }
 
 // textCandidates removes files blame cannot say anything useful about: those
@@ -373,7 +373,7 @@ func blameYears(ctx context.Context, repoPath string, paths []string, progress f
 		if err := ctx.Err(); err != nil {
 			return nil, warnings, err
 		}
-		out, err := gitcmd.RunContext(ctx, repoPath, "blame", "--line-porcelain", "-w", "-M", "HEAD", "--", p)
+		out, err := git.RunContext(ctx, repoPath, "blame", "--line-porcelain", "-w", "-M", "HEAD", "--", p)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil, warnings, err

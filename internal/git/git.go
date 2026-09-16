@@ -1,7 +1,7 @@
-// Package gitcmd is the single place commitography shells out to git. Every
+// Package git is the single place commitography shells out to git. Every
 // invocation goes through here so that flags like core.quotePath are applied
 // uniformly and stderr is always turned into a useful error.
-package gitcmd
+package git
 
 import (
 	"bytes"
@@ -20,6 +20,11 @@ func Args(repoPath string, args ...string) []string {
 		base = append(base, "-C", repoPath)
 	}
 	return append(base, args...)
+}
+
+// LookPath reports where the git executable is found in PATH.
+func LookPath() (string, error) {
+	return exec.LookPath("git")
 }
 
 // Command builds an *exec.Cmd for a git invocation against repoPath.

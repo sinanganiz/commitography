@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sinanganiz/commitography/internal/gitcmd"
+	"github.com/sinanganiz/commitography/internal/git"
 )
 
 // report records a checker failure. Every failure in this package goes through
@@ -50,11 +50,11 @@ type repository struct {
 func openRepository(t *testing.T) repository {
 	t.Helper()
 	ctx := context.Background()
-	root, err := gitcmd.RunContext(ctx, "", "rev-parse", "--show-toplevel")
+	root, err := git.RunContext(ctx, "", "rev-parse", "--show-toplevel")
 	if err != nil {
 		fatal(t, 55, "cannot locate the repository root: %v", err)
 	}
-	out, err := gitcmd.RunContext(ctx, root, "ls-files", "-z")
+	out, err := git.RunContext(ctx, root, "ls-files", "-z")
 	if err != nil {
 		fatal(t, 55, "cannot list tracked files: %v", err)
 	}

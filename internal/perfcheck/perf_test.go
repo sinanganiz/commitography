@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/analysis"
+	"github.com/sinanganiz/commitography/internal/git"
 	"github.com/sinanganiz/commitography/internal/jobs"
 	"github.com/sinanganiz/commitography/internal/server"
 )
@@ -87,7 +88,7 @@ func generateRepository(dir string, commits, files int) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	if out, err := git(dir, nil, "init", "-q", "-b", "main"); err != nil {
+	if out, err := runGit(dir, nil, "init", "-q", "-b", "main"); err != nil {
 		return fmt.Errorf("git init: %v: %s", err, out)
 	}
 	var stream strings.Builder
@@ -102,18 +103,17 @@ func generateRepository(dir string, commits, files int) error {
 		}
 		fmt.Fprintf(&stream, "M 100644 inline src/module-%d.txt\ndata %d\n%s\n", i%files, len(content), content)
 	}
-	if out, err := git(dir, strings.NewReader(stream.String()), "fast-import", "--quiet"); err != nil {
+	if out, err := runGit(dir, strings.NewReader(stream.String()), "fast-import", "--quiet"); err != nil {
 		return fmt.Errorf("git fast-import: %v: %s", err, out)
 	}
-	if out, err := git(dir, nil, "reset", "-q", "--hard", "main"); err != nil {
+	if out, err := runGit(dir, nil, "reset", "-q", "--hard", "main"); err != nil {
 		return fmt.Errorf("git reset: %v: %s", err, out)
 	}
 	return nil
 }
 
-func git(dir string, stdin io.Reader, args ...string) ([]byte, error) {
-	cmd := exec.Command("git", append([]string{"-c", "core.autocrlf=false"}, args...)...)
-	cmd.Dir = dir
+func runGit(dir string, stdin io.Reader, args ...string) ([]byte, error) {
+	cmd := git.Command(dir, append([]string{"-c", "core.autocrlf=false"}, args...)...)
 	cmd.Stdin = stdin
 	return cmd.CombinedOutput()
 }

@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/sinanganiz/commitography/internal/collect"
-	"github.com/sinanganiz/commitography/internal/gitcmd"
+	"github.com/sinanganiz/commitography/internal/git"
 )
 
 type pathValidationError struct {
@@ -111,7 +111,7 @@ func (a *App) validateRepositoryPath(path string, allowShallow bool) (string, er
 	if info.IsShallow && !allowShallow {
 		return "", &pathValidationError{Code: "shallow_repository", Message: (&collect.ShallowError{Path: canonical}).Error()}
 	}
-	gitDir, err := gitcmd.Run(canonical, "rev-parse", "--absolute-git-dir")
+	gitDir, err := git.Run(canonical, "rev-parse", "--absolute-git-dir")
 	if err != nil {
 		return "", &pathValidationError{Code: "invalid_repository", Message: "could not resolve the repository Git directory"}
 	}

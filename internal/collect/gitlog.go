@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/gitcmd"
+	"github.com/sinanganiz/commitography/internal/git"
 	"github.com/sinanganiz/commitography/internal/model"
 	"github.com/sinanganiz/commitography/internal/version"
 )
@@ -173,7 +173,7 @@ func revList(opts Options) ([]string, error) {
 	if opts.Until != "" {
 		args = append(args, "--until="+opts.Until)
 	}
-	return gitcmd.LinesContext(opts.context(), opts.RepoPath, args...)
+	return git.LinesContext(opts.context(), opts.RepoPath, args...)
 }
 
 // logArgs builds the `git log` arguments shared by both readers. When hashes
@@ -206,7 +206,7 @@ func collectStream(opts Options, hashes []string) (commits []model.Commit, faile
 }
 
 func collectStreamWithTotal(opts Options, hashes []string, expected int) (commits []model.Commit, failed, total int, err error) {
-	cmd := gitCommandContext(opts.context(), opts.RepoPath, logArgs(opts, hashes != nil)...)
+	cmd := git.CommandContext(opts.context(), opts.RepoPath, logArgs(opts, hashes != nil)...)
 	if hashes != nil {
 		cmd.Stdin = strings.NewReader(strings.Join(hashes, "\n") + "\n")
 	}

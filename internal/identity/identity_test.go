@@ -2,7 +2,6 @@ package identity
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/collect"
 	"github.com/sinanganiz/commitography/internal/config"
+	"github.com/sinanganiz/commitography/internal/git"
 	"github.com/sinanganiz/commitography/internal/model"
 )
 
@@ -41,7 +41,7 @@ func TestResolverReconcilesWithShortlogOnMailmapFixture(t *testing.T) {
 	r := NewResolver(config.Default(), commits)
 	got := len(r.Identities())
 
-	out, err := exec.Command("git", "-C", repo, "shortlog", "-sn", "--all").Output()
+	out, err := git.Command(repo, "shortlog", "-sn", "--all").Output()
 	if err != nil {
 		t.Fatalf("git shortlog: %v", err)
 	}
