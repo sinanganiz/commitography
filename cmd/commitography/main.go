@@ -8,20 +8,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sinanganiz/commitography/internal/cli"
 	"github.com/sinanganiz/commitography/internal/version"
 )
 
 func main() {
 	if err := newRootCommand().Execute(); err != nil {
-		cli.Report(err)
-		os.Exit(cli.ExitCode(err))
+		Report(err)
+		os.Exit(ExitCode(err))
 	}
 }
 
 func newRootCommand() *cobra.Command {
 	var (
-		opts        cli.Options
+		opts        Options
 		showVersion bool
 	)
 
@@ -54,7 +53,7 @@ Repository-level by default; per-contributor breakdowns are opt-in behind
 				cmd.Flags().Changed("output"),
 				cmd.Flags().Changed("count-merges"),
 			)
-			return cli.Run(opts)
+			return Run(opts)
 		},
 	}
 

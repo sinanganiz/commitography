@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -10,7 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sinanganiz/commitography/internal/cli"
+	"github.com/sinanganiz/commitography/internal/pipeline"
+	"github.com/sinanganiz/commitography/internal/pipeline/render"
 )
 
 const goldenDir = "testdata/golden"
@@ -93,8 +95,8 @@ func checkGoldenSet(t *testing.T, repo repository, fixtures []string) {
 	}
 }
 
-// compareGolden analyses one fixture exactly as `commitography <fixture>
-// --json` does and compares the result with its golden file.
+// compareGolden analyses one fixture along the path `commitography <fixture>
+// --json` takes and compares the result with its golden file.
 func compareGolden(t *testing.T, repo repository, fixture string) {
 	t.Helper()
 	t.Run(fixture, func(t *testing.T) {
@@ -133,8 +135,12 @@ func kind(refused bool) string {
 	return "report"
 }
 
-// produce runs the command's analysis path on a fixture. It returns the
-// normalised report, or the normalised refusal when the command refuses.
+// produce runs the command's analysis path on a fixture: the pipeline root
+// followed by the report writer, as `commitography <fixture> --json` runs
+// them. The command itself is package main and cannot be imported, so the
+// exit classification is taken from the pipeline root's error types; the
+// command's own tests assert that it maps them to the same codes. It returns
+// the normalised report, or the normalised refusal when the command refuses.
 func produce(t *testing.T, repo repository, fixture string) (string, bool) {
 	t.Helper()
 	root := filepath.Join(repo.root, "testdata", "fixtures")
@@ -142,17 +148,30 @@ func produce(t *testing.T, repo repository, fixture string) (string, bool) {
 	if _, err := os.Stat(dir); err != nil {
 		fatal(t, 64, "fixture %q is missing; the gates generate it with `make fixtures`", fixture)
 	}
-	out := t.TempDir()
-	opts := cli.Options{RepoPath: dir, OutputDir: out, JSONOnly: true, Quiet: true}
-	opts.SetChanged(true, false)
-	if err := cli.Run(opts); err != nil {
-		return normalise(fmt.Sprintf("exit code %d\nError: %v\n", cli.ExitCode(err), err), root), true
-	}
-	data, err := os.ReadFile(filepath.Join(out, "report.json"))
+	out := filepath.Join(t.TempDir(), render.ReportFile)
+	result, err := pipeline.Run(context.Background(), pipeline.Options{RepoPath: dir}, nil)
 	if err != nil {
-		fatal(t, 19, "fixture %s: the command succeeded but wrote no report.json: %v", fixture, err)
+		return normalise(fmt.Sprintf("exit code %d\nError: %v\n", exitCode(err), err), root), true
+	}
+	if err := render.WriteReportJSON(result.Report, out); err != nil {
+		fatal(t, 19, "fixture %s: writing report.json: %v", fixture, err)
+	}
+	data, err := os.ReadFile(out)
+	if err != nil {
+		fatal(t, 19, "fixture %s: the analysis succeeded but wrote no report.json: %v", fixture, err)
 	}
 	return normalise(string(data), root), false
+}
+
+// exitCode is the command's exit code for an analysis error: 2 for a usage
+// refusal, 1 for anything else (ADR-0034).
+func exitCode(err error) int {
+	var usage *pipeline.UsageError
+	var year *pipeline.YearError
+	if errors.As(err, &usage) || errors.As(err, &year) {
+		return 2
+	}
+	return 1
 }
 
 // normalise removes what legitimately differs between runs of one analysis:

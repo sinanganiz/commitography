@@ -1,5 +1,4 @@
-// Package cli implements the commitography command.
-package cli
+package main
 
 import (
 	"fmt"

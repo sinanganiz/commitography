@@ -84,19 +84,19 @@ linters:
       - path: internal/aggregate/report\.go
         linters: [forbidigo]
         text: "ADR-0042: read the clock"
-      - path: internal/cli/progress\.go
+      - path: cmd/commitography/progress\.go
         linters: [forbidigo]
         text: "ADR-0042: read the clock"
       - path: internal/pipeline/collect/gitlog\.go
         linters: [forbidigo]
         text: "ADR-0042: read the clock"
-      - path: internal/server/jobs.go
+      - path: internal/server/jobs\.go
         linters: [forbidigo]
         text: "ADR-0042: read the clock"
       - path: internal/core/filter/filter_test\.go
         linters: [forbidigo]
         text: "ADR-0042: read the clock"
-      - path: internal/server/jobs_test.go
+      - path: internal/server/jobs_test\.go
         linters: [forbidigo]
         text: "ADR-0042: read the clock"
       - path: internal/server/securitymatrix_test\.go
@@ -111,7 +111,7 @@ linters:
         linters: [gochecknoglobals]
       - path: internal/core/config/config\.go
         linters: [gochecknoglobals]
-      - path: internal/server/container.go
+      - path: internal/server/container\.go
         linters: [gochecknoglobals]
       - path: internal/core/filter/paths\.go
         linters: [gochecknoglobals]
