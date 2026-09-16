@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/sinanganiz/commitography/internal/analysis"
-	"github.com/sinanganiz/commitography/internal/collect"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/server"
 )
 

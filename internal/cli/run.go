@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/sinanganiz/commitography/internal/analysis"
-	"github.com/sinanganiz/commitography/internal/collect"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/render"
 	"github.com/sinanganiz/commitography/internal/server"
 )

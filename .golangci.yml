@@ -87,7 +87,7 @@ linters:
       - path: internal/cli/progress\.go
         linters: [forbidigo]
         text: "ADR-0042: read the clock"
-      - path: internal/collect/gitlog\.go
+      - path: internal/pipeline/collect/gitlog\.go
         linters: [forbidigo]
         text: "ADR-0042: read the clock"
       - path: internal/server/jobs.go

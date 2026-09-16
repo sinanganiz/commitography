@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sinanganiz/commitography/internal/collect"
 	"github.com/sinanganiz/commitography/internal/git"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 )
 
 type pathValidationError struct {

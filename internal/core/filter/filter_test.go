@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/collect"
 	"github.com/sinanganiz/commitography/internal/core/config"
 	"github.com/sinanganiz/commitography/internal/core/identity"
 	"github.com/sinanganiz/commitography/internal/core/model"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 )
 
 func fixture(t *testing.T, name string) string {
