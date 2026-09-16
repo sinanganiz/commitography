@@ -49,7 +49,8 @@ GO_UNIT_PACKAGES := $(shell go list ./... | grep -vE '/internal/checks(/|$$)')
 
 .PHONY: build web test fixtures lint clean docker-image docker-smoke perfcheck \
 	gate-fast gate-full toolchain-versions build-go lint-go test-go checks \
-	typecheck-web test-web vulncheck-go vulncheck-web fixture-determinism
+	typecheck-web test-web vulncheck-go vulncheck-web fixture-determinism \
+	golden-large golden-update
 
 build: web
 	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/commitography
@@ -108,21 +109,24 @@ lint: lint-go
 #   fast (5 minutes)   build, format, vet, configuration rules, unit tests,
 #                      record integrity, taxonomy integrity, decision
 #                      reference, dependency allow list, goroutine ownership,
-#                      fixture conditions, frontend type check and unit tests
-#   full (15 minutes)  everything in fast, plus vulnerability scanning and
-#                      fixture determinism (on every supported platform)
+#                      fixture conditions, golden comparison on small
+#                      fixtures, frontend type check and unit tests
+#   full (15 minutes)  everything in fast, plus vulnerability scanning,
+#                      golden comparison on the large fixture and fixture
+#                      determinism (on every supported platform)
 #
-# Checks ADR-0057 assigns to a gate whose subject does not exist yet — golden
-# comparison, invariants, family contract, namespace violation, goroutine leak,
-# leak scan, determinism, incremental equivalence, identity projection, mode
+# Checks ADR-0057 assigns to a gate whose subject does not exist yet —
+# invariants, family contract, namespace violation, goroutine leak, leak scan,
+# determinism, incremental equivalence, identity projection, mode
 # capability matrix, model-free equivalence, performance budgets, subprocess
 # count, cross-compilation, bundle integrity — are added by the package that
-# creates each subject. WP-0004 clause 8 adds the golden comparisons.
+# creates each subject.
 FAST_CHECKS := build-go lint-go test-go checks typecheck-web test-web
-FULL_CHECKS := vulncheck-go vulncheck-web fixture-determinism
+FULL_CHECKS := vulncheck-go vulncheck-web fixture-determinism golden-large
 
 # Checkers that belong to the full gate and are therefore skipped by `checks`.
-FULL_CHECKERS := ^TestFixtureDeterminism$$
+# Each has its own target below.
+FULL_CHECKERS := ^(TestFixtureDeterminism|TestGoldenLarge)$$
 
 # Every gate prints the number of checks run, passed, failed and skipped
 # (ADR-0064 clause 4). Go tests and frontend tests count one per test; every
@@ -183,8 +187,20 @@ fixture-determinism:
 	sh testdata/build-fixtures.sh $(FIXTURE_RUNS)/second >/dev/null
 	COMMITOGRAPHY_FIXTURES_FIRST='$(CURDIR)/$(FIXTURE_RUNS)/first' \
 	COMMITOGRAPHY_FIXTURES_SECOND='$(CURDIR)/$(FIXTURE_RUNS)/second' \
-	go test -json -count=1 -run '$(FULL_CHECKERS)' ./internal/checks \
+	go test -json -count=1 -run '^TestFixtureDeterminism$$' ./internal/checks \
 		| $(GATESUMMARY) gotest $(GATE_DIR) fixture-determinism
+
+# ADR-0019 clause 2 for the designated large fixture. The small fixtures are
+# compared by TestGoldenSmall in `checks` (ADR-0057 clause 2). The gate has
+# generated the fixtures already.
+golden-large:
+	go test -json -count=1 -run '^TestGoldenLarge$$' ./internal/checks \
+		| $(GATESUMMARY) gotest $(GATE_DIR) golden-large
+
+# Rewrites every golden file from the current analysis output. A commit that
+# changes one must state why in its body (ADR-0019 clause 2).
+golden-update: fixtures
+	COMMITOGRAPHY_UPDATE_GOLDEN=1 go test -count=1 -run '^TestGolden(Small|Large)$$' ./internal/checks
 
 typecheck-web:
 	cd web && npm ci && npm run typecheck

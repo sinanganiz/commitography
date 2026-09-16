@@ -1,0 +1,12 @@
+exit code 2
+Error: this repository is a shallow clone, so its history is incomplete and all statistics would be wrong.
+
+Fix it with:
+  git fetch --unshallow
+
+In CI, configure a full clone:
+  GitHub Actions      -> actions/checkout with fetch-depth: 0
+  GitLab CI           -> GIT_DEPTH: 0
+  Bitbucket Pipelines -> clone: depth: full
+
+To analyze anyway and accept incorrect results, pass --allow-shallow.

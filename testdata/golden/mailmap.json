@@ -1,0 +1,602 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "<generated-at>",
+  "toolVersion": "<tool-version>",
+  "repository": {
+    "name": "mailmap",
+    "defaultBranch": "main",
+    "headCommit": "bf0b5a73439dd59e9ce2d3ef2a5a30698596e02a",
+    "firstCommit": "2025-09-30T00:00:00Z",
+    "lastCommit": "2026-02-25T17:00:00+03:00",
+    "ageDays": 149,
+    "commitsTotal": 51,
+    "commitsAnalyzed": 51,
+    "commitsExcluded": {
+      "merges": 0,
+      "bots": 0,
+      "total": 0
+    },
+    "contributors": 3,
+    "trackedFiles": 4,
+    "trackedLines": 78,
+    "isShallow": false
+  },
+  "temporal": {
+    "hourHistogram": [
+      1,
+      0,
+      4,
+      0,
+      4,
+      2,
+      2,
+      2,
+      0,
+      5,
+      0,
+      2,
+      4,
+      0,
+      4,
+      2,
+      0,
+      5,
+      2,
+      0,
+      4,
+      2,
+      0,
+      6
+    ],
+    "weekdayHistogram": [
+      8,
+      8,
+      8,
+      6,
+      6,
+      8,
+      7
+    ],
+    "hourWeekdayGrid": [
+      [
+        0,
+        0,
+        1,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        3
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        2,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        2
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        2,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ]
+    ],
+    "braveDeploys": 0,
+    "nightOwlRatio": 0.3333,
+    "busiestDay": {
+      "date": "2025-09-30",
+      "count": 1
+    },
+    "longestStreak": {
+      "days": 2,
+      "startDate": "2025-09-30",
+      "endDate": "2025-10-01"
+    },
+    "longestSilence": {
+      "days": 3,
+      "startDate": "2025-10-01",
+      "endDate": "2025-10-04"
+    },
+    "commitsPerMonth": [
+      {
+        "month": "2025-09",
+        "count": 1
+      },
+      {
+        "month": "2025-10",
+        "count": 10
+      },
+      {
+        "month": "2025-11",
+        "count": 11
+      },
+      {
+        "month": "2025-12",
+        "count": 10
+      },
+      {
+        "month": "2026-01",
+        "count": 10
+      },
+      {
+        "month": "2026-02",
+        "count": 9
+      }
+    ],
+    "firstCommit": "2025-09-30T00:00:00Z",
+    "lastCommit": "2026-02-25T17:00:00+03:00"
+  },
+  "code": {
+    "mostTouchedFiles": [
+      {
+        "path": "src/main.go",
+        "commits": 50,
+        "added": 50,
+        "deleted": 0,
+        "deletedFromHead": false
+      },
+      {
+        "path": "docs/notes.md",
+        "commits": 17,
+        "added": 17,
+        "deleted": 0,
+        "deletedFromHead": false
+      },
+      {
+        "path": "src/util.go",
+        "commits": 10,
+        "added": 10,
+        "deleted": 0,
+        "deletedFromHead": false
+      },
+      {
+        "path": ".mailmap",
+        "commits": 1,
+        "added": 1,
+        "deleted": 0,
+        "deletedFromHead": false
+      }
+    ],
+    "largestCommit": {
+      "hash": "44f7a77b174d9216a6625c67b856edf19cb56636",
+      "subject": "chore: bump dependency 45",
+      "date": "2026-02-13T11:00:00Z",
+      "linesChanged": 3,
+      "added": 3,
+      "deleted": 0,
+      "files": 3
+    },
+    "averageCommitSize": 1.5,
+    "medianCommitSize": 1,
+    "totalAdded": 78,
+    "totalDeleted": 0,
+    "oldestUntouchedFile": {
+      "path": ".mailmap",
+      "lastModified": "2025-09-30T00:00:00Z"
+    },
+    "fileTypeDistribution": [
+      {
+        "extension": "go",
+        "changes": 60,
+        "added": 60,
+        "deleted": 0
+      },
+      {
+        "extension": "md",
+        "changes": 17,
+        "added": 17,
+        "deleted": 0
+      },
+      {
+        "extension": "mailmap",
+        "changes": 1,
+        "added": 1,
+        "deleted": 0
+      }
+    ],
+    "codeAge": [
+      {
+        "year": 2025,
+        "lines": 50
+      },
+      {
+        "year": 2026,
+        "lines": 28
+      }
+    ],
+    "survivingFromFirstYear": 0.641,
+    "codeAgeSampledFiles": 4,
+    "codeAgeTotalFiles": 4,
+    "trackedFiles": 4,
+    "trackedLines": 78
+  },
+  "messages": {
+    "typeDistribution": {
+      "chore": 6,
+      "ci": 5,
+      "docs": 5,
+      "feat": 5,
+      "fix": 10,
+      "merge": 5,
+      "other": 5,
+      "refactor": 5,
+      "test": 5
+    },
+    "conventionalRatio": 0.7059,
+    "lowConfidence": false,
+    "shortMessages": 5,
+    "longestSubject": {
+      "hash": "9980a47e6621a704d3e4d9cb0debab9c07b8b189",
+      "length": 36,
+      "subject": "fix: correct off-by-one in parser 41"
+    },
+    "averageSubjectLength": 25.8,
+    "emojiCommits": 0,
+    "topEmoji": [],
+    "revertCount": 0,
+    "typoFixCount": 5,
+    "topWords": [
+      {
+        "word": "chore",
+        "count": 6
+      },
+      {
+        "word": "case",
+        "count": 5
+      },
+      {
+        "word": "comment",
+        "count": 5
+      },
+      {
+        "word": "core",
+        "count": 5
+      },
+      {
+        "word": "correct",
+        "count": 5
+      },
+      {
+        "word": "coverage",
+        "count": 5
+      },
+      {
+        "word": "dependency",
+        "count": 5
+      },
+      {
+        "word": "docs",
+        "count": 5
+      },
+      {
+        "word": "extract",
+        "count": 5
+      },
+      {
+        "word": "feat",
+        "count": 5
+      },
+      {
+        "word": "handler",
+        "count": 5
+      },
+      {
+        "word": "helper",
+        "count": 5
+      },
+      {
+        "word": "number",
+        "count": 5
+      },
+      {
+        "word": "off-by-one",
+        "count": 5
+      },
+      {
+        "word": "parser",
+        "count": 5
+      },
+      {
+        "word": "readme",
+        "count": 5
+      },
+      {
+        "word": "refactor",
+        "count": 5
+      },
+      {
+        "word": "section",
+        "count": 5
+      },
+      {
+        "word": "typo",
+        "count": 5
+      },
+      {
+        "word": "workflow",
+        "count": 5
+      },
+      {
+        "word": "mailmap",
+        "count": 1
+      },
+      {
+        "word": "topic-18'",
+        "count": 1
+      },
+      {
+        "word": "topic-28'",
+        "count": 1
+      },
+      {
+        "word": "topic-38'",
+        "count": 1
+      },
+      {
+        "word": "topic-48'",
+        "count": 1
+      },
+      {
+        "word": "topic-8'",
+        "count": 1
+      }
+    ]
+  },
+  "social": {
+    "busFactor": 1,
+    "directoryBusFactor": [
+      {
+        "path": "src",
+        "busFactor": 1,
+        "contributors": 3,
+        "commits": 50
+      },
+      {
+        "path": "docs",
+        "busFactor": 1,
+        "contributors": 3,
+        "commits": 17
+      }
+    ],
+    "coupling": [
+      {
+        "a": "docs/notes.md",
+        "b": "src/main.go",
+        "support": 17,
+        "confidence": 1,
+        "expected": false
+      },
+      {
+        "a": "src/main.go",
+        "b": "src/util.go",
+        "support": 10,
+        "confidence": 1,
+        "expected": false
+      }
+    ],
+    "churn": [
+      {
+        "path": "src/main.go",
+        "maxCommitsInWindow": 11,
+        "windowStart": "2025-10-04T17:00:00+03:00",
+        "totalCommits": 50,
+        "added": 50,
+        "deleted": 0
+      }
+    ],
+    "knowledgeConcentration": [
+      {
+        "path": "docs",
+        "largestShare": 0.5294,
+        "contributors": 3,
+        "commits": 17
+      },
+      {
+        "path": "src",
+        "largestShare": 0.5,
+        "contributors": 3,
+        "commits": 50
+      }
+    ]
+  },
+  "notables": {
+    "bulkCommits": [],
+    "latestNightCommit": {
+      "hash": "3f0e7a178495b4cd1c20b8fcb07d804d0082e53a",
+      "subject": "ci: update workflow 39",
+      "date": "2026-01-26T04:00:00Z",
+      "linesChanged": 2,
+      "added": 2,
+      "deleted": 0,
+      "files": 2
+    },
+    "earliestMorningCommit": {
+      "hash": "3f0e7a178495b4cd1c20b8fcb07d804d0082e53a",
+      "subject": "ci: update workflow 39",
+      "date": "2026-01-26T04:00:00Z",
+      "linesChanged": 2,
+      "added": 2,
+      "deleted": 0,
+      "files": 2
+    },
+    "weekendRatio": 0.2941,
+    "holidayCommits": 0,
+    "firstCommitSubject": "chore: add mailmap",
+    "mergeCount": 0,
+    "timezoneSpread": [
+      {
+        "offsetMinutes": -300,
+        "commits": 16
+      },
+      {
+        "offsetMinutes": 0,
+        "commits": 18
+      },
+      {
+        "offsetMinutes": 180,
+        "commits": 17
+      }
+    ]
+  },
+  "warnings": []
+}

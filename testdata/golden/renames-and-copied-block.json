@@ -1,0 +1,456 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "<generated-at>",
+  "toolVersion": "<tool-version>",
+  "repository": {
+    "name": "renames-and-copied-block",
+    "defaultBranch": "main",
+    "headCommit": "3eea4b0cd71a2b085e8243630b3033602c6d0f21",
+    "firstCommit": "2025-10-01T00:00:00Z",
+    "lastCommit": "2025-10-05T00:00:00Z",
+    "ageDays": 5,
+    "commitsTotal": 5,
+    "commitsAnalyzed": 5,
+    "commitsExcluded": {
+      "merges": 0,
+      "bots": 0,
+      "total": 0
+    },
+    "contributors": 3,
+    "trackedFiles": 3,
+    "trackedLines": 44,
+    "isShallow": false
+  },
+  "temporal": {
+    "hourHistogram": [
+      5,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "weekdayHistogram": [
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "hourWeekdayGrid": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "braveDeploys": 0,
+    "nightOwlRatio": 1,
+    "busiestDay": {
+      "date": "2025-10-01",
+      "count": 1
+    },
+    "longestStreak": {
+      "days": 5,
+      "startDate": "2025-10-01",
+      "endDate": "2025-10-05"
+    },
+    "longestSilence": {
+      "days": 1,
+      "startDate": "2025-10-01",
+      "endDate": "2025-10-02"
+    },
+    "commitsPerMonth": [
+      {
+        "month": "2025-10",
+        "count": 5
+      }
+    ],
+    "firstCommit": "2025-10-01T00:00:00Z",
+    "lastCommit": "2025-10-05T00:00:00Z"
+  },
+  "code": {
+    "mostTouchedFiles": [
+      {
+        "path": "src/lexer.go",
+        "commits": 2,
+        "added": 10,
+        "deleted": 10,
+        "deletedFromHead": true
+      },
+      {
+        "path": "src/parser.go",
+        "commits": 2,
+        "added": 20,
+        "deleted": 20,
+        "deletedFromHead": true
+      },
+      {
+        "path": "src/syntax/parser.go",
+        "commits": 2,
+        "added": 21,
+        "deleted": 0,
+        "deletedFromHead": false
+      },
+      {
+        "path": "src/format/printer.go",
+        "commits": 1,
+        "added": 12,
+        "deleted": 0,
+        "deletedFromHead": false
+      },
+      {
+        "path": "src/syntax/scanner.go",
+        "commits": 1,
+        "added": 11,
+        "deleted": 0,
+        "deletedFromHead": false
+      }
+    ],
+    "largestCommit": {
+      "hash": "54ea43987924e33231bcf22a62e0956b5cd8a203",
+      "subject": "refactor: move the parser into the syntax package",
+      "date": "2025-10-02T00:00:00Z",
+      "linesChanged": 40,
+      "added": 20,
+      "deleted": 20,
+      "files": 2
+    },
+    "averageCommitSize": 20.8,
+    "medianCommitSize": 21,
+    "totalAdded": 74,
+    "totalDeleted": 30,
+    "oldestUntouchedFile": {
+      "path": "src/syntax/scanner.go",
+      "lastModified": "2025-10-03T00:00:00Z"
+    },
+    "fileTypeDistribution": [
+      {
+        "extension": "go",
+        "changes": 8,
+        "added": 74,
+        "deleted": 30
+      }
+    ],
+    "codeAge": [
+      {
+        "year": 2025,
+        "lines": 44
+      }
+    ],
+    "survivingFromFirstYear": 1,
+    "codeAgeSampledFiles": 3,
+    "codeAgeTotalFiles": 3,
+    "trackedFiles": 3,
+    "trackedLines": 44
+  },
+  "messages": {
+    "typeDistribution": {
+      "feat": 3,
+      "refactor": 2
+    },
+    "conventionalRatio": 1,
+    "lowConfidence": false,
+    "shortMessages": 0,
+    "longestSubject": {
+      "hash": "d95099f91bad274fbbcb41024098efd30bd9aa70",
+      "length": 52,
+      "subject": "feat: add a printer reusing the parser's token table"
+    },
+    "averageSubjectLength": 39.2,
+    "emojiCommits": 0,
+    "topEmoji": [],
+    "revertCount": 0,
+    "typoFixCount": 0,
+    "topWords": [
+      {
+        "word": "feat",
+        "count": 3
+      },
+      {
+        "word": "lexer",
+        "count": 2
+      },
+      {
+        "word": "parser",
+        "count": 2
+      },
+      {
+        "word": "refactor",
+        "count": 2
+      },
+      {
+        "word": "token",
+        "count": 2
+      },
+      {
+        "word": "move",
+        "count": 1
+      },
+      {
+        "word": "package",
+        "count": 1
+      },
+      {
+        "word": "parser's",
+        "count": 1
+      },
+      {
+        "word": "printer",
+        "count": 1
+      },
+      {
+        "word": "rename",
+        "count": 1
+      },
+      {
+        "word": "reusing",
+        "count": 1
+      },
+      {
+        "word": "scanner",
+        "count": 1
+      },
+      {
+        "word": "step",
+        "count": 1
+      },
+      {
+        "word": "syntax",
+        "count": 1
+      },
+      {
+        "word": "table",
+        "count": 1
+      }
+    ]
+  },
+  "social": {
+    "busFactor": 2,
+    "directoryBusFactor": [],
+    "coupling": [],
+    "churn": [],
+    "knowledgeConcentration": []
+  },
+  "notables": {
+    "bulkCommits": [],
+    "latestNightCommit": {
+      "hash": "3eea4b0cd71a2b085e8243630b3033602c6d0f21",
+      "subject": "feat: add a token",
+      "date": "2025-10-05T00:00:00Z",
+      "linesChanged": 1,
+      "added": 1,
+      "deleted": 0,
+      "files": 1
+    },
+    "earliestMorningCommit": null,
+    "weekendRatio": 0.4,
+    "holidayCommits": 0,
+    "firstCommitSubject": "feat: add parser and lexer",
+    "mergeCount": 0,
+    "timezoneSpread": [
+      {
+        "offsetMinutes": 0,
+        "commits": 5
+      }
+    ]
+  },
+  "warnings": []
+}

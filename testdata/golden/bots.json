@@ -1,0 +1,375 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "<generated-at>",
+  "toolVersion": "<tool-version>",
+  "repository": {
+    "name": "bots",
+    "defaultBranch": "main",
+    "headCommit": "d7a66bdcd53c200b893b0b0ed7f34f37c670c601",
+    "firstCommit": "2025-10-01T00:00:00Z",
+    "lastCommit": "2025-10-04T00:00:00Z",
+    "ageDays": 4,
+    "commitsTotal": 4,
+    "commitsAnalyzed": 2,
+    "commitsExcluded": {
+      "merges": 0,
+      "bots": 2,
+      "total": 2
+    },
+    "contributors": 2,
+    "trackedFiles": 1,
+    "trackedLines": 4,
+    "isShallow": false
+  },
+  "temporal": {
+    "hourHistogram": [
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "weekdayHistogram": [
+      0,
+      0,
+      1,
+      0,
+      0,
+      1,
+      0
+    ],
+    "hourWeekdayGrid": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "braveDeploys": 0,
+    "nightOwlRatio": 1,
+    "busiestDay": {
+      "date": "2025-10-01",
+      "count": 1
+    },
+    "longestStreak": {
+      "days": 1,
+      "startDate": "2025-10-01",
+      "endDate": "2025-10-01"
+    },
+    "longestSilence": {
+      "days": 3,
+      "startDate": "2025-10-01",
+      "endDate": "2025-10-04"
+    },
+    "commitsPerMonth": [
+      {
+        "month": "2025-10",
+        "count": 2
+      }
+    ],
+    "firstCommit": "2025-10-01T00:00:00Z",
+    "lastCommit": "2025-10-04T00:00:00Z"
+  },
+  "code": {
+    "mostTouchedFiles": [
+      {
+        "path": "app.txt",
+        "commits": 2,
+        "added": 2,
+        "deleted": 0,
+        "deletedFromHead": false
+      }
+    ],
+    "largestCommit": {
+      "hash": "d7a66bdcd53c200b893b0b0ed7f34f37c670c601",
+      "subject": "feat: add feature",
+      "date": "2025-10-04T00:00:00Z",
+      "linesChanged": 1,
+      "added": 1,
+      "deleted": 0,
+      "files": 1
+    },
+    "averageCommitSize": 1,
+    "medianCommitSize": 1,
+    "totalAdded": 2,
+    "totalDeleted": 0,
+    "oldestUntouchedFile": {
+      "path": "app.txt",
+      "lastModified": "2025-10-04T00:00:00Z"
+    },
+    "fileTypeDistribution": [
+      {
+        "extension": "txt",
+        "changes": 2,
+        "added": 2,
+        "deleted": 0
+      }
+    ],
+    "codeAge": [
+      {
+        "year": 2025,
+        "lines": 4
+      }
+    ],
+    "survivingFromFirstYear": 1,
+    "codeAgeSampledFiles": 1,
+    "codeAgeTotalFiles": 1,
+    "trackedFiles": 1,
+    "trackedLines": 4
+  },
+  "messages": {
+    "typeDistribution": {
+      "feat": 2
+    },
+    "conventionalRatio": 1,
+    "lowConfidence": false,
+    "shortMessages": 0,
+    "longestSubject": {
+      "hash": "e1a6b584b86be50baac03b49bc4e6ce830b5e025",
+      "length": 20,
+      "subject": "feat: initial commit"
+    },
+    "averageSubjectLength": 18.5,
+    "emojiCommits": 0,
+    "topEmoji": [],
+    "revertCount": 0,
+    "typoFixCount": 0,
+    "topWords": [
+      {
+        "word": "feat",
+        "count": 2
+      },
+      {
+        "word": "feature",
+        "count": 1
+      }
+    ]
+  },
+  "social": {
+    "busFactor": 1,
+    "directoryBusFactor": [],
+    "coupling": [],
+    "churn": [],
+    "knowledgeConcentration": []
+  },
+  "notables": {
+    "bulkCommits": [],
+    "latestNightCommit": {
+      "hash": "d7a66bdcd53c200b893b0b0ed7f34f37c670c601",
+      "subject": "feat: add feature",
+      "date": "2025-10-04T00:00:00Z",
+      "linesChanged": 1,
+      "added": 1,
+      "deleted": 0,
+      "files": 1
+    },
+    "earliestMorningCommit": null,
+    "weekendRatio": 0.5,
+    "holidayCommits": 0,
+    "firstCommitSubject": "feat: initial commit",
+    "mergeCount": 0,
+    "timezoneSpread": [
+      {
+        "offsetMinutes": 0,
+        "commits": 2
+      }
+    ]
+  },
+  "warnings": []
+}

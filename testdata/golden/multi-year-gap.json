@@ -1,0 +1,727 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "<generated-at>",
+  "toolVersion": "<tool-version>",
+  "repository": {
+    "name": "multi-year-gap",
+    "defaultBranch": "main",
+    "headCommit": "5fc7a0b4361542db9a56d1e3af9795dbc46facd4",
+    "firstCommit": "2017-03-01T11:00:00+01:00",
+    "lastCommit": "2023-06-01T12:00:00+02:00",
+    "ageDays": 2284,
+    "commitsTotal": 12,
+    "commitsAnalyzed": 12,
+    "commitsExcluded": {
+      "merges": 0,
+      "bots": 0,
+      "total": 0
+    },
+    "contributors": 1,
+    "trackedFiles": 1,
+    "trackedLines": 12,
+    "isShallow": false
+  },
+  "temporal": {
+    "hourHistogram": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      6,
+      6,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "weekdayHistogram": [
+      1,
+      2,
+      2,
+      2,
+      2,
+      1,
+      2
+    ],
+    "hourWeekdayGrid": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "braveDeploys": 0,
+    "nightOwlRatio": 0,
+    "busiestDay": {
+      "date": "2017-03-01",
+      "count": 1
+    },
+    "longestStreak": {
+      "days": 1,
+      "startDate": "2017-03-01",
+      "endDate": "2017-03-01"
+    },
+    "longestSilence": {
+      "days": 1983,
+      "startDate": "2017-07-29",
+      "endDate": "2023-01-02"
+    },
+    "commitsPerMonth": [
+      {
+        "month": "2017-03",
+        "count": 2
+      },
+      {
+        "month": "2017-04",
+        "count": 1
+      },
+      {
+        "month": "2017-05",
+        "count": 1
+      },
+      {
+        "month": "2017-06",
+        "count": 1
+      },
+      {
+        "month": "2017-07",
+        "count": 1
+      },
+      {
+        "month": "2017-08",
+        "count": 0
+      },
+      {
+        "month": "2017-09",
+        "count": 0
+      },
+      {
+        "month": "2017-10",
+        "count": 0
+      },
+      {
+        "month": "2017-11",
+        "count": 0
+      },
+      {
+        "month": "2017-12",
+        "count": 0
+      },
+      {
+        "month": "2018-01",
+        "count": 0
+      },
+      {
+        "month": "2018-02",
+        "count": 0
+      },
+      {
+        "month": "2018-03",
+        "count": 0
+      },
+      {
+        "month": "2018-04",
+        "count": 0
+      },
+      {
+        "month": "2018-05",
+        "count": 0
+      },
+      {
+        "month": "2018-06",
+        "count": 0
+      },
+      {
+        "month": "2018-07",
+        "count": 0
+      },
+      {
+        "month": "2018-08",
+        "count": 0
+      },
+      {
+        "month": "2018-09",
+        "count": 0
+      },
+      {
+        "month": "2018-10",
+        "count": 0
+      },
+      {
+        "month": "2018-11",
+        "count": 0
+      },
+      {
+        "month": "2018-12",
+        "count": 0
+      },
+      {
+        "month": "2019-01",
+        "count": 0
+      },
+      {
+        "month": "2019-02",
+        "count": 0
+      },
+      {
+        "month": "2019-03",
+        "count": 0
+      },
+      {
+        "month": "2019-04",
+        "count": 0
+      },
+      {
+        "month": "2019-05",
+        "count": 0
+      },
+      {
+        "month": "2019-06",
+        "count": 0
+      },
+      {
+        "month": "2019-07",
+        "count": 0
+      },
+      {
+        "month": "2019-08",
+        "count": 0
+      },
+      {
+        "month": "2019-09",
+        "count": 0
+      },
+      {
+        "month": "2019-10",
+        "count": 0
+      },
+      {
+        "month": "2019-11",
+        "count": 0
+      },
+      {
+        "month": "2019-12",
+        "count": 0
+      },
+      {
+        "month": "2020-01",
+        "count": 0
+      },
+      {
+        "month": "2020-02",
+        "count": 0
+      },
+      {
+        "month": "2020-03",
+        "count": 0
+      },
+      {
+        "month": "2020-04",
+        "count": 0
+      },
+      {
+        "month": "2020-05",
+        "count": 0
+      },
+      {
+        "month": "2020-06",
+        "count": 0
+      },
+      {
+        "month": "2020-07",
+        "count": 0
+      },
+      {
+        "month": "2020-08",
+        "count": 0
+      },
+      {
+        "month": "2020-09",
+        "count": 0
+      },
+      {
+        "month": "2020-10",
+        "count": 0
+      },
+      {
+        "month": "2020-11",
+        "count": 0
+      },
+      {
+        "month": "2020-12",
+        "count": 0
+      },
+      {
+        "month": "2021-01",
+        "count": 0
+      },
+      {
+        "month": "2021-02",
+        "count": 0
+      },
+      {
+        "month": "2021-03",
+        "count": 0
+      },
+      {
+        "month": "2021-04",
+        "count": 0
+      },
+      {
+        "month": "2021-05",
+        "count": 0
+      },
+      {
+        "month": "2021-06",
+        "count": 0
+      },
+      {
+        "month": "2021-07",
+        "count": 0
+      },
+      {
+        "month": "2021-08",
+        "count": 0
+      },
+      {
+        "month": "2021-09",
+        "count": 0
+      },
+      {
+        "month": "2021-10",
+        "count": 0
+      },
+      {
+        "month": "2021-11",
+        "count": 0
+      },
+      {
+        "month": "2021-12",
+        "count": 0
+      },
+      {
+        "month": "2022-01",
+        "count": 0
+      },
+      {
+        "month": "2022-02",
+        "count": 0
+      },
+      {
+        "month": "2022-03",
+        "count": 0
+      },
+      {
+        "month": "2022-04",
+        "count": 0
+      },
+      {
+        "month": "2022-05",
+        "count": 0
+      },
+      {
+        "month": "2022-06",
+        "count": 0
+      },
+      {
+        "month": "2022-07",
+        "count": 0
+      },
+      {
+        "month": "2022-08",
+        "count": 0
+      },
+      {
+        "month": "2022-09",
+        "count": 0
+      },
+      {
+        "month": "2022-10",
+        "count": 0
+      },
+      {
+        "month": "2022-11",
+        "count": 0
+      },
+      {
+        "month": "2022-12",
+        "count": 0
+      },
+      {
+        "month": "2023-01",
+        "count": 1
+      },
+      {
+        "month": "2023-02",
+        "count": 1
+      },
+      {
+        "month": "2023-03",
+        "count": 1
+      },
+      {
+        "month": "2023-04",
+        "count": 1
+      },
+      {
+        "month": "2023-05",
+        "count": 1
+      },
+      {
+        "month": "2023-06",
+        "count": 1
+      }
+    ],
+    "firstCommit": "2017-03-01T11:00:00+01:00",
+    "lastCommit": "2023-06-01T12:00:00+02:00"
+  },
+  "code": {
+    "mostTouchedFiles": [
+      {
+        "path": "log.txt",
+        "commits": 12,
+        "added": 12,
+        "deleted": 0,
+        "deletedFromHead": false
+      }
+    ],
+    "largestCommit": {
+      "hash": "5fc7a0b4361542db9a56d1e3af9795dbc46facd4",
+      "subject": "docs: record entry 1685613600",
+      "date": "2023-06-01T12:00:00+02:00",
+      "linesChanged": 1,
+      "added": 1,
+      "deleted": 0,
+      "files": 1
+    },
+    "averageCommitSize": 1,
+    "medianCommitSize": 1,
+    "totalAdded": 12,
+    "totalDeleted": 0,
+    "oldestUntouchedFile": {
+      "path": "log.txt",
+      "lastModified": "2023-06-01T12:00:00+02:00"
+    },
+    "fileTypeDistribution": [
+      {
+        "extension": "txt",
+        "changes": 12,
+        "added": 12,
+        "deleted": 0
+      }
+    ],
+    "codeAge": [
+      {
+        "year": 2017,
+        "lines": 6
+      },
+      {
+        "year": 2023,
+        "lines": 6
+      }
+    ],
+    "survivingFromFirstYear": 0.5,
+    "codeAgeSampledFiles": 1,
+    "codeAgeTotalFiles": 1,
+    "trackedFiles": 1,
+    "trackedLines": 12
+  },
+  "messages": {
+    "typeDistribution": {
+      "docs": 12
+    },
+    "conventionalRatio": 1,
+    "lowConfidence": false,
+    "shortMessages": 0,
+    "longestSubject": {
+      "hash": "5fc7a0b4361542db9a56d1e3af9795dbc46facd4",
+      "length": 29,
+      "subject": "docs: record entry 1685613600"
+    },
+    "averageSubjectLength": 29,
+    "emojiCommits": 0,
+    "topEmoji": [],
+    "revertCount": 0,
+    "typoFixCount": 0,
+    "topWords": [
+      {
+        "word": "docs",
+        "count": 12
+      },
+      {
+        "word": "entry",
+        "count": 12
+      },
+      {
+        "word": "record",
+        "count": 12
+      },
+      {
+        "word": "1488362400",
+        "count": 1
+      },
+      {
+        "word": "1490954400",
+        "count": 1
+      },
+      {
+        "word": "1493546400",
+        "count": 1
+      },
+      {
+        "word": "1496138400",
+        "count": 1
+      },
+      {
+        "word": "1498730400",
+        "count": 1
+      },
+      {
+        "word": "1501322400",
+        "count": 1
+      },
+      {
+        "word": "1672653600",
+        "count": 1
+      },
+      {
+        "word": "1675245600",
+        "count": 1
+      },
+      {
+        "word": "1677837600",
+        "count": 1
+      },
+      {
+        "word": "1680429600",
+        "count": 1
+      },
+      {
+        "word": "1683021600",
+        "count": 1
+      },
+      {
+        "word": "1685613600",
+        "count": 1
+      }
+    ]
+  },
+  "social": {
+    "busFactor": 1,
+    "directoryBusFactor": [],
+    "coupling": [],
+    "churn": [],
+    "knowledgeConcentration": []
+  },
+  "notables": {
+    "bulkCommits": [],
+    "latestNightCommit": null,
+    "earliestMorningCommit": null,
+    "weekendRatio": 0.25,
+    "holidayCommits": 0,
+    "firstCommitSubject": "docs: record entry 1488362400",
+    "mergeCount": 0,
+    "timezoneSpread": [
+      {
+        "offsetMinutes": 60,
+        "commits": 6
+      },
+      {
+        "offsetMinutes": 120,
+        "commits": 6
+      }
+    ]
+  },
+  "warnings": []
+}
