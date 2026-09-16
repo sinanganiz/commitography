@@ -1,20 +1,37 @@
 #!/bin/sh
 # Builds the deterministic git repositories the test-suite measures against.
 #
-# Every commit uses an explicit "<unix-timestamp> <offset>" date, which git
-# accepts verbatim, so no `date` invocation is needed and the script produces
-# byte-identical repositories on Linux, macOS and Windows/Git-Bash. Running it
-# twice yields identical commit hashes.
+# Usage: build-fixtures.sh [output-root]   (default: testdata/fixtures)
+#
+# Commit hashes must be identical on every generation and on every machine
+# (ADR-0019 clause 1). The committed list in testdata/fixture-hashes.txt is
+# what TestFixtureDeterminism compares each platform against. To that end:
+#
+#   - every commit uses an explicit "<unix-timestamp> <offset>" date and an
+#     explicit author and committer, so no clock or host identity is read;
+#   - git reads no system or user configuration and no inherited GIT_*
+#     variable, so global excludes, hooks, templates, merge.log, autocrlf and
+#     a default object format cannot change what is committed;
+#   - the object format and file name normalisation are set explicitly;
+#   - no step depends on the host operating system or filesystem.
 
 set -eu
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-root="$script_dir/fixtures"
+root=${1:-"$script_dir/fixtures"}
 
-# The output root holds a tracked placeholder, so only the generated entries
-# beside it are removed. Deleting the root would delete the placeholder too and
-# leave the tracked tree dirty after every run.
+for var in $(env | sed -n 's/^\(GIT_[A-Za-z0-9_]*\)=.*/\1/p'); do
+	unset "$var"
+done
+GIT_CONFIG_NOSYSTEM=1
+GIT_CONFIG_GLOBAL=/dev/null
+export GIT_CONFIG_NOSYSTEM GIT_CONFIG_GLOBAL
+
+# The default output root holds a tracked placeholder, so only the generated
+# entries beside it are removed. Deleting the root would delete the
+# placeholder too and leave the tracked tree dirty after every run.
 mkdir -p "$root"
+root=$(CDPATH= cd -- "$root" && pwd)
 find "$root" -mindepth 1 -maxdepth 1 ! -name .gitkeep -exec rm -rf {} +
 
 # 2025-10-01T00:00:00Z. Fifty commits at a three-day stride reach 2026-02-25,
@@ -29,13 +46,16 @@ DAY=86400
 init_repo() {
 	dir="$1"
 	mkdir -p "$dir"
-	git -C "$dir" init -q
+	git -C "$dir" init -q --object-format=sha1
 	git -C "$dir" symbolic-ref HEAD refs/heads/main
 	git -C "$dir" config user.name "Fixture Builder"
 	git -C "$dir" config user.email "fixtures@example.com"
 	git -C "$dir" config commit.gpgsign false
 	git -C "$dir" config core.autocrlf false
 	git -C "$dir" config core.safecrlf false
+	# git init sets this only where it probes a decomposing filesystem. Setting
+	# it everywhere keeps non-ASCII paths in composed form on every platform.
+	git -C "$dir" config core.precomposeunicode true
 }
 
 # commit <dir> <timestamp> <tz> <author-name> <author-email> <subject>
@@ -191,6 +211,13 @@ done
 
 # --------------------------------------------------------------------------
 # binary/ - binary content and awkward path characters
+#
+# Every name here is legal on every supported filesystem. Names that are not
+# are deliberately absent, because committing them only where the host
+# accepts them would give this fixture different hashes per platform
+# (ADR-0019 clause 1). Known gap: no fixture carries a path containing any
+# of  " < > : | ? *  a backslash, a control character, or a trailing dot or
+# space, nor a reserved Windows device name such as CON or NUL.
 # --------------------------------------------------------------------------
 echo "building binary/"
 init_repo "$root/binary"
@@ -203,15 +230,6 @@ printf 'unicode\n' >"$root/binary/assets/ünïcödé-ファイル.txt"
 git -C "$root/binary" add -A
 commit "$root/binary" "$BASE_TS" "+0000" "Ada Lovelace" "ada@example.com" \
 	"feat: add assets"
-
-# A quotation mark is legal in a path on POSIX filesystems but not on NTFS, so
-# this file is best-effort. Tests that need it skip when it is absent.
-if (cd "$root/binary" && : >'quoted".txt') 2>/dev/null; then
-	printf 'quoted\n' >"$root/binary/quoted\".txt"
-	git -C "$root/binary" add -A
-	commit "$root/binary" "$((BASE_TS + DAY))" "+0000" "Ada Lovelace" \
-		"ada@example.com" "feat: add file with a quote in its name"
-fi
 
 printf '\000\001\002\003binary update\000' >>"$root/binary/logo.png"
 git -C "$root/binary" add -A
