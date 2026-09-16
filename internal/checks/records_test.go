@@ -141,7 +141,10 @@ func headings(content string) []string {
 // status, and no row without a record (ADR-0001 clause 6).
 func checkIndex(t *testing.T, repo repository, records []record) {
 	t.Helper()
-	row := regexp.MustCompile(`^\| \[([0-9]{4})\]\(([^)]+)\) \| (.+) \| ([A-Za-z]+) \|\s*$`)
+	// A superseded record's status cell names its successor, as in
+	// "Superseded by ADR-0063". The successor reference is resolved by the
+	// "references resolve" subtest; only the status word is compared here.
+	row := regexp.MustCompile(`^\| \[([0-9]{4})\]\(([^)]+)\) \| (.+) \| ([A-Za-z]+)(?: by ADR-[0-9]{4})? \|\s*$`)
 	type entry struct{ file, title, status string }
 	listed := map[int][]entry{}
 	for i, line := range lines(repo.read(t, 1, decisionsIndex)) {
