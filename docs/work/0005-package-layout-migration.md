@@ -1,7 +1,7 @@
 # WP-0005: Package layout migration
 
 **Area:** foundation
-**Implements:** ADR-0040, ADR-0049, ADR-0060, ADR-0061, ADR-0063
+**Implements:** ADR-0040, ADR-0049, ADR-0060, ADR-0061, ADR-0063, ADR-0065, ADR-0066
 **Requires:** WP-0003, WP-0004
 
 ## Goal
@@ -33,9 +33,30 @@ rule is enforced by the linter, and every golden file is unchanged by the move.
 5. Enable the import direction lint rule from ADR-0040 clause 2, the metrics
    cross-import prohibition from clause 3, and the `internal/checks/` rule from
    ADR-0060 clause 2.
-6. Move process execution out of every package except `internal/git/`. The audit
-   lists four importers; one of them opens a browser rather than git, so it
-   needs its own non-git mechanism rather than a move.
+6. Move **git invocation** out of every package except `internal/git/`. The
+   audit counted only non-test files; the tree has nine importers of the
+   process-execution library. Every one that runs git switches to the git
+   package. The sites permitted by ADR-0065 clause 3 keep their own execution
+   and gain a file-level reference to that record: the verification packages
+   under `internal/checks/`, the browser opener, and the Windows test that
+   creates a directory junction. Configure the lint rule to the same set.
+6a. `internal/git` takes the position ADR-0066 clause 1 gives it. `internal/core`
+   takes the subpackages ADR-0066 clause 2 permits, so that the move requires no
+   rename.
+6b. **Record the aggregation stage's remaining git calls as a known deviation.**
+   The current code calls git from aggregation, and ADR-0020 clause 3 makes
+   replay the only stage with working tree access. Moving the calls now would
+   reorder the server's progress events, which is a behavioural change this
+   package forbids. Leave them, record the deviation next to the code and in the
+   linter's tracking list, and name **WP-0013** as the package that removes it.
+6c. **The golden harness no longer calls the command in process.** Once the
+   command is `package main`, nothing can import it. The harness calls the
+   pipeline root and the report writer directly and takes exit classification
+   from the root's exported error types. The command's own tests move with it
+   and keep asserting exit code 2 for the shallow and empty repositories.
+   **The CLI half of the CLI/server equivalence checker (ADR-0063 table 2)
+   therefore lives in the command's own test package**, because nothing else can
+   reach it. Confirm it still runs after the move.
 7. Apply ADR-0061: build metadata becomes one file under `internal/core/` with
    one lint suppression naming that record. Its value is read at composition and
    injected onward. **The release configuration's three linker flags name the
@@ -105,7 +126,11 @@ than the four files named above, each for the single reason named.
   clause 1.
 - The import direction rule, the metrics cross-import rule and the
   `internal/checks/` rule are enabled and the build passes.
-- Process execution is imported by `internal/git/` only.
+- Git is invoked from `internal/git/` only.
+- The process-execution library is imported only by `internal/git/` and the
+  sites ADR-0065 clause 3 permits, each carrying a reference to that record.
+- The aggregation stage's remaining git calls are recorded as a deviation naming
+  WP-0013.
 - Exactly one file suppresses the package-variable lint rule, and its
   suppression names ADR-0061.
 - **Every golden file is byte-identical to its state before this package.**
@@ -116,13 +141,21 @@ than the four files named above, each for the single reason named.
   reproducible build checker, for the local build and the release build alike.
 - Every linker flag names a variable that exists. A build with the release
   configuration reports a real version, not a default.
-- No comment anywhere names a package path this package moved.
+- No **comment or identifier in source** names a package path this package
+  moved. Documents under `docs/` are historical records of what the tree was and
+  are not corrected by this package.
 
 ## Verification
 ```
 git diff --stat <base> -- testdata/     # empty: no golden file changed
 make gate-full                           # passes
-git grep -l '"os/exec"' -- internal cmd  # only internal/git
+# only internal/git and the ADR-0065 clause 3 sites
+git grep -l '"os/exec"' -- internal cmd \
+  ':!internal/git' ':!internal/checks' ':!*path_windows_test.go'
+# the only remaining hit is the browser opener
+
+git grep -n 'exec.Command' -- internal cmd | grep -v internal/git | \
+  xargs -I{} true   # each remaining file must carry an ADR-0065 reference
 
 # every -X flag target must exist
 git grep -ohE '\-X [^ "]+' .goreleaser.yml Makefile | sed 's/-X //;s/=.*//' |

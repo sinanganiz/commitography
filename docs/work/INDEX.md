@@ -51,6 +51,14 @@ to be amended mid-flight.
 - **A name is not a verification mechanism.** WP-0004 required renaming
   fixtures to state their conditions; the rename cost forty test references and
   verified nothing. A manifest plus a checker does the job.
+- **A prohibition must be written at the width of its purpose.** ADR-0047 meant
+  "git hardening happens in one place" and said "no package may start a
+  process", which forbade the verification tooling that enforces it. When a rule
+  exists to make something happen once, say that, not the widest thing that
+  would also achieve it.
+- **A move package must state what it deliberately leaves wrong**, and name the
+  package that fixes it. Code that contradicts a record but cannot be corrected
+  without changing behaviour is a recorded deviation, not a silent one.
 
 ---
 
@@ -59,10 +67,10 @@ to be amended mid-flight.
 | # | Area | Title | Implements | Requires | Status |
 |---|---|---|---|---|---|
 | [0001](0001-repository-audit.md) | foundation | Repository audit | — | — | Done |
-| [0002](0002-neutralise-contradicting-documents.md) | foundation | Neutralise contradicting documents | ADR-0001, ADR-0004, ADR-0021, ADR-0034 | WP-0001 | Done |
-| [0003](0003-enforcement-skeleton.md) | foundation | Enforcement skeleton | ADR-0055, ADR-0056, ADR-0057 | WP-0001 | Done |
-| [0004](0004-fixtures-and-golden-harness.md) | foundation | Deterministic fixtures and golden harness | ADR-0019 | WP-0003 | Done |
-| [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040, ADR-0049, ADR-0060, ADR-0061, ADR-0063 | WP-0003, WP-0004 | Ready |
+| [0002](0002-neutralise-contradicting-documents.md) | foundation | Neutralise contradicting documents | ADR-0001, ADR-0004, ADR-0021, ADR-0034 | WP-0001 | Ready |
+| [0003](0003-enforcement-skeleton.md) | foundation | Enforcement skeleton | ADR-0055, ADR-0056, ADR-0057 | WP-0001 | Ready |
+| [0004](0004-fixtures-and-golden-harness.md) | foundation | Deterministic fixtures and golden harness | ADR-0019 | WP-0003 | Ready |
+| [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040, ADR-0049, ADR-0060, ADR-0061, ADR-0063, ADR-0065, ADR-0066 | WP-0003, WP-0004 | Ready |
 | 0006 | foundation | Error model and reason codes | ADR-0041, ADR-0032 | WP-0005 | Draft |
 | 0007 | foundation | Dependency wiring and ambient state removal | ADR-0042 | WP-0005 | Draft |
 | 0008 | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032 | WP-0005, WP-0006 | Draft |

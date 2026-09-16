@@ -70,7 +70,7 @@ a superseding record is written first.
 | [0044](0044-concurrency-primitives.md) | Owned goroutines, context-bound subprocesses, persistent locks | Accepted |
 | [0045](0045-threat-model.md) | The repository is untrusted input in every mode | Accepted |
 | [0046](0046-filesystem-boundary.md) | Canonical path containment and product-controlled clone targets | Accepted |
-| [0047](0047-subprocess-hardening.md) | One git chokepoint with hardened invocation and NUL-delimited output | Accepted |
+| [0047](0047-subprocess-hardening.md) | One git chokepoint with hardened invocation and NUL-delimited output | Superseded by ADR-0065 |
 | [0048](0048-resource-limits.md) | Enforced limits, and truncation is never silent | Accepted |
 | [0049](0049-supply-chain.md) | Dependency budget, reproducible builds and bundle verification | Accepted |
 | [0050](0050-performance-budget-expression.md) | Duration budgets are ratios, memory budgets are absolute | Accepted |
@@ -88,8 +88,10 @@ a superseding record is written first.
 | [0062](0062-metric-catalogue-authority.md) | `docs/metrics.md` is the authoritative metric catalogue | Accepted |
 | [0063](0063-enforced-rule-set-corrected.md) | The enforced rule set | Accepted |
 | [0064](0064-checks-must-be-able-to-fail.md) | A check that cannot fail is not a check | Accepted |
+| [0065](0065-subprocess-execution.md) | Git passes one chokepoint; other subprocesses are a closed set | Accepted |
+| [0066](0066-layout-gaps.md) | The git package's position, and subpackages under core | Accepted |
 
-ADR-0056 is superseded by ADR-0063.
+ADR-0047 is superseded by ADR-0065. ADR-0056 is superseded by ADR-0063.
 
 ---
 
@@ -105,7 +107,7 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 | 3 | 0014, 0017, 0024, 0033, 0037, 0038, 0043, 0045, 0049, 0056, 0058, 0059, 0063 |
 | 4 | 0009, 0011, 0012, 0015, 0027, 0032, 0035, 0040, 0046, 0052, 0057, 0061, 0062 |
 | 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053, 0060, 0064 |
-| 6 | 0023, 0047, 0051, 0054 |
+| 6 | 0023, 0047, 0051, 0054, 0065, 0066 |
 
 Two records carry partial dependencies stated in prose rather than as a
 whole-record dependency, and are therefore placed earlier than their text
@@ -163,8 +165,10 @@ checked without reading the full set. The governing record is authoritative.
 
 - No metric family reads another family's output, and no metric package imports
   another metric package. (0024, 0040)
-- No package outside the git package executes a subprocess. (0047)
-- Git is never invoked through a shell, and output is never line-parsed. (0047)
+- No package outside the git package invokes git. Non-git subprocesses run only
+  at the closed set of sites in ADR-0065 clause 3. (0065)
+- No subprocess anywhere is invoked through a shell, and git output is never
+  line-parsed. (0065)
 - No globals, package-level mutable singletons, services in `context`, or direct
   process clock calls. (0042)
 - No bare `go` statement; every goroutine has an owner. (0044)
