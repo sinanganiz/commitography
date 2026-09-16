@@ -12,7 +12,7 @@ import (
 	"github.com/sinanganiz/commitography/internal/server"
 )
 
-func newServeCommand() *cobra.Command {
+func newServeCommand(toolVersion string) *cobra.Command {
 	var options server.Options
 
 	cmd := &cobra.Command{
@@ -21,7 +21,7 @@ func newServeCommand() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			app, err := server.NewAppWithAllowedRoots(nil, options.AllowedRoots)
+			app, err := server.NewAppWithAllowedRoots(server.NewManager(server.ManagerOptions{ToolVersion: toolVersion}), options.AllowedRoots)
 			if err != nil {
 				return err
 			}

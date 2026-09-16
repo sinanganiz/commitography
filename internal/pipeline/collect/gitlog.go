@@ -13,7 +13,6 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/core/model"
 	"github.com/sinanganiz/commitography/internal/git"
-	"github.com/sinanganiz/commitography/internal/version"
 )
 
 const (
@@ -54,6 +53,10 @@ type Options struct {
 	Since      string // passed through to git log --since, empty means no bound
 	Until      string // passed through to git log --until, empty means no bound
 	Context    context.Context
+
+	// ToolVersion is recorded in the history artifact. It is injected, never
+	// read from build metadata here (ADR-0061 clause 4).
+	ToolVersion string
 
 	// OnWarning, when set, receives non-fatal diagnostics such as parse
 	// failures. It may be called before Collect returns.
@@ -118,7 +121,7 @@ func Collect(opts Options) (*model.History, error) {
 	return &model.History{
 		SchemaVersion: model.SchemaVersion,
 		GeneratedAt:   time.Now().UTC(),
-		ToolVersion:   version.Version,
+		ToolVersion:   opts.ToolVersion,
 		Repository:    info,
 		Commits:       commits,
 	}, nil

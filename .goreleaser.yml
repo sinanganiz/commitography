@@ -29,9 +29,9 @@ builds:
       # `make build` produces on a contributor's Mac, which is where the crash
       # was actually observed. Other platforms stay stripped.
       - '{{ if ne .Os "darwin" }}-s -w{{ end }}'
-      - -X github.com/sinanganiz/commitography/internal/version.Version={{ .Version }}
-      - -X github.com/sinanganiz/commitography/internal/version.Commit={{ .FullCommit }}
-      - -X github.com/sinanganiz/commitography/internal/version.BuildDate={{ .Date }}
+      - -X github.com/sinanganiz/commitography/internal/core.version={{ .Version }}
+      - -X github.com/sinanganiz/commitography/internal/core.commit={{ .FullCommit }}
+      - -X github.com/sinanganiz/commitography/internal/core.buildDate={{ .Date }}
     goos:
       - linux
       - darwin

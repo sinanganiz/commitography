@@ -36,6 +36,10 @@ type Input struct {
 	Warnings []string
 	// Progress, when set, is called as each stage begins.
 	Progress func(stage, detail string, current, total int)
+
+	// ToolVersion is the build's version, recorded in the report's generation
+	// metadata (ADR-0061 clause 6).
+	ToolVersion string
 }
 
 // Analyzed returns the commits that count toward commit and temporal metrics:

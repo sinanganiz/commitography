@@ -121,11 +121,8 @@ linters:
         linters: [gochecknoglobals]
       - path: internal/server/resolve_windows\.go
         linters: [gochecknoglobals]
-      # Link-time build metadata. WP-0005 clause 7 moves this file to
-      # internal/core/ and replaces this exclusion with the single in-file
-      # suppression ADR-0061 clause 3 requires.
-      - path: internal/version/version\.go
-        linters: [gochecknoglobals]
+      # Link-time build metadata is not excluded here: internal/core/buildinfo.go
+      # carries the single in-file suppression ADR-0061 clause 3 requires.
 
 formatters:
   enable:

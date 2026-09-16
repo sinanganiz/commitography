@@ -29,6 +29,10 @@ type Options struct {
 	CountMerges      bool
 	CountMergesSet   bool
 	OnWarning        func(string)
+
+	// ToolVersion is the build's version, recorded in the report's generation
+	// metadata. The command reads it at composition (ADR-0061 clause 4).
+	ToolVersion string
 }
 
 // Progress stages are stable identifiers for CLI and web progress adapters.

@@ -78,6 +78,8 @@ type ManagerOptions struct {
 	NewID  func() (string, error)
 	Now    func() time.Time
 	Runner Runner
+	// ToolVersion is passed to every analysis the manager runs.
+	ToolVersion string
 }
 
 // Runner is the shared analysis operation executed by a worker.
@@ -90,6 +92,7 @@ type Manager struct {
 	newID    func() (string, error)
 	now      func() time.Time
 	runner   Runner
+	version  string
 	jobs     map[string]*job
 	activeID string
 }
@@ -118,11 +121,12 @@ func NewManager(options ManagerOptions) *Manager {
 		runner = pipeline.Run
 	}
 	return &Manager{
-		limit:  limit,
-		newID:  newID,
-		now:    now,
-		runner: runner,
-		jobs:   make(map[string]*job),
+		limit:   limit,
+		newID:   newID,
+		now:     now,
+		runner:  runner,
+		version: options.ToolVersion,
+		jobs:    make(map[string]*job),
 	}
 }
 
@@ -168,6 +172,7 @@ func (m *Manager) Start(repoPath string, options pipeline.Options) (Snapshot, er
 	m.mu.Unlock()
 
 	options.RepoPath = repoPath
+	options.ToolVersion = m.version
 	callerWarning := options.OnWarning
 	options.OnWarning = func(message string) {
 		_ = m.AddWarning(snapshot.ID, message)

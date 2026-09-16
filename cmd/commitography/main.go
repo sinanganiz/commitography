@@ -8,17 +8,30 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/sinanganiz/commitography/internal/version"
+	"github.com/sinanganiz/commitography/internal/core"
 )
 
+// buildInfo is the link-time build metadata, read once at composition and
+// passed to whatever needs it (ADR-0061 clause 4).
+type buildInfo struct {
+	version, commit, date string
+}
+
+// String returns a single-line human-readable version string.
+func (b buildInfo) String() string {
+	return fmt.Sprintf("commitography %s (commit %s, built %s)", b.version, b.commit, b.date)
+}
+
 func main() {
-	if err := newRootCommand().Execute(); err != nil {
+	version, commit, date := core.BuildMetadata()
+	build := buildInfo{version: version, commit: commit, date: date}
+	if err := newRootCommand(build).Execute(); err != nil {
 		Report(err)
 		os.Exit(ExitCode(err))
 	}
 }
 
-func newRootCommand() *cobra.Command {
+func newRootCommand(build buildInfo) *cobra.Command {
 	var (
 		opts        Options
 		showVersion bool
@@ -41,10 +54,11 @@ Repository-level by default; per-contributor breakdowns are opt-in behind
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if showVersion {
-				fmt.Fprintln(cmd.OutOrStdout(), version.String())
+				fmt.Fprintln(cmd.OutOrStdout(), build.String())
 				return nil
 			}
 
+			opts.ToolVersion = build.version
 			opts.RepoPath = "."
 			if len(args) == 1 {
 				opts.RepoPath = args[0]
@@ -72,7 +86,7 @@ Repository-level by default; per-contributor breakdowns are opt-in behind
 	f.BoolVarP(&opts.Quiet, "quiet", "q", false, "Suppress progress output")
 	f.BoolVarP(&opts.Verbose, "verbose", "v", false, "Emit debug logging to stderr")
 	f.BoolVar(&showVersion, "version", false, "Print version and exit")
-	cmd.AddCommand(newServeCommand())
+	cmd.AddCommand(newServeCommand(build.version))
 
 	return cmd
 }

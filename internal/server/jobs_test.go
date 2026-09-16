@@ -192,6 +192,27 @@ func TestOnlySucceededJobsExposeReports(t *testing.T) {
 	}
 }
 
+// The build version is injected at composition and must reach every analysis
+// the manager runs, whatever the caller put in the options (ADR-0061 clause 4).
+func TestStartInjectsTheManagersToolVersion(t *testing.T) {
+	versions := make(chan string, 1)
+	manager := NewManager(ManagerOptions{
+		ToolVersion: "v-injected",
+		Runner: func(_ context.Context, options pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
+			versions <- options.ToolVersion
+			return &pipeline.Result{Report: &core.Report{}}, nil
+		},
+	})
+	job, err := manager.Start("/repos/version", pipeline.Options{ToolVersion: "from-caller"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := <-versions; got != "v-injected" {
+		t.Errorf("runner received ToolVersion %q, want the manager's %q", got, "v-injected")
+	}
+	waitForTerminal(t, manager, job.ID)
+}
+
 func TestCancelAllRequestsWorkerCancellation(t *testing.T) {
 	started := make(chan struct{}, 1)
 	manager := NewManager(ManagerOptions{

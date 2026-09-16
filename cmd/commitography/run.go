@@ -55,6 +55,9 @@ type Options struct {
 	Quiet        bool
 	Verbose      bool
 
+	// ToolVersion is the build's version, injected by main.
+	ToolVersion string
+
 	// outputDirSet and countMergesSet record whether the flag was given at all,
 	// so a configuration file can supply the value when it was not. Cobra's
 	// defaults are indistinguishable from an explicit value otherwise.
@@ -89,6 +92,7 @@ func Run(opts Options) error {
 		CountMergesSet: opts.countMergesSet,
 		Year:           opts.Wrapped,
 		OnWarning:      func(message string) { progress.Warn("%s", message) },
+		ToolVersion:    opts.ToolVersion,
 	}
 	result, err := pipeline.Run(context.Background(), analysisOpts, func(event pipeline.ProgressEvent) {
 		progress.Stage(cliStage(event.Stage), event.Detail)

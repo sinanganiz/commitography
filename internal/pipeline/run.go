@@ -73,12 +73,13 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	}
 	emit.emit(StageCollecting, "reading history")
 	history, err := collect.Collect(collect.Options{
-		RepoPath:   repoPath,
-		UseMailmap: cfg.UseMailmap,
-		Since:      opts.Since,
-		Until:      opts.Until,
-		Context:    ctx,
-		OnWarning:  collectWarn,
+		RepoPath:    repoPath,
+		UseMailmap:  cfg.UseMailmap,
+		ToolVersion: opts.ToolVersion,
+		Since:       opts.Since,
+		Until:       opts.Until,
+		Context:     ctx,
+		OnWarning:   collectWarn,
 		OnProgress: func(current, total int) {
 			if total > 0 {
 				emit.emitCount(StageCollecting, fmt.Sprintf("%d of %d commits", current, total), current, total)
@@ -113,17 +114,18 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	}
 
 	input := core.Input{
-		Context:    ctx,
-		RepoPath:   repoPath,
-		Repository: history.Repository,
-		Config:     cfg,
-		Filtered:   filtered,
-		Resolver:   resolver,
-		PathFilter: pathFilter,
-		NoBlame:    opts.NoBlame,
-		PerAuthor:  opts.PerAuthor,
-		Year:       opts.Year,
-		Warnings:   warnings,
+		Context:     ctx,
+		RepoPath:    repoPath,
+		Repository:  history.Repository,
+		Config:      cfg,
+		Filtered:    filtered,
+		Resolver:    resolver,
+		PathFilter:  pathFilter,
+		NoBlame:     opts.NoBlame,
+		PerAuthor:   opts.PerAuthor,
+		Year:        opts.Year,
+		Warnings:    warnings,
+		ToolVersion: opts.ToolVersion,
 		Progress: func(stage, detail string, current, total int) {
 			mapped := StageCode
 			if stage == "metrics" {

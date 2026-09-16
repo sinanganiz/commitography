@@ -22,9 +22,9 @@ ifeq ($(TARGET_GOOS),darwin)
 endif
 
 LDFLAGS := $(STRIP_FLAGS) \
-	-X '$(MODULE)/internal/version.Version=$(VERSION)' \
-	-X '$(MODULE)/internal/version.Commit=$(COMMIT)' \
-	-X '$(MODULE)/internal/version.BuildDate=$(BUILD_DATE)'
+	-X '$(MODULE)/internal/core.version=$(VERSION)' \
+	-X '$(MODULE)/internal/core.commit=$(COMMIT)' \
+	-X '$(MODULE)/internal/core.buildDate=$(BUILD_DATE)'
 
 # Toolchain versions the gates build with (ADR-0049 clause 6). CI reads them
 # from here through `make toolchain-versions`, so the pin has one source.

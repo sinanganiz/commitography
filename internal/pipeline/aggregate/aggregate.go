@@ -11,7 +11,6 @@ import (
 	"github.com/sinanganiz/commitography/internal/metrics/commitsize"
 	"github.com/sinanganiz/commitography/internal/metrics/messages"
 	"github.com/sinanganiz/commitography/internal/metrics/temporal"
-	"github.com/sinanganiz/commitography/internal/version"
 )
 
 // Build computes the complete report.
@@ -22,7 +21,7 @@ func Build(in core.Input) (*core.Report, error) {
 	r := &core.Report{
 		SchemaVersion: core.SchemaVersion,
 		GeneratedAt:   time.Now().UTC(),
-		ToolVersion:   version.Version,
+		ToolVersion:   in.ToolVersion,
 		Warnings:      append([]string(nil), in.Warnings...),
 	}
 	if r.Warnings == nil {
