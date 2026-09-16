@@ -1,0 +1,142 @@
+# Linter configuration for the rules ADR-0056 clause 1 requires to be enforced
+# by linter or formatter configuration (ADR-0055 clause 1).
+#
+# Run it through `make lint-go`, which pins the golangci-lint version.
+#
+# Every exclusion below names the record it narrows and the work package that
+# removes it (ADR-0055 clause 4). An exclusion is not a precedent: widening a
+# rule back to the whole tree is the job of the named package.
+#
+# Rules in ADR-0056 table 1 whose subject does not exist in the tree yet, with
+# the package that introduces it:
+#
+#   internal/metrics/* may not import one another   ADR-0040  WP-0005 clause 5
+#   package dependency direction                    ADR-0040  WP-0005 clause 5
+#   nothing may import internal/checks              ADR-0060  WP-0005 clause 5
+#   no raw colour, spacing, typography or radius    ADR-0038  WP-0047
+#   no imperative DOM manipulation in charts        ADR-0037  WP-0048
+#   frontend bundle size budget                     ADR-0053  WP-0053
+#
+# The four frontend rules need a frontend linter, which is a direct dependency
+# in web/package.json; adding one is outside the scope of WP-0003.
+#
+# Two rules from table 1 are enforced by a checker rather than here, because
+# this linter's configuration cannot express them (ADR-0055 clause 2):
+#
+#   Direct dependencies match the allow list   ADR-0049  TestDependencyAllowList
+#     compares manifests, not imports.
+#   No bare `go` statement                     ADR-0044  TestGoroutineOwnership
+#     no bundled linter matches a statement form. Expressing it through
+#     gocritic's ruleguard needs the ruleguard DSL as a dependency, which
+#     ADR-0049 clause 2 does not allow.
+version: "2"
+
+run:
+  # Checkers and unit tests are linted with the code they check. The two
+  # build-tagged packages (dockersmoke, perfcheck) are not loaded without their
+  # tags; WP-0005 moves them under internal/checks/.
+  tests: true
+
+linters:
+  default: none
+  enable:
+    # Formatting and vet clean. (ADR-0056 table 1; gofmt is under formatters)
+    - govet
+    # Process execution imported only by the git package. (ADR-0047)
+    - depguard
+    # No direct process clock call; no services in context. (ADR-0042)
+    - forbidigo
+    # No globals or package-level mutable singletons. (ADR-0042)
+    - gochecknoglobals
+
+  settings:
+    depguard:
+      rules:
+        # internal/gitcmd is the git package until WP-0005 moves it to
+        # internal/git/.
+        process-execution:
+          list-mode: lax
+          files:
+            - $all
+            - "!**/internal/gitcmd/**"
+            # Narrowed until WP-0005 clause 6 moves process execution out of
+            # every package except internal/git/.
+            - "!**/internal/collect/git.go"
+            - "!**/internal/collect/preflight.go"
+            - "!**/internal/collect/collect_test.go"
+            - "!**/internal/identity/identity_test.go"
+            - "!**/internal/server/listener.go"
+            - "!**/internal/server/path_windows_test.go"
+          deny:
+            - pkg: os/exec
+              desc: "ADR-0047: only the git package may import process execution"
+
+    forbidigo:
+      analyze-types: true
+      forbid:
+        - pattern: ^time\.(Now|Since|Until)$
+          pkg: ^time$
+          msg: "ADR-0042: read the clock through an injected dependency"
+        # Tracing identifiers are the sole exception (ADR-0042 clause 3) and
+        # need a suppression naming that clause.
+        - pattern: ^context\.WithValue$
+          pkg: ^context$
+          msg: "ADR-0042: context carries cancellation and deadlines only"
+
+  exclusions:
+    rules:
+      # Direct clock reads in code WP-0007 rewrites. Each rule excludes the
+      # ADR-0042 clock message only, in one file.
+      - path: internal/aggregate/report\.go
+        linters: [forbidigo]
+        text: "ADR-0042: read the clock"
+      - path: internal/cli/progress\.go
+        linters: [forbidigo]
+        text: "ADR-0042: read the clock"
+      - path: internal/collect/gitlog\.go
+        linters: [forbidigo]
+        text: "ADR-0042: read the clock"
+      - path: internal/jobs/jobs\.go
+        linters: [forbidigo]
+        text: "ADR-0042: read the clock"
+      - path: internal/filter/filter_test\.go
+        linters: [forbidigo]
+        text: "ADR-0042: read the clock"
+      - path: internal/jobs/jobs_test\.go
+        linters: [forbidigo]
+        text: "ADR-0042: read the clock"
+      - path: internal/server/securitymatrix_test\.go
+        linters: [forbidigo]
+        text: "ADR-0042: read the clock"
+
+      # Package-level variables in code WP-0007 rewrites ("no globals, wiring
+      # is explicit in one place").
+      - path: internal/aggregate/messages\.go
+        linters: [gochecknoglobals]
+      - path: internal/aggregate/stopwords\.go
+        linters: [gochecknoglobals]
+      - path: internal/config/config\.go
+        linters: [gochecknoglobals]
+      - path: internal/container/container\.go
+        linters: [gochecknoglobals]
+      - path: internal/filter/paths\.go
+        linters: [gochecknoglobals]
+      - path: internal/render/render\.go
+        linters: [gochecknoglobals]
+      - path: internal/render/bundle_test\.go
+        linters: [gochecknoglobals]
+      - path: internal/server/resolve_windows\.go
+        linters: [gochecknoglobals]
+      # Link-time build metadata. WP-0005 clause 7 moves this file to
+      # internal/core/ and replaces this exclusion with the single in-file
+      # suppression ADR-0061 clause 3 requires.
+      - path: internal/version/version\.go
+        linters: [gochecknoglobals]
+
+formatters:
+  enable:
+    - gofmt
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
