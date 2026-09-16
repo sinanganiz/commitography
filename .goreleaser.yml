@@ -31,7 +31,7 @@ builds:
       - '{{ if ne .Os "darwin" }}-s -w{{ end }}'
       - -X github.com/sinanganiz/commitography/internal/core.version={{ .Version }}
       - -X github.com/sinanganiz/commitography/internal/core.commit={{ .FullCommit }}
-      - -X github.com/sinanganiz/commitography/internal/core.buildDate={{ .Date }}
+      - -X github.com/sinanganiz/commitography/internal/core.buildDate={{ .CommitDate }}
     goos:
       - linux
       - darwin

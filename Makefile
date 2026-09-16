@@ -9,7 +9,9 @@ endif
 
 VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT     ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
-BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+# The build date is the built commit's own committer timestamp, in UTC, never
+# the clock, so two builds of one commit are identical (ADR-0063 clause 3).
+BUILD_DATE ?= $(shell TZ=UTC0 git log -1 --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd 2>/dev/null || echo unknown)
 
 # -s -w strip the symbol table and DWARF. On Darwin that also removes the
 # LC_UUID load command, and dyld refuses to start a Mach-O binary without one
@@ -37,10 +39,15 @@ NODE_VERSION := 24.18.1
 export GOTOOLCHAIN := go$(GO_VERSION)
 
 # Verification tools, pinned. `go run` fetches them into the module cache;
-# neither appears in go.mod, so neither is a direct dependency of the module
-# (ADR-0049 clause 2).
-GOLANGCI_LINT := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
-GOVULNCHECK   := go run golang.org/x/vuln/cmd/govulncheck@v1.8.0
+# none appears in go.mod, so none is a direct dependency of the module
+# (ADR-0049 clause 2). goreleaser is installed into out/tools instead, so the
+# release reproducibility check can build with an empty build cache without
+# rebuilding the tool each time. It needs a newer toolchain to build than the
+# one pinned above; the builds it runs still use the pinned one.
+GOLANGCI_LINT        := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+GOVULNCHECK          := go run golang.org/x/vuln/cmd/govulncheck@v1.8.0
+GORELEASER_VERSION   := v2.18.1
+GORELEASER_TOOLCHAIN := go1.27.1
 
 # Unit tests and checkers are separate gate entries, so the checker package is
 # not also run as part of the unit test target.
@@ -49,7 +56,8 @@ GO_UNIT_PACKAGES := $(shell go list ./... | grep -vE '/internal/checks(/|$$)')
 .PHONY: build web test fixtures lint clean docker-image docker-smoke perfcheck \
 	gate-fast gate-full toolchain-versions build-go lint-go test-go checks \
 	typecheck-web test-web vulncheck-go vulncheck-web fixture-determinism \
-	golden-large golden-update
+	golden-large golden-update reproducible-build reproducible-binary \
+	gate-release reproducible-release
 
 build: web
 	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/commitography
@@ -112,8 +120,11 @@ lint: lint-go
 #                      comparison on small fixtures, golden commit
 #                      messages, frontend type check and unit tests
 #   full (15 minutes)  everything in fast, plus vulnerability scanning,
-#                      golden comparison on the large fixture and fixture
-#                      determinism (on every supported platform)
+#                      golden comparison on the large fixture, fixture
+#                      determinism (on every supported platform) and the
+#                      reproducible build of the local binary
+#   release            everything in full, plus the reproducible build of the
+#                      release binary
 #
 # Checks ADR-0057 assigns to a gate whose subject does not exist yet —
 # invariants, family contract, namespace violation, goroutine leak, leak scan,
@@ -122,11 +133,13 @@ lint: lint-go
 # count, cross-compilation, bundle integrity — are added by the package that
 # creates each subject.
 FAST_CHECKS := build-go lint-go test-go checks typecheck-web test-web
-FULL_CHECKS := vulncheck-go vulncheck-web fixture-determinism golden-large
+FULL_CHECKS := vulncheck-go vulncheck-web fixture-determinism golden-large \
+	reproducible-build
+RELEASE_CHECKS := reproducible-release
 
-# Checkers that belong to the full gate and are therefore skipped by `checks`.
-# Each has its own target below.
-FULL_CHECKERS := ^(TestFixtureDeterminism|TestGoldenLarge)$$
+# Checkers that belong to the full gate or the release path and are therefore
+# skipped by `checks`. Each has its own target below.
+FULL_CHECKERS := ^(TestFixtureDeterminism|TestGoldenLarge|TestReproducibleBuild)$$
 
 # Every gate prints the number of checks run, passed, failed and skipped
 # (ADR-0064 clause 4). Go tests and frontend tests count one per test; every
@@ -155,6 +168,12 @@ gate-fast: fixtures
 gate-full: fixtures
 	$(call run-gate,$(FAST_CHECKS) $(FULL_CHECKS),full)
 
+# The release path (ADR-0057 clause 1). Platform artifacts, the software bill
+# of materials and signing belong to the release pipeline package, which also
+# runs this target on release.
+gate-release: fixtures
+	$(call run-gate,$(FAST_CHECKS) $(FULL_CHECKS) $(RELEASE_CHECKS),release)
+
 # Read by CI to pin its toolchain to the versions above.
 toolchain-versions:
 	@echo "go=$(GO_VERSION)"
@@ -163,7 +182,7 @@ toolchain-versions:
 build-go:
 	go build ./...
 
-# Formatting, vet and every rule ADR-0056 table 1 puts in linter configuration.
+# Formatting, vet and every rule ADR-0063 table 1 puts in linter configuration.
 lint-go:
 	$(GOLANGCI_LINT) run ./...
 
@@ -196,6 +215,45 @@ fixture-determinism:
 golden-large:
 	go test -json -count=1 -run '^TestGoldenLarge$$' ./internal/checks \
 		| $(GATESUMMARY) gotest $(GATE_DIR) golden-large
+
+# ADR-0049 clause 6 and ADR-0063 table 2. Builds the command twice with the
+# flags `make build` uses and compares the two binaries. Each build is its own
+# make invocation, so every value the flags derive, such as the build date, is
+# computed again, and each has its own empty build cache, so nothing is
+# reused. The embedded bundle is the committed one.
+REPRO_DIR := out/reproducible
+
+reproducible-build:
+	rm -rf $(REPRO_DIR)
+	$(MAKE) --no-print-directory reproducible-binary REPRO_RUN=first
+	$(MAKE) --no-print-directory reproducible-binary REPRO_RUN=second
+	COMMITOGRAPHY_REPRODUCIBLE_FIRST='$(CURDIR)/$(REPRO_DIR)/first' \
+	COMMITOGRAPHY_REPRODUCIBLE_SECOND='$(CURDIR)/$(REPRO_DIR)/second' \
+	go test -json -count=1 -run '^TestReproducibleBuild$$' ./internal/checks \
+		| $(GATESUMMARY) gotest $(GATE_DIR) reproducible-build
+
+reproducible-binary:
+	GOCACHE='$(CURDIR)/$(REPRO_DIR)/cache-$(REPRO_RUN)' go build -trimpath -ldflags "$(LDFLAGS)" \
+		-o $(REPRO_DIR)/$(REPRO_RUN)/$(BINARY) ./cmd/commitography
+
+# The same comparison for the release configuration: two snapshot builds for
+# the host platform with the pinned goreleaser, each with its own empty build
+# cache.
+RELEASE_REPRO_DIR := out/reproducible-release
+GORELEASER        := $(CURDIR)/out/tools/goreleaser
+
+reproducible-release:
+	rm -rf $(RELEASE_REPRO_DIR)
+	GOBIN='$(CURDIR)/out/tools' GOTOOLCHAIN=$(GORELEASER_TOOLCHAIN) \
+		go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION)
+	for run in first second; do \
+		GOCACHE='$(CURDIR)/$(RELEASE_REPRO_DIR)/cache-'$$run '$(GORELEASER)' build --snapshot --clean --single-target || exit 1; \
+		mkdir -p $(RELEASE_REPRO_DIR)/$$run && cp -R dist/. $(RELEASE_REPRO_DIR)/$$run/ || exit 1; \
+	done
+	COMMITOGRAPHY_REPRODUCIBLE_FIRST='$(CURDIR)/$(RELEASE_REPRO_DIR)/first' \
+	COMMITOGRAPHY_REPRODUCIBLE_SECOND='$(CURDIR)/$(RELEASE_REPRO_DIR)/second' \
+	go test -json -count=1 -run '^TestReproducibleBuild$$' ./internal/checks \
+		| $(GATESUMMARY) gotest $(GATE_DIR) reproducible-release
 
 # Rewrites every golden file from the current analysis output. A commit that
 # changes one must state why in its body (ADR-0019 clause 2).

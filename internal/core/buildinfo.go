@@ -12,7 +12,8 @@ package core
 
 // The Makefile and the release configuration set these with -ldflags -X.
 // version is the semantic version, commit the git commit of the build, and
-// buildDate the build timestamp.
+// buildDate the built commit's own timestamp, never the clock (ADR-0063
+// clause 3).
 //
 //nolint:gochecknoglobals // ADR-0061: link-time build metadata, never written at runtime.
 var (
