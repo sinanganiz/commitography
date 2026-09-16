@@ -11,8 +11,11 @@ set -eu
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root="$script_dir/fixtures"
 
-rm -rf "$root"
+# The output root holds a tracked placeholder, so only the generated entries
+# beside it are removed. Deleting the root would delete the placeholder too and
+# leave the tracked tree dirty after every run.
 mkdir -p "$root"
+find "$root" -mindepth 1 -maxdepth 1 ! -name .gitkeep -exec rm -rf {} +
 
 # 2025-10-01T00:00:00Z. Fifty commits at a three-day stride reach 2026-02-25,
 # so the fixture spans two calendar years and exercises year-over-year output.
