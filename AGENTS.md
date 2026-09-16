@@ -6,6 +6,9 @@ Before making any change to this repository, read
 [`docs/decisions/INDEX.md`](docs/decisions/INDEX.md) and any record it lists
 that touches the area you are changing.
 
+If your change touches a metric, a reason code or a cardinality limit, read
+[`docs/metrics.md`](docs/metrics.md) as well. It is binding (ADR-0062).
+
 **If you are modifying a file that carries record references in its file-level
 comment, read those records first.** The references are there because the file
 carries constraints that are not obvious from the code (ADR-0059).
@@ -50,29 +53,6 @@ Status lives only in `docs/work/INDEX.md` and is changed by the author. Package
 files carry no status field, and a package is never marked `Done` by the agent
 that implemented it.
 
-### Resuming a package
-
-A package may be interrupted. The session that resumes it has no memory of the
-one that started it. Reconstruct the state from the repository, never from
-assumption.
-
-1. Re-read the package file. **It may have been amended since the work began**,
-   and the amended version is the one that governs. Re-read every record in its
-   `Implements` field, including any that is new.
-2. Run `git log --oneline --grep="^WP-NNNN:"` to see what was committed, and
-   `git status` to see what was not.
-3. Confirm the fast gate passes at `HEAD`. If it does not, fixing that comes
-   first: `main` is never left broken.
-4. Decide what to do with uncommitted changes — complete and commit them, or
-   discard them. State which, and why. Do not leave them sitting.
-5. **Treat every `Definition of done` item as unverified.** Earlier commits may
-   have been made against an earlier version of the package, and a previous
-   session's report is not evidence. Check each item against the tree as it is
-   now, and re-run every command in `Verification` from scratch.
-6. Continue from the first unmet item.
-
-Report on the whole package, not only the part you did.
-
 ## Git
 
 - Work directly on `main`. Do not create a branch for a work package.
@@ -107,7 +87,9 @@ Do not claim an item is satisfied without its evidence.
    implement the contradiction and document it afterwards.
 
 2. **Do not edit an accepted record.** Supersede it. Typo and link fixes are the
-   only permitted edits.
+   only permitted edits. `docs/metrics.md` is the exception: it is binding but
+   edited in place, in the same change as the code and the family version
+   increment (ADR-0062 clause 4).
 
 3. **Update the index in the same commit** that adds or supersedes a record.
 

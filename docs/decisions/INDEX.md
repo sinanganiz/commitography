@@ -148,8 +148,6 @@ checked without reading the full set. The governing record is authoritative.
 - No static HTML generation; the CLI emits one file. (0034)
 - No flag to skip blame exists; replay makes it unnecessary. (0020)
 - No billing, entitlement, licence-key or quota code. (0003)
-- No package sits outside the named layout; `internal/checks/` may import
-  anything and nothing may import it. (0060)
 - Exactly one file declares link-time variables, and build metadata never enters
   a metric, a cache key or a golden comparison. (0061)
 - No metric, reason code or cardinality limit exists that `docs/metrics.md` does
@@ -165,6 +163,10 @@ checked without reading the full set. The governing record is authoritative.
 
 - No metric family reads another family's output, and no metric package imports
   another metric package. (0024, 0040)
+- No package sits outside the named layout; `internal/checks/` may import
+  anything and nothing may import it. (0060)
+- Nothing under `internal/core` imports anything outside `core`, subpackages
+  included, and a subpackage exists only to resolve a name collision. (0066)
 - No package outside the git package invokes git. Non-git subprocesses run only
   at the closed set of sites in ADR-0065 clause 3. (0065)
 - No subprocess anywhere is invoked through a shell, and git output is never

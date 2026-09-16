@@ -59,6 +59,13 @@ to be amended mid-flight.
 - **A move package must state what it deliberately leaves wrong**, and name the
   package that fixes it. Code that contradicts a record but cannot be corrected
   without changing behaviour is a recorded deviation, not a silent one.
+- **A package that cannot be split must be resumable rather than smaller.**
+  WP-0005 is atomic: its done-conditions only hold once the whole move is
+  finished, so halving it satisfies nothing. Where a package has no such
+  constraint, prefer the smaller one that merges on its own.
+- **Give a structure its final shape before filling it.** WP-0008 puts every
+  family in the report at once, most of them `skipped`, so the document never
+  gains a top-level key again and each later package only fills a slot.
 
 ---
 
@@ -67,16 +74,16 @@ to be amended mid-flight.
 | # | Area | Title | Implements | Requires | Status |
 |---|---|---|---|---|---|
 | [0001](0001-repository-audit.md) | foundation | Repository audit | — | — | Done |
-| [0002](0002-neutralise-contradicting-documents.md) | foundation | Neutralise contradicting documents | ADR-0001, ADR-0004, ADR-0021, ADR-0034 | WP-0001 | Ready |
-| [0003](0003-enforcement-skeleton.md) | foundation | Enforcement skeleton | ADR-0055, ADR-0056, ADR-0057 | WP-0001 | Ready |
-| [0004](0004-fixtures-and-golden-harness.md) | foundation | Deterministic fixtures and golden harness | ADR-0019 | WP-0003 | Ready |
-| [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040, ADR-0049, ADR-0060, ADR-0061, ADR-0063, ADR-0065, ADR-0066 | WP-0003, WP-0004 | Ready |
-| 0006 | foundation | Error model and reason codes | ADR-0041, ADR-0032 | WP-0005 | Draft |
-| 0007 | foundation | Dependency wiring and ambient state removal | ADR-0042 | WP-0005 | Draft |
-| 0008 | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032 | WP-0005, WP-0006 | Draft |
-| 0009 | core | Identity model and privacy layers | ADR-0033, ADR-0010 | WP-0008 | Draft |
-| 0010 | core | Configuration planes and resolution | ADR-0026 | WP-0008 | Draft |
-| 0011 | pipeline | Git invocation chokepoint | ADR-0047, ADR-0044 | WP-0005, WP-0006, WP-0007 | Draft |
+| [0002](0002-neutralise-contradicting-documents.md) | foundation | Neutralise contradicting documents | ADR-0001, ADR-0004, ADR-0021, ADR-0034 | WP-0001 | Done |
+| [0003](0003-enforcement-skeleton.md) | foundation | Enforcement skeleton | ADR-0055, ADR-0063, ADR-0057, ADR-0064 | WP-0001 | Done |
+| [0004](0004-fixtures-and-golden-harness.md) | foundation | Deterministic fixtures and golden harness | ADR-0019, ADR-0057, ADR-0064 | WP-0003 | Done |
+| [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040, ADR-0049, ADR-0060, ADR-0061, ADR-0063, ADR-0065, ADR-0066 | WP-0003, WP-0004 | Done |
+| [0006](0006-error-model.md) | foundation | Error model and reason codes | ADR-0041, ADR-0032, ADR-0062, ADR-0064 | WP-0005 | Ready |
+| [0007](0007-dependency-wiring.md) | foundation | Dependency wiring and ambient state removal | ADR-0042, ADR-0061, ADR-0021 | WP-0005 | Ready |
+| [0008](0008-report-document.md) | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032, ADR-0062 | WP-0005, WP-0006 | Ready |
+| [0009](0009-identity-and-privacy.md) | core | Identity model and privacy layers | ADR-0033, ADR-0010, ADR-0032 | WP-0008 | Ready |
+| [0010](0010-configuration-planes.md) | core | Configuration planes and resolution | ADR-0026, ADR-0021, ADR-0062 | WP-0008 | Ready |
+| [0011](0011-git-chokepoint.md) | pipeline | Git invocation chokepoint | ADR-0065, ADR-0044, ADR-0066, ADR-0041 | WP-0005, WP-0006, WP-0007 | Ready |
 | 0012 | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052 | WP-0011, WP-0009, WP-0010 | Draft |
 | 0013 | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051 | WP-0012 | Draft |
 | 0014 | pipeline | Work-type classification | ADR-0020, ADR-0018 | WP-0013 | Draft |
@@ -162,12 +169,12 @@ to be amended mid-flight.
 | 0003 | Every enforceable rule whose subject exists is enforced; both CI gates run within budget. |
 | 0004 | Fixtures are byte-reproducible and output changes fail without a golden update. |
 | 0005 | The tree matches the layout, import direction is enforced, goldens unchanged. |
-| 0006 | Errors are classified user or internal, with one shared enumerated reason set. |
+| 0006 | Errors are classified user or internal, with one enumerated reason set and one exit-code mapping. |
 | 0007 | No globals, no clock reads, no services in context; wiring is explicit in one place. |
-| 0008 | The new report document exists, is versioned per family, and carries family status. |
+| 0008 | The report document exists, versioned per family, every family present with a status. |
 | 0009 | Raw identities stay internal; exported artifacts carry display name and digest only. |
-| 0010 | Operational and analysis planes are separate; resolved analysis config is embedded in the report. |
-| 0011 | All git access passes one package, hardened, context-bound, NUL-delimited. |
+| 0010 | Resolved analysis configuration is embedded in the report and reproduces it exactly. |
+| 0011 | All git invocation passes one hardened package, NUL-delimited and context-bound. |
 | 0012 | A single pass produces normalized commit records, independently cacheable. |
 | 0013 | Chronological replay maintains compact line ownership for the analysed commit. |
 | 0014 | Lines are classified during replay with no blame invocation, in a dual breakdown. |
