@@ -29,10 +29,9 @@ LDFLAGS := $(STRIP_FLAGS) \
 # Toolchain versions the gates build with (ADR-0049 clause 6). CI reads them
 # from here through `make toolchain-versions`, so the pin has one source.
 #
-# go.mod declares an older go directive than the semantics the tree already
-# relies on; WP-0005 clause 10 raises the declared version. Until then the
-# gates build with the pinned toolchain, which GOTOOLCHAIN selects regardless
-# of which go is on PATH.
+# go.mod declares the same version, so the language and GODEBUG defaults a
+# build gets are those of the toolchain the gates test with. GOTOOLCHAIN
+# selects the pinned toolchain regardless of which go is on PATH.
 GO_VERSION   := 1.27.0
 NODE_VERSION := 24.18.1
 export GOTOOLCHAIN := go$(GO_VERSION)
