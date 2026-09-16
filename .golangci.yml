@@ -115,9 +115,9 @@ linters:
         linters: [gochecknoglobals]
       - path: internal/core/filter/paths\.go
         linters: [gochecknoglobals]
-      - path: internal/render/render\.go
+      - path: internal/pipeline/render/render\.go
         linters: [gochecknoglobals]
-      - path: internal/render/bundle_test\.go
+      - path: internal/pipeline/render/bundle_test\.go
         linters: [gochecknoglobals]
       - path: internal/server/resolve_windows\.go
         linters: [gochecknoglobals]

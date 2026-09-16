@@ -15,7 +15,7 @@ import (
 	"github.com/sinanganiz/commitography/internal/aggregate"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
-	"github.com/sinanganiz/commitography/internal/render"
+	"github.com/sinanganiz/commitography/internal/pipeline/render"
 )
 
 var emailShaped = regexp.MustCompile(`[\w.+-]+@[\w-]+\.[\w.]+`)

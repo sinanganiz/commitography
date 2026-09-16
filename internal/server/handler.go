@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/sinanganiz/commitography/internal/render"
+	"github.com/sinanganiz/commitography/internal/pipeline/render"
 )
 
 const indexShell = `<!doctype html>

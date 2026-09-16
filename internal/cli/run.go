@@ -10,7 +10,7 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/pipeline"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
-	"github.com/sinanganiz/commitography/internal/render"
+	"github.com/sinanganiz/commitography/internal/pipeline/render"
 	"github.com/sinanganiz/commitography/internal/server"
 )
 

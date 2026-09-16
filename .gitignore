@@ -9,9 +9,9 @@
 *.test
 *.out
 
-# Frontend. The built bundle under internal/render/assets/ is deliberately
-# committed: //go:embed needs it, so `go build ./...` must work on a clean
-# checkout without Node installed. `make web` regenerates it.
+# Frontend. The built bundle under internal/pipeline/render/assets/ is
+# deliberately committed: //go:embed needs it, so `go build ./...` must work on
+# a clean checkout without Node installed. `make web` regenerates it.
 web/node_modules/
 web/dist/
 

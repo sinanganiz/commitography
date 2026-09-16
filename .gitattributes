@@ -11,5 +11,5 @@
 # The frontend bundle is committed so that `go build ./...` works on a clean
 # checkout without Node, but it is machine-written. Marking it keeps it out of
 # language statistics and out of commitography's own line-based metrics.
-internal/render/assets/** linguist-generated=true
+internal/pipeline/render/assets/** linguist-generated=true
 web/package-lock.json linguist-generated=true

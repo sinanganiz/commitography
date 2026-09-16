@@ -9,7 +9,7 @@ export default defineConfig({
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
   build: {
-    outDir: '../internal/render/assets',
+    outDir: '../internal/pipeline/render/assets',
     emptyOutDir: false,
     cssCodeSplit: false,
     // Targeting a recent baseline keeps the bundle small; the output is opened
