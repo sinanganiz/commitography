@@ -1,4 +1,4 @@
-package aggregate
+package pipeline
 
 import (
 	"encoding/json"
@@ -9,9 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/config"
 	"github.com/sinanganiz/commitography/internal/core/filter"
 	"github.com/sinanganiz/commitography/internal/core/identity"
+	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 )
 
@@ -51,7 +53,7 @@ func fixturePath(t *testing.T, name string) string {
 
 // buildFromFixture runs the whole pipeline so the validated report is the one
 // users actually get, not a hand-written stand-in.
-func buildFromFixture(t *testing.T, name string, cfg config.Config, mutate func(*Input)) *Report {
+func buildFromFixture(t *testing.T, name string, cfg config.Config, mutate func(*core.Input)) *core.Report {
 	t.Helper()
 	repo := fixturePath(t, name)
 
@@ -65,7 +67,7 @@ func buildFromFixture(t *testing.T, name string, cfg config.Config, mutate func(
 	}
 	resolver := identity.NewResolver(cfg, history.Commits)
 
-	in := Input{
+	in := core.Input{
 		RepoPath:   repo,
 		Repository: history.Repository,
 		Config:     cfg,
@@ -78,7 +80,7 @@ func buildFromFixture(t *testing.T, name string, cfg config.Config, mutate func(
 		mutate(&in)
 	}
 
-	report, err := Build(in)
+	report, err := aggregate.Build(in)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -95,12 +97,12 @@ func TestReportValidatesAgainstCommittedSchema(t *testing.T) {
 		name    string
 		fixture string
 		cfg     config.Config
-		mutate  func(*Input)
+		mutate  func(*core.Input)
 	}{
 		{"defaults", "basic", config.Default(), nil},
-		{"per-author", "basic", config.Default(), func(in *Input) { in.PerAuthor = true }},
-		{"anonymized", "basic", anonymized, func(in *Input) { in.PerAuthor = true }},
-		{"with-blame", "basic", config.Default(), func(in *Input) { in.NoBlame = false }},
+		{"per-author", "basic", config.Default(), func(in *core.Input) { in.PerAuthor = true }},
+		{"anonymized", "basic", anonymized, func(in *core.Input) { in.PerAuthor = true }},
+		{"with-blame", "basic", config.Default(), func(in *core.Input) { in.NoBlame = false }},
 		{"single-commit", "single", config.Default(), nil},
 		{"merges", "merges", config.Default(), nil},
 		{"noise", "noise", config.Default(), nil},

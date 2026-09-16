@@ -1,41 +1,17 @@
-package aggregate
+package temporal
 
 import (
 	"sort"
-	"time"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/filter"
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
-// AuthorSummary is one contributor's activity.
-//
-// These figures describe participation, not performance. Nothing here is
-// intended to rank people, and the ordering of the containing list deliberately
-// avoids implying one.
-type AuthorSummary struct {
-	IdentityID    string    `json:"identityId"`
-	DisplayName   string    `json:"displayName"`
-	Emails        []string  `json:"emails"`
-	Commits       int       `json:"commits"`
-	Added         int       `json:"added"`
-	Deleted       int       `json:"deleted"`
-	FilesTouched  int       `json:"filesTouched"`
-	HourHistogram []int     `json:"hourHistogram"`
-	FirstCommit   time.Time `json:"firstCommit"`
-	LastCommit    time.Time `json:"lastCommit"`
-	ActiveDays    int       `json:"activeDays"`
-}
-
-// PerAuthor is the opt-in per-contributor section, present only when
-// --per-author was passed.
-type PerAuthor struct {
-	Authors []AuthorSummary `json:"authors"`
-}
-
-func buildPerAuthor(in Input, commits []model.Commit) *PerAuthor {
+// BuildPerAuthor computes the opt-in per-contributor section.
+func BuildPerAuthor(in core.Input, commits []model.Commit) *core.PerAuthor {
 	type acc struct {
-		summary AuthorSummary
+		summary core.AuthorSummary
 		files   map[string]bool
 		days    map[string]bool
 	}
@@ -45,7 +21,7 @@ func buildPerAuthor(in Input, commits []model.Commit) *PerAuthor {
 		a, ok := byID[c.IdentityID]
 		if !ok {
 			a = &acc{
-				summary: AuthorSummary{
+				summary: core.AuthorSummary{
 					IdentityID:    c.IdentityID,
 					HourHistogram: make([]int, 24),
 				},
@@ -59,7 +35,7 @@ func buildPerAuthor(in Input, commits []model.Commit) *PerAuthor {
 			byID[c.IdentityID] = a
 		}
 
-		when := in.date(c)
+		when := in.Date(c)
 		a.summary.Commits++
 		a.summary.HourHistogram[when.Hour()]++
 		a.days[when.Format(dateLayout)] = true
@@ -83,7 +59,7 @@ func buildPerAuthor(in Input, commits []model.Commit) *PerAuthor {
 		}
 	}
 
-	out := make([]AuthorSummary, 0, len(byID))
+	out := make([]core.AuthorSummary, 0, len(byID))
 	for _, a := range byID {
 		a.summary.FilesTouched = len(a.files)
 		a.summary.ActiveDays = len(a.days)
@@ -99,5 +75,5 @@ func buildPerAuthor(in Input, commits []model.Commit) *PerAuthor {
 		return out[i].IdentityID < out[j].IdentityID
 	})
 
-	return &PerAuthor{Authors: out}
+	return &core.PerAuthor{Authors: out}
 }

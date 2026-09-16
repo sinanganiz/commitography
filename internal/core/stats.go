@@ -1,14 +1,14 @@
-package aggregate
+package core
 
 import (
 	"math"
 	"sort"
 )
 
-// round returns v rounded to the given number of decimal places. Every ratio
+// Round returns v rounded to the given number of decimal places. Every ratio
 // and average in the report is rounded before serialization so two runs on the
 // same repository produce byte-identical JSON.
-func round(v float64, places int) float64 {
+func Round(v float64, places int) float64 {
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		return 0
 	}
@@ -16,7 +16,8 @@ func round(v float64, places int) float64 {
 	return math.Round(v*factor) / factor
 }
 
-func mean(values []int) float64 {
+// Mean is the arithmetic mean of values, or 0 for none.
+func Mean(values []int) float64 {
 	if len(values) == 0 {
 		return 0
 	}
@@ -27,8 +28,8 @@ func mean(values []int) float64 {
 	return float64(sum) / float64(len(values))
 }
 
-// median sorts a copy, so the caller's slice keeps whatever order it had.
-func median(values []int) float64 {
+// Median sorts a copy, so the caller's slice keeps whatever order it had.
+func Median(values []int) float64 {
 	if len(values) == 0 {
 		return 0
 	}

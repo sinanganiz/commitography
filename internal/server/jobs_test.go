@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/aggregate"
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
@@ -183,7 +183,7 @@ func TestOnlySucceededJobsExposeReports(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := &pipeline.Result{Report: &aggregate.Report{}}
+	result := &pipeline.Result{Report: &core.Report{}}
 	if err := manager.Complete(job.ID, result, time.Time{}); err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
 			opts.OnWarning("history: skipped commit")
 			close(warned)
 			<-release
-			report := &aggregate.Report{Warnings: []string{"history: skipped commit", "blame: sampled"}}
+			report := &core.Report{Warnings: []string{"history: skipped commit", "blame: sampled"}}
 			return &pipeline.Result{Report: report}, nil
 		},
 	})
@@ -309,7 +309,7 @@ func TestCancellationWinsOverALateResult(t *testing.T) {
 		Runner: func(ctx context.Context, _ pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			close(started)
 			<-ctx.Done()
-			return &pipeline.Result{Report: &aggregate.Report{}}, nil
+			return &pipeline.Result{Report: &core.Report{}}, nil
 		},
 	})
 	job, err := manager.Start("/repos/late", pipeline.Options{})
@@ -333,7 +333,7 @@ func TestCancellationWinsOverALateResult(t *testing.T) {
 }
 
 func TestTerminalStatesCannotBeOverwritten(t *testing.T) {
-	report := func() *pipeline.Result { return &pipeline.Result{Report: &aggregate.Report{}} }
+	report := func() *pipeline.Result { return &pipeline.Result{Report: &core.Report{}} }
 	for _, tc := range []struct {
 		name   string
 		finish func(*Manager, string) error
@@ -438,7 +438,7 @@ func TestStaleFailureNeverCarriesUnderlyingErrors(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		result := &pipeline.Result{Report: &aggregate.Report{}, Stale: true, StaleReason: tc.reason}
+		result := &pipeline.Result{Report: &core.Report{}, Stale: true, StaleReason: tc.reason}
 		if err := manager.Complete(job.ID, result, time.Time{}); err != nil {
 			t.Fatal(err)
 		}

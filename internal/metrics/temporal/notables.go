@@ -1,50 +1,21 @@
-package aggregate
+package temporal
 
 import (
 	"sort"
 	"time"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/filter"
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
-// bulkCommitsShown caps the notable-events list. Beyond a handful, bulk commits
-// stop being curiosities and start being a table.
-const bulkCommitsShown = 10
-
-// TimezoneShare is the commit count observed at one UTC offset.
-type TimezoneShare struct {
-	OffsetMinutes int `json:"offsetMinutes"`
-	Commits       int `json:"commits"`
-}
-
-// Notables holds the fun facts. Every field is either populated or explicitly
-// null, so the renderer never has to show a placeholder.
-type Notables struct {
-	BulkCommits           []filter.BulkCommit `json:"bulkCommits"`
-	LatestNightCommit     *CommitRef          `json:"latestNightCommit"`
-	EarliestMorningCommit *CommitRef          `json:"earliestMorningCommit"`
-	WeekendRatio          float64             `json:"weekendRatio"`
-	HolidayCommits        int                 `json:"holidayCommits"`
-	FirstCommitSubject    *string             `json:"firstCommitSubject"`
-	MergeCount            int                 `json:"mergeCount"`
-	TimezoneSpread        []TimezoneShare     `json:"timezoneSpread"`
-}
-
-func buildNotables(in Input, commits []model.Commit) Notables {
-	n := Notables{
-		BulkCommits:    []filter.BulkCommit{},
-		TimezoneSpread: []TimezoneShare{},
+// BuildNotables computes the notable events over the analyzed commits. The
+// bulk commit list is the commit-size family's and is filled in by the
+// aggregation stage.
+func BuildNotables(in core.Input, commits []model.Commit) core.Notables {
+	n := core.Notables{
+		TimezoneSpread: []core.TimezoneShare{},
 	}
-
-	// Bulk commits, most recent first. Kept as an empty array rather than null
-	// so the renderer sees "none" instead of "missing".
-	bulk := append([]filter.BulkCommit{}, in.Filtered.BulkCommits...)
-	sort.Slice(bulk, func(i, j int) bool { return bulk[i].Date.After(bulk[j].Date) })
-	if len(bulk) > bulkCommitsShown {
-		bulk = bulk[:bulkCommitsShown]
-	}
-	n.BulkCommits = bulk
 
 	// Merges are reported whatever count_merges is set to: the number is a
 	// fact about the repository, not about the analysis.
@@ -64,7 +35,7 @@ func buildNotables(in Input, commits []model.Commit) Notables {
 	haveRoot := false
 
 	for _, c := range commits {
-		t := in.date(c)
+		t := in.Date(c)
 
 		if weekdayIndex(t) >= 5 {
 			weekend++
@@ -78,7 +49,7 @@ func buildNotables(in Input, commits []model.Commit) Notables {
 		// The root commit. A history can have several roots, and a history
 		// narrowed by --since may have none, so prefer a parentless commit and
 		// fall back to the earliest one.
-		if !haveRoot || betterRoot(c, root, t, in.date(root)) {
+		if !haveRoot || betterRoot(c, root, t, in.Date(root)) {
 			root, haveRoot = c, true
 		}
 
@@ -95,7 +66,7 @@ func buildNotables(in Input, commits []model.Commit) Notables {
 		}
 	}
 
-	n.WeekendRatio = round(float64(weekend)/float64(len(commits)), 4)
+	n.WeekendRatio = core.Round(float64(weekend)/float64(len(commits)), 4)
 
 	if haveRoot {
 		subject := root.Subject
@@ -103,7 +74,7 @@ func buildNotables(in Input, commits []model.Commit) Notables {
 	}
 
 	for offset, count := range offsets {
-		n.TimezoneSpread = append(n.TimezoneSpread, TimezoneShare{OffsetMinutes: offset, Commits: count})
+		n.TimezoneSpread = append(n.TimezoneSpread, core.TimezoneShare{OffsetMinutes: offset, Commits: count})
 	}
 	sort.Slice(n.TimezoneSpread, func(i, j int) bool {
 		return n.TimezoneSpread[i].OffsetMinutes < n.TimezoneSpread[j].OffsetMinutes
@@ -142,11 +113,11 @@ func closerToThree(a, b time.Time) bool {
 	return da < db
 }
 
-func commitRef(in Input, c model.Commit) *CommitRef {
-	ref := &CommitRef{
+func commitRef(in core.Input, c model.Commit) *core.CommitRef {
+	ref := &core.CommitRef{
 		Hash:    c.Hash,
 		Subject: c.Subject,
-		Date:    in.date(c),
+		Date:    in.Date(c),
 	}
 	for _, f := range filter.IncludedFiles(c, in.PathFilter) {
 		ref.Added += f.Added

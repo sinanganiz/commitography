@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/aggregate"
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
@@ -416,7 +416,7 @@ func staleMessage(reason string) string {
 
 // Report returns the completed report only for a succeeded job. Stale and
 // failed jobs retain diagnostics but cannot be rendered as current reports.
-func (m *Manager) Report(id string) (*aggregate.Report, error) {
+func (m *Manager) Report(id string) (*core.Report, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	entry, err := m.lookupLocked(id)

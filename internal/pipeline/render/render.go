@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sinanganiz/commitography/internal/aggregate"
+	"github.com/sinanganiz/commitography/internal/core"
 )
 
 // assets holds the built frontend. Shipping it inside the binary is what makes
@@ -70,7 +70,7 @@ type pageData struct {
 // It produces exactly one page, index.html, with everything inlined, plus
 // report.json as a separate machine-readable artifact that the page does not
 // reference. No other file is created, and no existing file is removed.
-func Render(r *aggregate.Report, outputDir string) error {
+func Render(r *core.Report, outputDir string) error {
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("creating %s: %w", outputDir, err)
 	}
@@ -90,7 +90,7 @@ func Render(r *aggregate.Report, outputDir string) error {
 
 // RenderWrapped writes the year-in-review page, again as one self-contained
 // file, alongside whatever the dashboard produced.
-func RenderWrapped(r *aggregate.Report, outputDir string, year int, previousYearCommits *int) error {
+func RenderWrapped(r *core.Report, outputDir string, year int, previousYearCommits *int) error {
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("creating %s: %w", outputDir, err)
 	}
@@ -120,7 +120,7 @@ func WrappedFileName(year int) string {
 
 // WriteReportJSON writes the report on its own, for --json runs and for tools
 // that consume the artifact rather than the page.
-func WriteReportJSON(r *aggregate.Report, path string) error {
+func WriteReportJSON(r *core.Report, path string) error {
 	if dir := filepath.Dir(path); dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("creating %s: %w", dir, err)
@@ -133,7 +133,7 @@ func WriteReportJSON(r *aggregate.Report, path string) error {
 	return writeFile(path, append(data, '\n'))
 }
 
-func buildPage(r *aggregate.Report, data pageData) ([]byte, error) {
+func buildPage(r *core.Report, data pageData) ([]byte, error) {
 	css, err := assets.ReadFile("assets/app.css")
 	if err != nil {
 		return nil, fmt.Errorf("reading embedded stylesheet: %w", err)
@@ -177,7 +177,7 @@ var scriptSafeEscapes = strings.NewReplacer(
 
 // encodeReport serializes the report for embedding in a script element. A
 // commit subject containing "</script>" must not be able to close the tag.
-func encodeReport(r *aggregate.Report) (string, error) {
+func encodeReport(r *core.Report) (string, error) {
 	data, err := json.Marshal(r)
 	if err != nil {
 		return "", fmt.Errorf("encoding report: %w", err)
@@ -185,7 +185,7 @@ func encodeReport(r *aggregate.Report) (string, error) {
 	return scriptSafeEscapes.Replace(string(data)), nil
 }
 
-func pageTitle(r *aggregate.Report, year int) string {
+func pageTitle(r *core.Report, year int) string {
 	name := r.Repository.Name
 	if name == "" {
 		name = "repository"

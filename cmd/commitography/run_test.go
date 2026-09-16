@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/aggregate"
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/pipeline/render"
@@ -93,7 +93,7 @@ func TestCLIAndAnalysisServiceProduceTheSameReport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var cliReport aggregate.Report
+	var cliReport core.Report
 	if err := json.Unmarshal(data, &cliReport); err != nil {
 		t.Fatalf("decode CLI report: %v", err)
 	}

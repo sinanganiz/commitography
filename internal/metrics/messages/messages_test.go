@@ -1,4 +1,4 @@
-package aggregate
+package messages
 
 import (
 	"strings"
@@ -126,7 +126,7 @@ func subjects(list ...string) []model.Commit {
 }
 
 func TestConventionalRatioAndConfidenceLabel(t *testing.T) {
-	m := buildMessages(subjects("feat: a", "fix: b", "random thing", "another one"))
+	m := BuildMessages(subjects("feat: a", "fix: b", "random thing", "another one"))
 	if m.ConventionalRatio != 0.5 {
 		t.Errorf("conventionalRatio = %v, want 0.5", m.ConventionalRatio)
 	}
@@ -134,7 +134,7 @@ func TestConventionalRatioAndConfidenceLabel(t *testing.T) {
 		t.Error("0.5 is above the 0.30 threshold and must not be flagged low confidence")
 	}
 
-	m = buildMessages(subjects("feat: a", "random", "random", "random", "random"))
+	m = BuildMessages(subjects("feat: a", "random", "random", "random", "random"))
 	if m.ConventionalRatio != 0.2 {
 		t.Errorf("conventionalRatio = %v, want 0.2", m.ConventionalRatio)
 	}
@@ -144,7 +144,7 @@ func TestConventionalRatioAndConfidenceLabel(t *testing.T) {
 }
 
 func TestShortMessageCounter(t *testing.T) {
-	m := buildMessages(subjects(
+	m := BuildMessages(subjects(
 		"wip",                        // low-effort word
 		"WIP",                        // case-insensitive
 		"...",                        // punctuation placeholder
@@ -157,7 +157,7 @@ func TestShortMessageCounter(t *testing.T) {
 }
 
 func TestRevertAndTypoCounters(t *testing.T) {
-	m := buildMessages(subjects(
+	m := BuildMessages(subjects(
 		`Revert "feat: x"`,
 		"revert the thing",
 		"fix typo in readme",
@@ -173,7 +173,7 @@ func TestRevertAndTypoCounters(t *testing.T) {
 }
 
 func TestEmojiDetection(t *testing.T) {
-	m := buildMessages(subjects(
+	m := BuildMessages(subjects(
 		"🎉 launch day",
 		"🎉 another party",
 		"✨ sparkle",
@@ -190,7 +190,7 @@ func TestEmojiDetection(t *testing.T) {
 
 func TestLongestSubjectIsTruncatedForDisplay(t *testing.T) {
 	long := strings.Repeat("x", 500)
-	m := buildMessages(subjects("short", long))
+	m := BuildMessages(subjects("short", long))
 	if m.LongestSubject == nil {
 		t.Fatal("longestSubject is nil")
 	}
@@ -204,7 +204,7 @@ func TestLongestSubjectIsTruncatedForDisplay(t *testing.T) {
 }
 
 func TestWordCloudDropsStopwordsAndShortWords(t *testing.T) {
-	m := buildMessages(subjects(
+	m := BuildMessages(subjects(
 		"add caching to the resolver",
 		"caching for the resolver again",
 		"resolver caching improvements",
@@ -224,14 +224,14 @@ func TestWordCloudDropsStopwordsAndShortWords(t *testing.T) {
 }
 
 func TestAverageSubjectLength(t *testing.T) {
-	m := buildMessages(subjects("abc", "abcdefg")) // 3 and 7
+	m := BuildMessages(subjects("abc", "abcdefg")) // 3 and 7
 	if m.AverageSubjectLength != 5.0 {
 		t.Errorf("averageSubjectLength = %v, want 5.0", m.AverageSubjectLength)
 	}
 }
 
 func TestMessagesOnEmptyInput(t *testing.T) {
-	m := buildMessages(nil)
+	m := BuildMessages(nil)
 	if m.TypeDistribution == nil || m.TopWords == nil || m.TopEmoji == nil {
 		t.Error("collections must serialize as empty, not null")
 	}

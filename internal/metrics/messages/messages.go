@@ -1,4 +1,6 @@
-package aggregate
+// Package messages is the messages metric family (ADR-0024, ADR-0040):
+// commit subject classification and message statistics.
+package messages
 
 import (
 	"regexp"
@@ -6,6 +8,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
@@ -61,40 +64,6 @@ var lowEffortSubjects = map[string]bool{
 	".": true, "..": true, "...": true,
 }
 
-// LongestSubject describes the most verbose commit message in the history.
-type LongestSubject struct {
-	Hash    string `json:"hash"`
-	Length  int    `json:"length"`
-	Subject string `json:"subject"`
-}
-
-// WordCount is one entry of the word cloud.
-type WordCount struct {
-	Word  string `json:"word"`
-	Count int    `json:"count"`
-}
-
-// EmojiCount is one entry of the emoji ranking.
-type EmojiCount struct {
-	Emoji string `json:"emoji"`
-	Count int    `json:"count"`
-}
-
-// MessageMetrics describes what commit messages reveal about how a team works.
-type MessageMetrics struct {
-	TypeDistribution     map[string]int  `json:"typeDistribution"`
-	ConventionalRatio    float64         `json:"conventionalRatio"`
-	LowConfidence        bool            `json:"lowConfidence"`
-	ShortMessages        int             `json:"shortMessages"`
-	LongestSubject       *LongestSubject `json:"longestSubject"`
-	AverageSubjectLength float64         `json:"averageSubjectLength"`
-	EmojiCommits         int             `json:"emojiCommits"`
-	TopEmoji             []EmojiCount    `json:"topEmoji"`
-	RevertCount          int             `json:"revertCount"`
-	TypoFixCount         int             `json:"typoFixCount"`
-	TopWords             []WordCount     `json:"topWords"`
-}
-
 // Classify returns the category of a commit subject and whether it matched the
 // strict Conventional Commits form.
 func Classify(subject string) (category string, conventional bool) {
@@ -109,11 +78,12 @@ func Classify(subject string) (category string, conventional bool) {
 	return "other", false
 }
 
-func buildMessages(commits []model.Commit) MessageMetrics {
-	m := MessageMetrics{
+// BuildMessages computes the message metrics over the analyzed commits.
+func BuildMessages(commits []model.Commit) core.MessageMetrics {
+	m := core.MessageMetrics{
 		TypeDistribution: map[string]int{},
-		TopEmoji:         []EmojiCount{},
-		TopWords:         []WordCount{},
+		TopEmoji:         []core.EmojiCount{},
+		TopWords:         []core.WordCount{},
 	}
 	if len(commits) == 0 {
 		return m
@@ -154,7 +124,7 @@ func buildMessages(commits []model.Commit) MessageMetrics {
 		}
 
 		if m.LongestSubject == nil || len([]rune(subject)) > m.LongestSubject.Length {
-			m.LongestSubject = &LongestSubject{
+			m.LongestSubject = &core.LongestSubject{
 				Hash:    c.Hash,
 				Length:  len([]rune(subject)),
 				Subject: truncateRunes(subject, subjectDisplayLimit),
@@ -169,9 +139,9 @@ func buildMessages(commits []model.Commit) MessageMetrics {
 		}
 	}
 
-	m.ConventionalRatio = round(float64(conventional)/float64(len(commits)), 4)
+	m.ConventionalRatio = core.Round(float64(conventional)/float64(len(commits)), 4)
 	m.LowConfidence = m.ConventionalRatio < lowConfidenceThreshold
-	m.AverageSubjectLength = round(float64(totalLength)/float64(len(commits)), 1)
+	m.AverageSubjectLength = core.Round(float64(totalLength)/float64(len(commits)), 1)
 	m.TopWords = topWords(words, topWordsLimit)
 	m.TopEmoji = topEmoji(emoji, topEmojiLimit)
 
@@ -214,10 +184,10 @@ func emojiIn(subject string) []string {
 	return found
 }
 
-func topWords(counts map[string]int, limit int) []WordCount {
-	out := make([]WordCount, 0, len(counts))
+func topWords(counts map[string]int, limit int) []core.WordCount {
+	out := make([]core.WordCount, 0, len(counts))
 	for w, n := range counts {
-		out = append(out, WordCount{Word: w, Count: n})
+		out = append(out, core.WordCount{Word: w, Count: n})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Count != out[j].Count {
@@ -231,10 +201,10 @@ func topWords(counts map[string]int, limit int) []WordCount {
 	return out
 }
 
-func topEmoji(counts map[string]int, limit int) []EmojiCount {
-	out := make([]EmojiCount, 0, len(counts))
+func topEmoji(counts map[string]int, limit int) []core.EmojiCount {
+	out := make([]core.EmojiCount, 0, len(counts))
 	for e, n := range counts {
-		out = append(out, EmojiCount{Emoji: e, Count: n})
+		out = append(out, core.EmojiCount{Emoji: e, Count: n})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Count != out[j].Count {

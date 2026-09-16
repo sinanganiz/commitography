@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/sinanganiz/commitography/internal/aggregate"
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
@@ -175,7 +175,7 @@ func TestAPIEndpointMatrix(t *testing.T) {
 	// A succeeded job has a report and can no longer be cancelled.
 	second := createdID(t, expect(t, "create second", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: valid}), http.StatusAccepted, ""))
 	waitForStatus(t, app, second, StatusRunning)
-	outcomes <- outcome{result: &pipeline.Result{Report: &aggregate.Report{SchemaVersion: aggregate.SchemaVersion}}}
+	outcomes <- outcome{result: &pipeline.Result{Report: &core.Report{SchemaVersion: core.SchemaVersion}}}
 	waitForStatus(t, app, second, StatusSucceeded)
 	secondPath := "/api/v1/jobs/" + second
 	expect(t, "report", call(t, app, apiCall{method: http.MethodGet, path: secondPath + "/report"}), http.StatusOK, "")
@@ -203,7 +203,7 @@ func TestAPIEndpointMatrix(t *testing.T) {
 	// A stale job reports the change and has no report.
 	fourth := createdID(t, expect(t, "create fourth", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: valid}), http.StatusAccepted, ""))
 	waitForStatus(t, app, fourth, StatusRunning)
-	outcomes <- outcome{result: &pipeline.Result{Report: &aggregate.Report{}, Stale: true, StaleReason: pipeline.StaleHeadChanged}}
+	outcomes <- outcome{result: &pipeline.Result{Report: &core.Report{}, Stale: true, StaleReason: pipeline.StaleHeadChanged}}
 	stale := waitForStatus(t, app, fourth, StatusStale)
 	if stale.Error == nil || stale.Error.Code != "repository_changed" {
 		t.Errorf("stale job error = %+v, want repository_changed", stale.Error)
@@ -261,7 +261,7 @@ func TestAPIHistoryEvictsTheOldestFinishedJob(t *testing.T) {
 	manager := NewManager(ManagerOptions{
 		Limit: 2,
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
-			return &pipeline.Result{Report: &aggregate.Report{}}, nil
+			return &pipeline.Result{Report: &core.Report{}}, nil
 		},
 	})
 	app := testApp(t, manager)

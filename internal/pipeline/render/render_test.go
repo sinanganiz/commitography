@@ -8,17 +8,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/aggregate"
+	"github.com/sinanganiz/commitography/internal/core"
 )
 
-func sampleReport() *aggregate.Report {
+func sampleReport() *core.Report {
 	now := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
 	subject := "fix: strip </script> tags from user input"
-	return &aggregate.Report{
-		SchemaVersion: aggregate.SchemaVersion,
+	return &core.Report{
+		SchemaVersion: core.SchemaVersion,
 		GeneratedAt:   now,
 		ToolVersion:   "test",
-		Repository: aggregate.RepositorySummary{
+		Repository: core.RepositorySummary{
 			Name:            "sample",
 			DefaultBranch:   "main",
 			HeadCommit:      "0123456789abcdef",
@@ -26,19 +26,19 @@ func sampleReport() *aggregate.Report {
 			CommitsAnalyzed: 12,
 			Contributors:    3,
 		},
-		Temporal: aggregate.TemporalMetrics{
+		Temporal: core.TemporalMetrics{
 			HourHistogram:    make([]int, 24),
 			WeekdayHistogram: make([]int, 7),
 			HourWeekdayGrid:  [][]int{},
-			CommitsPerMonth:  []aggregate.MonthCount{{Month: "2026-01", Count: 12}},
+			CommitsPerMonth:  []core.MonthCount{{Month: "2026-01", Count: 12}},
 		},
-		Messages: aggregate.MessageMetrics{
+		Messages: core.MessageMetrics{
 			TypeDistribution: map[string]int{"fix": 12},
-			LongestSubject: &aggregate.LongestSubject{
+			LongestSubject: &core.LongestSubject{
 				Hash: "abc", Length: len(subject), Subject: subject,
 			},
 		},
-		Notables: aggregate.Notables{FirstCommitSubject: &subject},
+		Notables: core.Notables{FirstCommitSubject: &subject},
 		Warnings: []string{},
 	}
 }
@@ -123,7 +123,7 @@ func TestScriptClosingTagInSubjectCannotBreakOut(t *testing.T) {
 	}
 
 	// And it must still be valid JSON that round-trips to the original text.
-	var parsed aggregate.Report
+	var parsed core.Report
 	if err := json.Unmarshal([]byte(payload), &parsed); err != nil {
 		t.Fatalf("embedded payload is not valid JSON: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestWriteReportJSONIsValidAndIndented(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var parsed aggregate.Report
+	var parsed core.Report
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		t.Fatalf("report.json is not valid JSON: %v", err)
 	}

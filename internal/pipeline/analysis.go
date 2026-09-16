@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sinanganiz/commitography/internal/aggregate"
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/config"
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
@@ -90,7 +90,7 @@ func (e *YearError) Error() string {
 // Result contains the report and collection metadata returned by the shared
 // analysis service.
 type Result struct {
-	Report              *aggregate.Report
+	Report              *core.Report
 	Repository          model.RepositoryInfo
 	Config              config.Config
 	Warnings            []string

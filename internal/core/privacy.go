@@ -1,4 +1,4 @@
-package aggregate
+package core
 
 import (
 	"crypto/sha256"

@@ -81,7 +81,7 @@ linters:
     rules:
       # Direct clock reads in code WP-0007 rewrites. Each rule excludes the
       # ADR-0042 clock message only, in one file.
-      - path: internal/aggregate/report\.go
+      - path: internal/pipeline/aggregate/aggregate\.go
         linters: [forbidigo]
         text: "ADR-0042: read the clock"
       - path: cmd/commitography/progress\.go
@@ -105,9 +105,9 @@ linters:
 
       # Package-level variables in code WP-0007 rewrites ("no globals, wiring
       # is explicit in one place").
-      - path: internal/aggregate/messages\.go
+      - path: internal/metrics/messages/messages\.go
         linters: [gochecknoglobals]
-      - path: internal/aggregate/stopwords\.go
+      - path: internal/metrics/messages/stopwords\.go
         linters: [gochecknoglobals]
       - path: internal/core/config/config\.go
         linters: [gochecknoglobals]

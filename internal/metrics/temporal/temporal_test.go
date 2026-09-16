@@ -1,9 +1,10 @@
-package aggregate
+package temporal
 
 import (
 	"testing"
 	"time"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/config"
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
@@ -23,8 +24,8 @@ func at(year int, month time.Month, day, hour, minute, offsetHours int) model.Co
 // testInput builds the minimal Input the metric builders need. The commit
 // slice is passed to the builder directly, so it is only here for readability
 // at the call sites.
-func testInput(_ []model.Commit) Input {
-	return Input{Config: config.Default()}
+func testInput(_ []model.Commit) core.Input {
+	return core.Input{Config: config.Default()}
 }
 
 func TestTemporalHistogramsUseAuthorLocalTime(t *testing.T) {
@@ -35,7 +36,7 @@ func TestTemporalHistogramsUseAuthorLocalTime(t *testing.T) {
 		at(2026, time.January, 9, 18, 0, -5), // Fri 18:00 -05, a brave deploy
 		at(2026, time.January, 10, 2, 30, 0), // Sat 02:30, night owl and weekend
 	}
-	m := buildTemporal(testInput(commits), commits)
+	m := BuildTemporal(testInput(commits), commits)
 
 	if m.HourHistogram[9] != 1 || m.HourHistogram[23] != 1 ||
 		m.HourHistogram[18] != 1 || m.HourHistogram[2] != 1 {
@@ -86,7 +87,7 @@ func TestBusiestDayBreaksTiesOnEarliestDate(t *testing.T) {
 		at(2026, time.March, 5, 10, 0, 0),
 		at(2026, time.March, 5, 11, 0, 0),
 	}
-	m := buildTemporal(testInput(commits), commits)
+	m := BuildTemporal(testInput(commits), commits)
 	if m.BusiestDay == nil {
 		t.Fatal("busiestDay is nil")
 	}
@@ -103,7 +104,7 @@ func TestLongestStreakAndSilence(t *testing.T) {
 		at(2026, time.April, 20, 10, 0, 0),
 		at(2026, time.April, 21, 10, 0, 0),
 	}
-	m := buildTemporal(testInput(commits), commits)
+	m := BuildTemporal(testInput(commits), commits)
 
 	if m.LongestStreak == nil || m.LongestStreak.Days != 3 {
 		t.Fatalf("longestStreak = %+v, want 3 days", m.LongestStreak)
@@ -126,7 +127,7 @@ func TestSingleDayRepositoryEdgeCase(t *testing.T) {
 		at(2026, time.May, 4, 9, 0, 0),
 		at(2026, time.May, 4, 17, 0, 0),
 	}
-	m := buildTemporal(testInput(commits), commits)
+	m := BuildTemporal(testInput(commits), commits)
 	if m.LongestStreak == nil || m.LongestStreak.Days != 1 {
 		t.Errorf("longestStreak = %+v, want 1 day", m.LongestStreak)
 	}
@@ -143,7 +144,7 @@ func TestStreakUsesLocalDatesNotUTC(t *testing.T) {
 		at(2026, time.June, 1, 23, 0, 3),
 		at(2026, time.June, 2, 1, 0, 3),
 	}
-	m := buildTemporal(testInput(commits), commits)
+	m := BuildTemporal(testInput(commits), commits)
 	if m.LongestStreak == nil || m.LongestStreak.Days != 2 {
 		t.Errorf("longestStreak = %+v, want 2 days across local dates", m.LongestStreak)
 	}
@@ -155,10 +156,11 @@ func TestCommitsPerMonthZeroFillsGaps(t *testing.T) {
 		at(2026, time.February, 1, 10, 0, 0),
 		at(2026, time.February, 2, 10, 0, 0),
 	}
-	m := buildTemporal(testInput(commits), commits)
+	m := BuildTemporal(testInput(commits), commits)
 
-	want := []MonthCount{
-		{"2025-11", 1}, {"2025-12", 0}, {"2026-01", 0}, {"2026-02", 2},
+	want := []core.MonthCount{
+		{Month: "2025-11", Count: 1}, {Month: "2025-12", Count: 0},
+		{Month: "2026-01", Count: 0}, {Month: "2026-02", Count: 2},
 	}
 	if len(m.CommitsPerMonth) != len(want) {
 		t.Fatalf("commitsPerMonth = %v, want %v", m.CommitsPerMonth, want)
@@ -171,7 +173,7 @@ func TestCommitsPerMonthZeroFillsGaps(t *testing.T) {
 }
 
 func TestTemporalOnEmptyInput(t *testing.T) {
-	m := buildTemporal(testInput(nil), nil)
+	m := BuildTemporal(testInput(nil), nil)
 	if len(m.HourHistogram) != 24 || len(m.WeekdayHistogram) != 7 || len(m.HourWeekdayGrid) != 7 {
 		t.Error("histograms must keep their fixed shape even with no commits")
 	}
@@ -185,7 +187,7 @@ func TestFirstAndLastCommitPreserveOffsets(t *testing.T) {
 		at(2026, time.July, 1, 12, 0, 3),
 		at(2026, time.July, 9, 12, 0, -5),
 	}
-	m := buildTemporal(testInput(commits), commits)
+	m := BuildTemporal(testInput(commits), commits)
 	if _, offset := m.FirstCommit.Zone(); offset != 3*3600 {
 		t.Errorf("firstCommit offset = %d, want %d", offset, 3*3600)
 	}

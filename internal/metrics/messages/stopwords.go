@@ -1,4 +1,4 @@
-package aggregate
+package messages
 
 // stopwords are dropped from the word cloud. The list mixes ordinary English
 // function words with the vocabulary every commit log is saturated with, since

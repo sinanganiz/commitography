@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sinanganiz/commitography/internal/aggregate"
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
@@ -115,7 +115,7 @@ func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
 func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
 	manager := NewManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
-			return &pipeline.Result{Report: &aggregate.Report{}}, nil
+			return &pipeline.Result{Report: &core.Report{}}, nil
 		},
 	})
 	app := testApp(t, manager)
@@ -191,7 +191,7 @@ func TestAPIStatusUsesContractProgressFields(t *testing.T) {
 				Total:     10000,
 				Estimated: true,
 			})
-			return &pipeline.Result{Report: &aggregate.Report{}}, nil
+			return &pipeline.Result{Report: &core.Report{}}, nil
 		},
 	})
 	app := testApp(t, manager)
@@ -267,7 +267,7 @@ func TestAPICancelTransitionsJob(t *testing.T) {
 func TestAPICancelRejectsCompletedJob(t *testing.T) {
 	manager := NewManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
-			return &pipeline.Result{Report: &aggregate.Report{}}, nil
+			return &pipeline.Result{Report: &core.Report{}}, nil
 		},
 	})
 	app := testApp(t, manager)

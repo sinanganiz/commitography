@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/sinanganiz/commitography/internal/aggregate"
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/config"
 	"github.com/sinanganiz/commitography/internal/core/filter"
 	"github.com/sinanganiz/commitography/internal/core/identity"
 	"github.com/sinanganiz/commitography/internal/core/model"
+	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 )
 
@@ -111,7 +112,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		}
 	}
 
-	input := aggregate.Input{
+	input := core.Input{
 		Context:    ctx,
 		RepoPath:   repoPath,
 		Repository: history.Repository,
