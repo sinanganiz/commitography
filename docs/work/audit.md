@@ -743,3 +743,34 @@ outside `perAuthor`.
 - The Wrapped year (`Input.Year`) filters the commits a report is built from,
   but the report records neither the year nor any analysis configuration
   (ADR-0021 clause 1, ADR-0026 clause 2).
+
+---
+
+## 7. Enforcement narrowing
+
+Added by WP-0003, whose out-of-scope section requires a narrowed check to be
+recorded with the package that widens it. Every rule below is enforced; each
+row states the files it does **not** reach yet and why. The narrowing itself
+lives next to the rule, in `.golangci.yml` or in the checker.
+
+| rule or checker | record | not reached | reason | widened by |
+|---|---|---|---|---|
+| Process execution outside the git package | ADR-0047 | `internal/collect/git.go`, `internal/collect/preflight.go`, `internal/collect/collect_test.go`, `internal/identity/identity_test.go`, `internal/server/listener.go`, `internal/server/path_windows_test.go` | Removing the import is application source this package may not touch. | WP-0005 clause 6 |
+| Direct process clock call | ADR-0042 | `internal/aggregate/report.go`, `internal/cli/progress.go`, `internal/collect/gitlog.go`, `internal/jobs/jobs.go`, `internal/filter/filter_test.go`, `internal/jobs/jobs_test.go`, `internal/server/securitymatrix_test.go` | An injected clock does not exist yet. | WP-0007 |
+| Globals and package-level mutable singletons | ADR-0042 | `internal/aggregate/messages.go`, `internal/aggregate/stopwords.go`, `internal/config/config.go`, `internal/container/container.go`, `internal/filter/paths.go`, `internal/render/render.go`, `internal/render/bundle_test.go`, `internal/server/resolve_windows.go` | Explicit wiring does not exist yet. | WP-0007 |
+| Globals, link-time build metadata | ADR-0042, ADR-0061 | `internal/version/version.go` | ADR-0061 clause 2 requires one file with one in-file suppression, in `internal/core/`, which does not exist yet. | WP-0005 clause 7 |
+| Bare `go` statement | ADR-0044 | `internal/collect/gitlog.go`, `internal/jobs/jobs.go`, `internal/server/listener.go`, `internal/server/listener_test.go`, `internal/analysis/run_test.go` | Giving each goroutine an owner changes application behaviour. | WP-0012, WP-0038, WP-0037, WP-0011 respectively |
+| Direct dependencies match the allow list | ADR-0049 | `@mui/material`, `@emotion/react`, `@emotion/styled` in `web/package.json` | Forbidden by ADR-0038 clause 1, so deliberately absent from the allow list; `web/package.json` is outside this package. | WP-0047 |
+| Decision reference | ADR-0059 | Every clause 1 subject except `taxonomy.yml` | The other subjects exist only in pre-layout form, or not at all; adding their references is application source. | WP-0005 clause 8, then the package creating each remaining subject |
+| Frontend vulnerability scanning | ADR-0049 clause 5 | The development dependency tree (5 advisories, in the `vite`/`vitest` tree) | Resolving them changes `web/package.json`. Runtime dependencies are scanned and clean. | WP-0046 |
+
+Two further gaps are not narrowing but absence of a subject:
+
+- The build-tagged packages `internal/dockersmoke` and `internal/perfcheck` are
+  not loaded by the linter, because it runs without their tags. ADR-0060
+  clause 1 moves both under `internal/checks/` (WP-0005).
+- Six rules in ADR-0056 table 1 have no subject in the tree yet. They are
+  listed in the header of `.golangci.yml` with the package that introduces
+  each: WP-0005 for the three import rules, WP-0047, WP-0048 and WP-0053 for
+  the three frontend rules. The four frontend rules also need a frontend
+  linter, which is a direct dependency in `web/package.json`.
