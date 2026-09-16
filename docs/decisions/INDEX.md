@@ -79,15 +79,16 @@ a superseding record is written first.
 | [0053](0053-frontend-performance-and-cardinality.md) | Bundle budget and report-side cardinality limits | Accepted |
 | [0054](0054-budget-violations-are-gates.md) | Budgets are gates, and loosening one requires a record | Accepted |
 | [0055](0055-enforcement-strategy.md) | Rules are enforced by tooling, and checker messages name the record | Accepted |
-| [0056](0056-enforced-rule-set.md) | The enforced rule set | Accepted |
+| [0056](0056-enforced-rule-set.md) | The enforced rule set | Superseded by ADR-0063 |
 | [0057](0057-ci-gate-structure.md) | Two gates and a release path, with duration budgets | Accepted |
 | [0058](0058-conventions-document.md) | Non-enforceable patterns live in a guidance document | Accepted |
 | [0059](0059-decision-to-code-binding.md) | Constraint-bearing code carries record references | Accepted |
 | [0060](0060-package-destinations.md) | Destinations for packages the layout does not name | Accepted |
 | [0061](0061-link-time-build-metadata.md) | Link-time build metadata is the one exception to the no-package-variable rule | Accepted |
 | [0062](0062-metric-catalogue-authority.md) | `docs/metrics.md` is the authoritative metric catalogue | Accepted |
+| [0063](0063-enforced-rule-set-corrected.md) | The enforced rule set | Accepted |
 
-No record is currently superseded.
+ADR-0056 is superseded by ADR-0063.
 
 ---
 
@@ -100,7 +101,7 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 |---|---|
 | 1 | 0001, 0002, 0003, 0005, 0006, 0010, 0013, 0019, 0020, 0021, 0022 |
 | 2 | 0004, 0007, 0008, 0018, 0026, 0028, 0029, 0030, 0031, 0034, 0036, 0042, 0055 |
-| 3 | 0014, 0017, 0024, 0033, 0037, 0038, 0043, 0045, 0049, 0056, 0058, 0059 |
+| 3 | 0014, 0017, 0024, 0033, 0037, 0038, 0043, 0045, 0049, 0056, 0058, 0059, 0063 |
 | 4 | 0009, 0011, 0012, 0015, 0027, 0032, 0035, 0040, 0046, 0052, 0057, 0061, 0062 |
 | 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053, 0060 |
 | 6 | 0023, 0047, 0051, 0054 |
@@ -150,6 +151,9 @@ checked without reading the full set. The governing record is authoritative.
   a metric, a cache key or a golden comparison. (0061)
 - No metric, reason code or cardinality limit exists that `docs/metrics.md` does
   not define. (0062)
+- No build metadata is derived from the clock; two builds of one commit are
+  identical. (0063)
+- No check runs over the working tree; tracked files only. (0063)
 
 **Architecture**
 

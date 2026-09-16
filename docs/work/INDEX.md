@@ -43,7 +43,7 @@ dependencies without a stated reason.
 |---|---|---|---|---|---|
 | [0001](0001-repository-audit.md) | foundation | Repository audit | — | — | Done |
 | [0002](0002-neutralise-contradicting-documents.md) | foundation | Neutralise contradicting documents | ADR-0001, ADR-0004, ADR-0021, ADR-0034 | WP-0001 | Done |
-| [0003](0003-enforcement-skeleton.md) | foundation | Enforcement skeleton | ADR-0055, ADR-0056, ADR-0057 | WP-0001 | Ready |
+| [0003](0003-enforcement-skeleton.md) | foundation | Enforcement skeleton | ADR-0055, ADR-0056, ADR-0057 | WP-0001 | Done |
 | [0004](0004-fixtures-and-golden-harness.md) | foundation | Deterministic fixtures and golden harness | ADR-0019 | WP-0003 | Ready |
 | [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040, ADR-0060, ADR-0061 | WP-0003, WP-0004 | Ready |
 | 0006 | foundation | Error model and reason codes | ADR-0041, ADR-0032 | WP-0005 | Draft |

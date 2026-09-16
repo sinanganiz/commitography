@@ -1,7 +1,7 @@
 # WP-0005: Package layout migration
 
 **Area:** foundation
-**Implements:** ADR-0040, ADR-0060, ADR-0061
+**Implements:** ADR-0040, ADR-0049, ADR-0060, ADR-0061, ADR-0063
 **Requires:** WP-0003, WP-0004
 
 ## Goal
@@ -47,7 +47,14 @@ rule is enforced by the linter, and every golden file is unchanged by the move.
    by adding an interface whose only purpose is to invert an import.
 10. Raise the declared Go version to one that covers the behaviour the code
     already depends on. The audit records that the tree relies on semantics
-    newer than the declared version.
+    newer than the declared version. WP-0003 pinned the gates to a working
+    toolchain without editing the manifest; this package makes the manifest
+    agree.
+11. **Remove the clock-derived build timestamp.** The build currently injects a
+    value read from the clock, so two builds of one commit differ, which
+    ADR-0049 forbids and ADR-0063 clause 3 now prohibits by name. Replace it
+    with the analysed commit's own timestamp, and enable the reproducible build
+    checker from ADR-0063 table 2.
 
 ## Out of scope
 - Any behavioural change. This package moves, splits and renames; it does not
@@ -93,6 +100,8 @@ the single setting in clause 4.
 - Every file in ADR-0059 clause 1 that exists carries a resolvable record
   reference.
 - `make fixtures` still leaves `git status --porcelain` empty.
+- Two builds of the same commit produce identical binaries, verified by the
+  reproducible build checker.
 
 ## Verification
 ```

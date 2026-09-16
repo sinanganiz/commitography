@@ -1,6 +1,7 @@
 # ADR-0056: The enforced rule set
 
-**Status:** Accepted
+**Status:** Superseded
+**Superseded by:** ADR-0063
 
 ## Context
 ADR-0055 establishes how rules are enforced. This record establishes which.
