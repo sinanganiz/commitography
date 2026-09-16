@@ -32,6 +32,9 @@ var (
 	fixtures string
 	// skipReason explains why this environment cannot run the tests.
 	skipReason string
+	// missingFixtures fails every test: absent fixtures are a missing
+	// precondition, not an environment limit (ADR-0064 clause 2).
+	missingFixtures string
 )
 
 func TestMain(m *testing.M) {
@@ -46,7 +49,7 @@ func run(m *testing.M) int {
 	}
 	fixtures = filepath.Join(root, "testdata", "fixtures")
 	if _, err := os.Stat(filepath.Join(fixtures, "basic", ".git")); err != nil {
-		skipReason = "fixtures not built; run `make fixtures`"
+		missingFixtures = "ADR-0064: fixture \"basic\" is missing; generate the fixtures with `make fixtures`"
 		return m.Run()
 	}
 	if _, err := docker("version", "--format", "{{.Server.Arch}}"); err != nil {
@@ -358,6 +361,9 @@ func TestMissingMountsExplainThemselves(t *testing.T) {
 
 func requireEnvironment(t *testing.T) {
 	t.Helper()
+	if missingFixtures != "" {
+		t.Fatal(missingFixtures)
+	}
 	if skipReason != "" {
 		t.Skip(skipReason)
 	}

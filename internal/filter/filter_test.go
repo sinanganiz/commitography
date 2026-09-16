@@ -19,7 +19,7 @@ func fixture(t *testing.T, name string) string {
 		t.Fatalf("resolving fixture path: %v", err)
 	}
 	if _, err := os.Stat(path); err != nil {
-		t.Skipf("fixture %q not built; run `make fixtures`", name)
+		t.Fatalf("ADR-0064: fixture %q is missing; the gates generate it with `make fixtures`", name)
 	}
 	return path
 }
@@ -72,7 +72,7 @@ func TestLockfileContributesNoLines(t *testing.T) {
 func TestLinguistGeneratedIsExcluded(t *testing.T) {
 	repo := fixture(t, "noise")
 	if _, err := os.Stat(filepath.Join(repo, ".gitattributes")); err != nil {
-		t.Skip("fixture has no .gitattributes; rebuild fixtures")
+		t.Fatal("ADR-0064: the noise fixture has no .gitattributes; regenerate it with `make fixtures`")
 	}
 	pf, err := NewPathFilter(config.Default(), repo)
 	if err != nil {

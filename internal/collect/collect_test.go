@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// fixture returns the path to a built fixture repository, skipping the test
+// fixture returns the path to a built fixture repository, failing the test
 // when fixtures have not been generated. No test in this package touches the
 // network.
 func fixture(t *testing.T, name string) string {
@@ -19,7 +19,7 @@ func fixture(t *testing.T, name string) string {
 		t.Fatalf("resolving fixture path: %v", err)
 	}
 	if _, err := os.Stat(path); err != nil {
-		t.Skipf("fixture %q not built; run `make fixtures`", name)
+		t.Fatalf("ADR-0064: fixture %q is missing; the gates generate it with `make fixtures`", name)
 	}
 	return path
 }

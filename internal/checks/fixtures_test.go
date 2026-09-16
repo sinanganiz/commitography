@@ -29,7 +29,8 @@ func TestFixtureDeterminism(t *testing.T) {
 	first := os.Getenv("COMMITOGRAPHY_FIXTURES_FIRST")
 	second := os.Getenv("COMMITOGRAPHY_FIXTURES_SECOND")
 	if first == "" || second == "" {
-		t.Skip("run through `make fixture-determinism`, which generates the fixtures twice")
+		fatal(t, 64, "COMMITOGRAPHY_FIXTURES_FIRST and COMMITOGRAPHY_FIXTURES_SECOND are unset; "+
+			"run this checker through `make fixture-determinism`, which generates both")
 	}
 	repo := openRepository(t)
 

@@ -44,7 +44,7 @@ func fixturePath(t *testing.T, name string) string {
 		t.Fatalf("resolving fixture path: %v", err)
 	}
 	if _, err := os.Stat(path); err != nil {
-		t.Skipf("fixture %q not built; run `make fixtures`", name)
+		t.Fatalf("ADR-0064: fixture %q is missing; the gates generate it with `make fixtures`", name)
 	}
 	return path
 }

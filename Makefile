@@ -84,8 +84,10 @@ docker-smoke:
 perfcheck:
 	go test -tags perfcheck -count=1 -v -timeout 60m ./internal/perfcheck
 
-test:
-	go test ./...
+# Full-gate checkers need inputs their own targets prepare, so they are left
+# to those targets.
+test: fixtures
+	go test -skip '$(FULL_CHECKERS)' ./...
 
 fixtures:
 	sh testdata/build-fixtures.sh
