@@ -1,4 +1,4 @@
-# Linter configuration for the rules ADR-0056 clause 1 requires to be enforced
+# Linter configuration for the rules ADR-0063 clause 1 requires to be enforced
 # by linter or formatter configuration (ADR-0055 clause 1).
 #
 # Run it through `make lint-go`, which pins the golangci-lint version.
@@ -7,18 +7,22 @@
 # removes it (ADR-0055 clause 4). An exclusion is not a precedent: widening a
 # rule back to the whole tree is the job of the named package.
 #
-# Rules in ADR-0056 table 1 whose subject does not exist in the tree yet, with
-# the package that introduces it:
+# Rules in ADR-0063 table 1 whose subject does not exist in the tree yet, with
+# the package that introduces it (ADR-0063 clause 6):
 #
-#   internal/metrics/* may not import one another   ADR-0040  WP-0005 clause 5
-#   package dependency direction                    ADR-0040  WP-0005 clause 5
-#   nothing may import internal/checks              ADR-0060  WP-0005 clause 5
 #   no raw colour, spacing, typography or radius    ADR-0038  WP-0047
 #   no imperative DOM manipulation in charts        ADR-0037  WP-0048
 #   frontend bundle size budget                     ADR-0053  WP-0053
 #
-# The four frontend rules need a frontend linter, which is a direct dependency
-# in web/package.json; adding one is outside the scope of WP-0003.
+# The three frontend rules need a frontend linter, which is a direct
+# dependency in web/package.json.
+#
+# Known deviations the rules below do not catch, with the package that
+# removes each:
+#
+#   internal/pipeline/aggregate lists tracked files and   ADR-0020  WP-0013
+#     runs blame through git, and reads the working tree,
+#     which clause 3 reserves for the replay stage
 #
 # Two rules from table 1 are enforced by a checker rather than here, because
 # this linter's configuration cannot express them (ADR-0055 clause 2):
@@ -40,9 +44,11 @@ run:
 linters:
   default: none
   enable:
-    # Formatting and vet clean. (ADR-0056 table 1; gofmt is under formatters)
+    # Formatting and vet clean. (ADR-0063 table 1; gofmt is under formatters)
     - govet
-    # Process execution imported only by the git package. (ADR-0047)
+    # Package dependency direction, metric family isolation and the
+    # internal/checks rule (ADR-0040, ADR-0060, ADR-0066); process execution
+    # only where ADR-0065 clause 3 permits it.
     - depguard
     # No direct process clock call; no services in context. (ADR-0042)
     - forbidigo
@@ -52,6 +58,116 @@ linters:
   settings:
     depguard:
       rules:
+        # Package dependency direction (ADR-0040 clause 2, ADR-0060 clause 3,
+        # ADR-0066). Each rule covers test files too. Import paths match by
+        # prefix, so a denied tree covers every package beneath it.
+        #
+        #   core            nothing outside core
+        #   git             core
+        #   metrics         core, git
+        #   pipeline stage  core, metrics, git
+        #   pipeline root   core, metrics, git, the five stages
+        #   storage, server anything above
+        #
+        # Within core, subpackages import one another in one direction only
+        # (ADR-0066 clause 3): model and config import nothing, identity may
+        # import model and config, filter may also import identity, and core
+        # itself may import all four. The rule below covers model and config.
+        # Every other edge against that direction (identity to filter, any
+        # subpackage to core) closes an import cycle, which the compiler
+        # already rejects, so a lint rule for it could never fire (ADR-0064).
+        core-direction:
+          list-mode: lax
+          files:
+            - "**/internal/core/**"
+          deny:
+            - pkg: github.com/sinanganiz/commitography/internal/git
+              desc: "ADR-0066 clause 3: core imports nothing outside core"
+            - pkg: github.com/sinanganiz/commitography/internal/metrics
+              desc: "ADR-0040 clause 2: core imports nothing outside core"
+            - pkg: github.com/sinanganiz/commitography/internal/pipeline
+              desc: "ADR-0040 clause 2: core imports nothing outside core"
+            - pkg: github.com/sinanganiz/commitography/internal/storage
+              desc: "ADR-0040 clause 2: core imports nothing outside core"
+            - pkg: github.com/sinanganiz/commitography/internal/server
+              desc: "ADR-0040 clause 2: core imports nothing outside core"
+            - pkg: github.com/sinanganiz/commitography/cmd
+              desc: "ADR-0040 clause 2: core imports nothing outside core"
+        core-model-config:
+          list-mode: lax
+          files:
+            - "**/internal/core/model/**"
+            - "**/internal/core/config/**"
+          deny:
+            - pkg: github.com/sinanganiz/commitography/internal/core
+              desc: "ADR-0066 clause 3: core/model and core/config import nothing from the tree"
+        git-direction:
+          list-mode: lax
+          files:
+            - "**/internal/git/**"
+          deny:
+            - pkg: github.com/sinanganiz/commitography/internal/metrics
+              desc: "ADR-0066 clause 1: git may import core only"
+            - pkg: github.com/sinanganiz/commitography/internal/pipeline
+              desc: "ADR-0066 clause 1: git may import core only"
+            - pkg: github.com/sinanganiz/commitography/internal/storage
+              desc: "ADR-0066 clause 1: git may import core only"
+            - pkg: github.com/sinanganiz/commitography/internal/server
+              desc: "ADR-0066 clause 1: git may import core only"
+            - pkg: github.com/sinanganiz/commitography/cmd
+              desc: "ADR-0066 clause 1: git may import core only"
+        metrics-direction:
+          list-mode: lax
+          files:
+            - "**/internal/metrics/**"
+          deny:
+            - pkg: github.com/sinanganiz/commitography/internal/pipeline
+              desc: "ADR-0040 clause 2: metrics may import core only"
+            - pkg: github.com/sinanganiz/commitography/internal/storage
+              desc: "ADR-0040 clause 2: metrics may not import storage"
+            - pkg: github.com/sinanganiz/commitography/internal/server
+              desc: "ADR-0040 clause 2: metrics may not import server"
+            - pkg: github.com/sinanganiz/commitography/cmd
+              desc: "ADR-0040 clause 2: metrics may import core only"
+        # A family never reads another family (ADR-0024 clause 3), so a
+        # metrics package imports no metrics package at all.
+        metrics-isolation:
+          list-mode: lax
+          files:
+            - "**/internal/metrics/**"
+          deny:
+            - pkg: github.com/sinanganiz/commitography/internal/metrics
+              desc: "ADR-0040 clause 3: a metric family may not import another metric family"
+        pipeline-direction:
+          list-mode: lax
+          files:
+            - "**/internal/pipeline/**"
+          deny:
+            - pkg: github.com/sinanganiz/commitography/internal/storage
+              desc: "ADR-0040 clause 2: pipeline may not import storage"
+            - pkg: github.com/sinanganiz/commitography/internal/server
+              desc: "ADR-0040 clause 2: pipeline may not import server"
+            - pkg: github.com/sinanganiz/commitography/cmd
+              desc: "ADR-0040 clause 2: pipeline may import core, metrics and git only"
+        # Only the pipeline root composes the stages (ADR-0060 clause 3); a
+        # stage imports no other stage and not the root.
+        pipeline-stages:
+          list-mode: lax
+          files:
+            - "**/internal/pipeline/*/**"
+          deny:
+            - pkg: github.com/sinanganiz/commitography/internal/pipeline
+              desc: "ADR-0040 clause 2: a pipeline stage may import core, metrics and git only"
+        # internal/checks may import anything it verifies; nothing may import
+        # it (ADR-0060 clause 2).
+        checks-isolation:
+          list-mode: lax
+          files:
+            - $all
+            - "!**/internal/checks/**"
+          deny:
+            - pkg: github.com/sinanganiz/commitography/internal/checks
+              desc: "ADR-0060 clause 2: nothing may import internal/checks"
         process-execution:
           list-mode: lax
           files:
