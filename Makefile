@@ -26,7 +26,30 @@ LDFLAGS := $(STRIP_FLAGS) \
 	-X '$(MODULE)/internal/version.Commit=$(COMMIT)' \
 	-X '$(MODULE)/internal/version.BuildDate=$(BUILD_DATE)'
 
-.PHONY: build web test fixtures lint clean docker-image docker-smoke perfcheck
+# Toolchain versions the gates build with (ADR-0049 clause 6). CI reads them
+# from here through `make toolchain-versions`, so the pin has one source.
+#
+# go.mod declares an older go directive than the semantics the tree already
+# relies on; WP-0005 clause 10 raises the declared version. Until then the
+# gates build with the pinned toolchain, which GOTOOLCHAIN selects regardless
+# of which go is on PATH.
+GO_VERSION   := 1.27.0
+NODE_VERSION := 24.18.1
+export GOTOOLCHAIN := go$(GO_VERSION)
+
+# Verification tools, pinned. `go run` fetches them into the module cache;
+# neither appears in go.mod, so neither is a direct dependency of the module
+# (ADR-0049 clause 2).
+GOLANGCI_LINT := go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+GOVULNCHECK   := go run golang.org/x/vuln/cmd/govulncheck@v1.8.0
+
+# Unit tests and checkers are separate gate entries, so the checker package is
+# not also run as part of the unit test target.
+GO_UNIT_PACKAGES := $(shell go list ./... | grep -v '/internal/checks$$')
+
+.PHONY: build web test fixtures lint clean docker-image docker-smoke perfcheck \
+	gate-fast gate-full toolchain-versions build-go lint-go test-go checks \
+	test-web vulncheck-go vulncheck-web
 
 build: web
 	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/commitography
@@ -68,10 +91,69 @@ fixtures:
 	sh testdata/build-fixtures.sh
 
 # testdata/fixtures holds generated repositories whose .go files are line-noise
-# by design, so formatting is checked against the source tree only.
-lint:
-	go vet ./...
-	@test -z "$$(gofmt -l cmd internal | tee /dev/stderr)" || (echo "gofmt: files above are not formatted" && exit 1)
+# by design. The go tool never loads a testdata directory, so no check here
+# reaches them.
+lint: lint-go
+
+# ---------------------------------------------------------------- gates --
+#
+# ADR-0057 defines two gates with duration budgets. CI runs these same targets,
+# so a gate has the same contents locally and there.
+#
+# Every implemented check belongs to exactly one gate (ADR-0057 clause 5).
+# Exceeding a budget is never resolved by removing a check (clause 3).
+#
+#   fast (5 minutes)   build, format, vet, configuration rules, unit tests,
+#                      record integrity, taxonomy integrity, decision
+#                      reference, dependency allow list, goroutine ownership,
+#                      frontend type check and unit tests
+#   full (15 minutes)  everything in fast, plus vulnerability scanning
+#
+# Checks ADR-0057 assigns to a gate whose subject does not exist yet — golden
+# comparison, invariants, family contract, namespace violation, goroutine leak,
+# leak scan, determinism, incremental equivalence, identity projection, mode
+# capability matrix, model-free equivalence, performance budgets, subprocess
+# count, cross-compilation, bundle integrity — are added by the package that
+# creates each subject. WP-0004 clause 8 adds the golden comparisons.
+FAST_CHECKS := build-go lint-go test-go checks test-web
+FULL_CHECKS := vulncheck-go vulncheck-web
+
+gate-fast: $(FAST_CHECKS)
+
+gate-full: $(FAST_CHECKS) $(FULL_CHECKS)
+
+# Read by CI to pin its toolchain to the versions above.
+toolchain-versions:
+	@echo "go=$(GO_VERSION)"
+	@echo "node=$(NODE_VERSION)"
+
+build-go:
+	go build ./...
+
+# Formatting, vet and every rule ADR-0056 table 1 puts in linter configuration.
+lint-go:
+	$(GOLANGCI_LINT) run ./...
+
+test-go:
+	go test $(GO_UNIT_PACKAGES)
+
+# The checkers read tracked files, so their result depends on the index rather
+# than on package sources alone; -count=1 keeps the test cache out of it.
+checks:
+	go test -count=1 ./internal/checks
+
+test-web:
+	cd web && npm ci && npm run typecheck && npm test
+
+vulncheck-go:
+	$(GOVULNCHECK) ./...
+
+# Runtime dependencies only. The development tree carries advisories that can
+# be resolved only by changing web/package.json, which is outside WP-0003;
+# widening this to the whole tree belongs with the package that updates the
+# frontend manifest (WP-0046).
+vulncheck-web:
+	cd web && npm audit --package-lock-only --omit=dev
 
 clean:
 	rm -rf $(BINARY) $(BINARY).exe out web/dist dist
