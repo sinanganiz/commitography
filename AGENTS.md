@@ -50,6 +50,29 @@ Status lives only in `docs/work/INDEX.md` and is changed by the author. Package
 files carry no status field, and a package is never marked `Done` by the agent
 that implemented it.
 
+### Resuming a package
+
+A package may be interrupted. The session that resumes it has no memory of the
+one that started it. Reconstruct the state from the repository, never from
+assumption.
+
+1. Re-read the package file. **It may have been amended since the work began**,
+   and the amended version is the one that governs. Re-read every record in its
+   `Implements` field, including any that is new.
+2. Run `git log --oneline --grep="^WP-NNNN:"` to see what was committed, and
+   `git status` to see what was not.
+3. Confirm the fast gate passes at `HEAD`. If it does not, fixing that comes
+   first: `main` is never left broken.
+4. Decide what to do with uncommitted changes — complete and commit them, or
+   discard them. State which, and why. Do not leave them sitting.
+5. **Treat every `Definition of done` item as unverified.** Earlier commits may
+   have been made against an earlier version of the package, and a previous
+   session's report is not evidence. Check each item against the tree as it is
+   now, and re-run every command in `Verification` from scratch.
+6. Continue from the first unmet item.
+
+Report on the whole package, not only the part you did.
+
 ## Git
 
 - Work directly on `main`. Do not create a branch for a work package.

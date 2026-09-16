@@ -4,3 +4,4 @@ Prompts only. Rules live in AGENTS.md.
 
 - Follow AGENTS.md. Execute WP-0004.
 - Plan WP-0004, then execute
+- Follow AGENTS.md. Resume WP-0005.
