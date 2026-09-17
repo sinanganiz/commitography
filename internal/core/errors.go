@@ -135,7 +135,9 @@ func (e *UserError) Artifact() string {
 	if e.Remedy == "" {
 		return e.Summary
 	}
-	return e.Summary + " " + e.Remedy
+	// A summary is a clause without a full stop and a remedy is a sentence, so
+	// one full stop joins them into prose a consumer can display as it stands.
+	return e.Summary + ". " + e.Remedy
 }
 
 // Unwrap exposes the cause.

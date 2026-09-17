@@ -118,7 +118,8 @@ lint: lint-go
 #                      reference, process execution sites, dependency allow
 #                      list, goroutine ownership, fixture conditions, golden
 #                      comparison on small fixtures, golden commit
-#                      messages, frontend type check and unit tests
+#                      messages, reason code catalogue, error classification,
+#                      leak scan, frontend type check and unit tests
 #   full (15 minutes)  everything in fast, plus vulnerability scanning,
 #                      golden comparison on the large fixture, fixture
 #                      determinism (on every supported platform) and the
@@ -127,11 +128,16 @@ lint: lint-go
 #                      release binary
 #
 # Checks ADR-0057 assigns to a gate whose subject does not exist yet —
-# invariants, family contract, namespace violation, goroutine leak, leak scan,
+# invariants, family contract, namespace violation, goroutine leak,
 # determinism, incremental equivalence, identity projection, mode
 # capability matrix, model-free equivalence, performance budgets, subprocess
 # count, cross-compilation, bundle integrity — are added by the package that
 # creates each subject.
+#
+# The leak scan now exists and runs in the fast gate. Its log half is narrowed
+# to WP-0007, which introduces the injected log sink it needs; the narrowing is
+# recorded next to the checker. The metric catalogue checker covers the reason
+# code set from WP-0006; WP-0008 extends it to metrics and cardinality limits.
 FAST_CHECKS := build-go lint-go test-go checks typecheck-web test-web
 FULL_CHECKS := vulncheck-go vulncheck-web fixture-determinism golden-large \
 	reproducible-build
