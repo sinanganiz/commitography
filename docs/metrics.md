@@ -314,9 +314,42 @@ of these marks the owning family `degraded` with reason `cardinality_limit`.
 ## 13. Reason codes
 
 The enumerated set shared by family status and user errors (ADR-0041 clause 7).
+A code absent from this section does not exist (ADR-0062 clause 6). Every
+backticked token below is a code and nothing else in this section is backticked,
+so the set can be read mechanically.
+
+Family status codes, carried by a skipped or degraded family (ADR-0032
+clause 2):
 
 `worktree_unavailable`, `not_implemented`, `empty_population`,
 `cardinality_limit`, `low_classification_confidence`, `shallow_clone`,
 `limit_reached_commits`, `limit_reached_size`, `limit_reached_duration`,
 `limit_reached_memory`, `symlink_escaped_root`, `capability_unavailable_in_mode`,
 `external_service_unavailable`, `binary_file_skipped`, `history_rewritten`.
+
+User error codes, carried by an error that refuses a run or a request
+(ADR-0041 clause 2):
+
+| Code | Condition |
+|---|---|
+| `invalid_invocation` | Mutually exclusive or malformed flags |
+| `invalid_configuration` | Configuration unreadable, unparseable, or carrying an invalid value or pattern |
+| `git_unavailable` | Git absent from the path, or its version cannot be determined |
+| `git_version_unsupported` | Git present but below the required version |
+| `path_not_found` | The supplied path does not exist |
+| `not_a_repository` | The path exists but is not a repository, or its git directory cannot be resolved |
+| `path_outside_allowed_roots` | A supplied path falls outside every allowed root |
+| `empty_repository` | The repository contains no commits |
+| `year_below_threshold` | The requested year has fewer analysed commits than the minimum |
+| `request_too_large` | A request body exceeds the server's cap |
+
+Three pairs are deliberately separate rather than merged:
+
+- `shallow_clone` belongs to both groups. It refuses a run when the override is
+  absent, and marks a family degraded when the override is given. The condition
+  is one, so the code is one.
+- `path_outside_allowed_roots` is a path someone supplied;
+  `symlink_escaped_root` is a traversal discovered during analysis. Their
+  remedies differ.
+- `empty_repository` refuses a run; `empty_population` describes a metric
+  computed over an empty set.
