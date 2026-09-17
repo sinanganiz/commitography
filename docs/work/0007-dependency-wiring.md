@@ -1,7 +1,7 @@
 # WP-0007: Dependency wiring and ambient state removal
 
 **Area:** foundation
-**Implements:** ADR-0042, ADR-0061, ADR-0021
+**Implements:** ADR-0042, ADR-0061, ADR-0021, ADR-0044, ADR-0067
 **Requires:** WP-0005
 
 ## Goal
@@ -32,6 +32,15 @@ reports.
    state.
 9. Enable the determinism checker's same-input half: two runs of one fixture
    produce byte-identical reports outside the generation metadata section.
+10. Replace the package-level log sink with an injected logger. It is one of
+    the globals clause 3 removes, and it is also the only log surface a checker
+    can reach without building the binary.
+11. **Extend the leak scan created by WP-0006 to log output**, using the
+    ADR-0067 clause 3 and 4 rules for diagnostics. WP-0006 recorded this
+    narrowing and named this package.
+12. Add the bare `go` statement checker (ADR-0063 table 2) and fix the existing
+    violation. It belongs here because this is where ambient concurrency state
+    is removed.
 
 ## Out of scope
 - Any behavioural change. Values a component reads do not change; only how it
@@ -71,6 +80,9 @@ golden files, `internal/pipeline/interpret/taxonomy/**`, `web/**`.
 - Two runs of one fixture produce byte-identical reports outside the generation
   metadata section.
 - Tests run in parallel with no shared state.
+- No bare `go` statement remains; the checker fails when one is introduced.
+- The leak scan covers log output and applies the diagnostics rules, not the
+  artifact rules.
 
 ## Verification
 ```

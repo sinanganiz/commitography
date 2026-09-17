@@ -90,6 +90,7 @@ a superseding record is written first.
 | [0064](0064-checks-must-be-able-to-fail.md) | A check that cannot fail is not a check | Accepted |
 | [0065](0065-subprocess-execution.md) | Git passes one chokepoint; other subprocesses are a closed set | Accepted |
 | [0066](0066-layout-gaps.md) | The git package's position, and subpackages under core | Accepted |
+| [0067](0067-diagnostics-versus-artifacts.md) | Paths in diagnostics, by destination | Accepted |
 
 ADR-0047 is superseded by ADR-0065. ADR-0056 is superseded by ADR-0063.
 
@@ -107,7 +108,7 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 | 3 | 0014, 0017, 0024, 0033, 0037, 0038, 0043, 0045, 0049, 0056, 0058, 0059, 0063 |
 | 4 | 0009, 0011, 0012, 0015, 0027, 0032, 0035, 0040, 0046, 0052, 0057, 0061, 0062 |
 | 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053, 0060, 0064 |
-| 6 | 0023, 0047, 0051, 0054, 0065, 0066 |
+| 6 | 0023, 0047, 0051, 0054, 0065, 0066, 0067 |
 
 Two records carry partial dependencies stated in prose rather than as a
 whole-record dependency, and are therefore placed earlier than their text
@@ -141,8 +142,10 @@ checked without reading the full set. The governing record is authoritative.
 - Only archetype, badges and numeric summaries may be sent to a model; never raw
   messages, paths, identities or addresses. (0039)
 - No skipped family is absent from a report, and none is zero-filled. (0032)
-- No exported artifact, API response or **log line** contains a raw email
-  address, absolute local path or hostname. (0033, 0041)
+- No artifact that can leave the machine — report, exported image, API response,
+  collected log — contains a path, address or hostname. An interactive
+  diagnostic may name a path only exactly as the operator supplied it, and never
+  an address or hostname. (0033, 0041, 0067)
 - In public mode, person-scoped content is never addressable, indexable or
   persisted. (0029, 0033)
 - No static HTML generation; the CLI emits one file. (0034)

@@ -66,6 +66,14 @@ to be amended mid-flight.
 - **Give a structure its final shape before filling it.** WP-0008 puts every
   family in the report at once, most of them `skipped`, so the document never
   gains a top-level key again and each later package only fills a slot.
+- **A package that defines a rule's vocabulary must own the document that holds
+  it.** WP-0006 had to define reason codes while forbidden from editing the
+  catalogue that makes a code exist. Where a record says the code and the
+  catalogue change together, the package's `Files` list must allow both.
+- **Do not write "behaviour does not change" where behaviour is already wrong.**
+  WP-0006 said exit codes must not change, which would have preserved a flag
+  parsing failure exiting on the internal-error code. Say which values are
+  fixed, not that the current behaviour is correct.
 
 ---
 
@@ -78,8 +86,8 @@ to be amended mid-flight.
 | [0003](0003-enforcement-skeleton.md) | foundation | Enforcement skeleton | ADR-0055, ADR-0063, ADR-0057, ADR-0064 | WP-0001 | Done |
 | [0004](0004-fixtures-and-golden-harness.md) | foundation | Deterministic fixtures and golden harness | ADR-0019, ADR-0057, ADR-0064 | WP-0003 | Done |
 | [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040, ADR-0049, ADR-0060, ADR-0061, ADR-0063, ADR-0065, ADR-0066 | WP-0003, WP-0004 | Done |
-| [0006](0006-error-model.md) | foundation | Error model and reason codes | ADR-0041, ADR-0032, ADR-0062, ADR-0064 | WP-0005 | Ready |
-| [0007](0007-dependency-wiring.md) | foundation | Dependency wiring and ambient state removal | ADR-0042, ADR-0061, ADR-0021 | WP-0005 | Ready |
+| [0006](0006-error-model.md) | foundation | Error model and reason codes | ADR-0041, ADR-0032, ADR-0062, ADR-0064, ADR-0067 | WP-0005 | Ready |
+| [0007](0007-dependency-wiring.md) | foundation | Dependency wiring and ambient state removal | ADR-0042, ADR-0061, ADR-0021, ADR-0044, ADR-0067 | WP-0005 | Ready |
 | [0008](0008-report-document.md) | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032, ADR-0062 | WP-0005, WP-0006 | Ready |
 | [0009](0009-identity-and-privacy.md) | core | Identity model and privacy layers | ADR-0033, ADR-0010, ADR-0032 | WP-0008 | Ready |
 | [0010](0010-configuration-planes.md) | core | Configuration planes and resolution | ADR-0026, ADR-0021, ADR-0062 | WP-0008 | Ready |
