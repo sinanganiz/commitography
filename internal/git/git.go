@@ -8,9 +8,11 @@ package git
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"errors"
 	"os/exec"
 	"strings"
+
+	"github.com/sinanganiz/commitography/internal/core"
 )
 
 // Args prefixes the arguments common to every git invocation.
@@ -59,11 +61,17 @@ func RunContext(ctx context.Context, repoPath string, args ...string) (string, e
 		if ctx != nil && ctx.Err() != nil {
 			return "", ctx.Err()
 		}
+		// A failed invocation is an internal error: a caller that wants to
+		// refuse a repository decides that from what the invocation told it,
+		// not from the invocation failing. Classifying it here is what keeps
+		// git's stderr — repository-influenced, and free to name paths — inside
+		// a diagnostic, because an internal error's artifact rendering is one
+		// fixed sentence (ADR-0045, ADR-0067 clause 2).
 		msg := strings.TrimSpace(stderr.String())
 		if msg == "" {
-			return "", err
+			return "", core.Internalf(err, "running git %s", strings.Join(args, " "))
 		}
-		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), msg)
+		return "", core.Internalf(errors.New(msg), "running git %s", strings.Join(args, " "))
 	}
 	return strings.TrimSpace(stdout.String()), nil
 }

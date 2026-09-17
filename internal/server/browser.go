@@ -8,12 +8,13 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"os/exec"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/sinanganiz/commitography/internal/core"
 )
 
 // browserTimeout bounds the platform opener. Each one hands the URL to the
@@ -25,7 +26,9 @@ const browserTimeout = 10 * time.Second
 // the listener at addr is reachable on.
 func openBrowser(ctx context.Context, addr net.Addr, url string) error {
 	if !isOwnURL(addr, url) {
-		return fmt.Errorf("refusing to open %q: it is not this server's listen address", url)
+		// A URL that is not the server's own reaching here is a defect in the
+		// caller, not something the operator expressed (ADR-0065 clause 5).
+		return core.Internalf(nil, "refusing to open a URL that is not this server's listen address")
 	}
 
 	var command string

@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/sinanganiz/commitography/internal/core"
+	"github.com/sinanganiz/commitography/internal/git"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
+	"github.com/sinanganiz/commitography/internal/pipeline/render"
 )
 
 // TestErrorClassAtPackageBoundaries enforces ADR-0041 clause 1 where it can be
@@ -27,6 +29,10 @@ import (
 // they cannot classify their own errors; the pipeline root classifies them at
 // the one place that consumes them, and the configuration cases below are what
 // verify it. That narrowing is permanent, not a package's to widen.
+//
+// internal/checks/gatesummary is also outside it. It is gate tooling with its
+// own main, not a package the product's errors cross, and it reports to a gate
+// rather than to an operator.
 func TestErrorClassAtPackageBoundaries(t *testing.T) {
 	repo := openRepository(t)
 	documented, _ := reasonCodes(t, repo)
@@ -111,6 +117,21 @@ func TestErrorClassAtPackageBoundaries(t *testing.T) {
 			class:  core.ClassUser,
 			reason: core.ReasonYearBelowThreshold,
 		},
+		{
+			// A failed git invocation is internal: whether it means the
+			// repository should be refused is the caller's decision, and
+			// classifying it here keeps git's stderr out of every artifact.
+			name:   "git: an invocation that fails",
+			err:    second(git.Run(t.TempDir(), "rev-parse", "--git-dir")),
+			class:  core.ClassInternal,
+			reason: "",
+		},
+		{
+			name:   "render: the report cannot be written",
+			err:    render.WriteReportJSON(&core.Report{}, unwritablePath(t)),
+			class:  core.ClassInternal,
+			reason: "",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.err == nil {
@@ -169,3 +190,14 @@ func TestExitCodeAndStatusHaveOneSiteEach(t *testing.T) {
 
 // second returns the error of a two-result call, discarding the value.
 func second[T any](_ T, err error) error { return err }
+
+// unwritablePath returns a path that cannot be written on any supported
+// platform, because one of its directory components is a regular file.
+func unwritablePath(t *testing.T) string {
+	t.Helper()
+	blocker := filepath.Join(t.TempDir(), "not-a-directory")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		fatal(t, 41, "writing a blocking file: %v", err)
+	}
+	return filepath.Join(blocker, "report.json")
+}

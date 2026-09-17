@@ -73,7 +73,7 @@ type pageData struct {
 // reference. No other file is created, and no existing file is removed.
 func Render(r *core.Report, outputDir string) error {
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		return fmt.Errorf("creating %s: %w", outputDir, err)
+		return core.Internalf(err, "creating the output directory")
 	}
 	if err := WriteReportJSON(r, filepath.Join(outputDir, ReportFile)); err != nil {
 		return err
@@ -93,7 +93,7 @@ func Render(r *core.Report, outputDir string) error {
 // file, alongside whatever the dashboard produced.
 func RenderWrapped(r *core.Report, outputDir string, year int, previousYearCommits *int) error {
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		return fmt.Errorf("creating %s: %w", outputDir, err)
+		return core.Internalf(err, "creating the output directory")
 	}
 
 	data := pageData{
@@ -124,12 +124,12 @@ func WrappedFileName(year int) string {
 func WriteReportJSON(r *core.Report, path string) error {
 	if dir := filepath.Dir(path); dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return fmt.Errorf("creating %s: %w", dir, err)
+			return core.Internalf(err, "creating the report's directory")
 		}
 	}
 	data, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
-		return fmt.Errorf("encoding report: %w", err)
+		return core.Internalf(err, "encoding the report")
 	}
 	return writeFile(path, append(data, '\n'))
 }
@@ -137,11 +137,11 @@ func WriteReportJSON(r *core.Report, path string) error {
 func buildPage(r *core.Report, data pageData) ([]byte, error) {
 	css, err := assets.ReadFile("assets/app.css")
 	if err != nil {
-		return nil, fmt.Errorf("reading embedded stylesheet: %w", err)
+		return nil, core.Internalf(err, "reading the embedded stylesheet")
 	}
 	js, err := assets.ReadFile("assets/app.js")
 	if err != nil {
-		return nil, fmt.Errorf("reading embedded script: %w", err)
+		return nil, core.Internalf(err, "reading the embedded script")
 	}
 
 	payload, err := encodeReport(r)
@@ -155,7 +155,7 @@ func buildPage(r *core.Report, data pageData) ([]byte, error) {
 
 	var buf bytes.Buffer
 	if err := pageTemplate.Execute(&buf, data); err != nil {
-		return nil, fmt.Errorf("rendering page: %w", err)
+		return nil, core.Internalf(err, "rendering the page")
 	}
 	return buf.Bytes(), nil
 }
@@ -181,7 +181,7 @@ var scriptSafeEscapes = strings.NewReplacer(
 func encodeReport(r *core.Report) (string, error) {
 	data, err := json.Marshal(r)
 	if err != nil {
-		return "", fmt.Errorf("encoding report: %w", err)
+		return "", core.Internalf(err, "encoding the report")
 	}
 	return scriptSafeEscapes.Replace(string(data)), nil
 }
@@ -202,11 +202,11 @@ func pageTitle(r *core.Report, year int) string {
 func writeFile(path string, data []byte) error {
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return fmt.Errorf("writing %s: %w", tmp, err)
+		return core.Internalf(err, "writing the temporary output file")
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		os.Remove(tmp)
-		return fmt.Errorf("renaming %s to %s: %w", tmp, path, err)
+		return core.Internalf(err, "moving the temporary output file into place")
 	}
 	return nil
 }

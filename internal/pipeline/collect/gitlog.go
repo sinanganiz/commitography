@@ -401,6 +401,11 @@ func rejoinSplitRecord(c *model.Commit, chunk string) {
 }
 
 // parseRecord turns one record (header line plus numstat block) into a Commit.
+//
+// Its errors are unclassified on purpose: they never leave this package. The
+// caller counts them, warns, and refuses the read only once too many records
+// fail, which is the error that does cross the boundary and is classified
+// there (ADR-0041 clause 1).
 func parseRecord(chunk string) (model.Commit, error) {
 	var c model.Commit
 

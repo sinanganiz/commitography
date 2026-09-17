@@ -11,6 +11,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/sinanganiz/commitography/internal/core"
 )
 
 const defaultListenAddress = "127.0.0.1:8080"
@@ -53,7 +55,11 @@ func Serve(ctx context.Context, opts Options) error {
 
 	listener, err := net.Listen("tcp", opts.ListenAddress)
 	if err != nil {
-		return fmt.Errorf("listening on %s: %w", opts.ListenAddress, err)
+		// Internal rather than a user error, even though the address came from
+		// the command line: section 13 lists no code for an address that
+		// cannot be bound, and inventing one needs a decision rather than an
+		// assumption (WP-0006 clause 2). The exit code is unchanged either way.
+		return core.Internalf(err, "listening on the requested address")
 	}
 
 	inContainer := opts.InContainer
