@@ -158,6 +158,45 @@ func TestLeakScanReport(t *testing.T) {
 	}
 }
 
+// TestLeakScanWarnings applies the artifact rule to every warning an analysis
+// raises.
+//
+// A warning is prose written by whichever stage raised it, and it travels
+// further than the terminal it was written for: the collect stage's warnings
+// enter the report, and in server mode every warning enters the job status
+// response. That makes a warning an artifact whatever raised it, and the
+// likeliest place for a resolved path to reach one. The configuration warning
+// did exactly that until this package, naming the file it had resolved.
+func TestLeakScanWarnings(t *testing.T) {
+	repo := openRepository(t)
+	forbidden := machineValues(t, repo)
+
+	// An unknown key is the configuration warning reachable without a malformed
+	// repository. The file is given by an absolute path, which the command line
+	// may carry and an artifact may not.
+	config := filepath.Join(t.TempDir(), "explicit.yml")
+	if err := os.WriteFile(config, []byte("unknown_key: true\ntheme: default\n"), 0o600); err != nil {
+		fatal(t, 67, "writing a configuration file: %v", err)
+	}
+	var raised []string
+	result, err := pipeline.Run(context.Background(), pipeline.Options{
+		RepoPath:         filepath.Join(repo.root, "testdata", "fixtures", "basic"),
+		ConfigPath:       config,
+		OperatorSupplied: true,
+		OnWarning:        func(message string) { raised = append(raised, message) },
+	}, nil)
+	if err != nil {
+		fatal(t, 67, "analysing the basic fixture with an explicit configuration: %v", err)
+	}
+	if len(raised) == 0 {
+		fatal(t, 64, "the unknown configuration key raised no warning, so there is nothing to scan")
+	}
+	forbidden = append(forbidden, config, filepath.ToSlash(config))
+	for _, warning := range append(raised, result.Report.Warnings...) {
+		scanArtifact(t, "the warning "+warning, warning, forbidden)
+	}
+}
+
 // TestLeakScanDiagnostics applies the diagnostic rule to the refusals the
 // command prints. The supplied path is what the operator typed, and the scan
 // removes it before judging the rest, so a resolved form still fails.

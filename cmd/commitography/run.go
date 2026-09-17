@@ -91,6 +91,16 @@ func Run(opts Options) error {
 		return err
 	}
 
+	// The output directory is used for the progress lines below, unresolved in
+	// both cases: as the operator typed it when the flag was given, and as the
+	// configuration file spells it otherwise. Neither is absolutised for
+	// display (ADR-0067 clause 5).
+	//
+	// The configuration case is the one residual: a configuration file setting
+	// output_dir to an absolute path is a path read from a repository, which
+	// ADR-0067 clause 3 does not admit. It reaches standard error only, never
+	// an artifact, and the diagnostic half of the leak scan that would catch it
+	// arrives with WP-0007.
 	outputDir := result.Config.OutputDir
 	if opts.outputDirSet {
 		outputDir = opts.OutputDir

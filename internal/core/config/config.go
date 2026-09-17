@@ -217,7 +217,7 @@ func LoadWithWarn(explicitPath string, repoPath string, warn func(string, ...any
 		return cfg, fmt.Errorf("reading %s: %w", path, err)
 	}
 
-	warnUnknownKeys(path, data, warn)
+	warnUnknownKeys(data, warn)
 
 	var fc fileConfig
 	if err := yaml.Unmarshal(data, &fc); err != nil {
@@ -279,7 +279,7 @@ func (fc fileConfig) applyTo(cfg *Config) {
 
 // warnUnknownKeys reports top-level keys commitography does not recognize.
 // A typo in a configuration file should be visible without being fatal.
-func warnUnknownKeys(path string, data []byte, warn func(string, ...any)) {
+func warnUnknownKeys(data []byte, warn func(string, ...any)) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return
@@ -294,7 +294,13 @@ func warnUnknownKeys(path string, data []byte, warn func(string, ...any)) {
 	for i := 0; i+1 < len(root.Content); i += 2 {
 		key := root.Content[i].Value
 		if !knownKeys[key] {
-			warn("%s:%d: unknown configuration key %q, ignored", path, root.Content[i].Line, key)
+			// The file is identified by line and key, never by path. A warning
+			// is carried into the report as well as printed, and the report is
+			// an artifact that can leave the machine (ADR-0067 clause 2). The
+			// operator knows which file they pointed at; a reader of the report
+			// must not learn where it was.
+			warn("unknown configuration key %q at line %d of the configuration file, ignored",
+				key, root.Content[i].Line)
 		}
 	}
 }
