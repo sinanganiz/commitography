@@ -189,6 +189,15 @@ func (m *Manager) Start(repoPath string, options pipeline.Options) (Snapshot, er
 }
 
 func (m *Manager) run(id string, ctx context.Context, options pipeline.Options) {
+	// A panic inside the analysis would otherwise take the whole server down
+	// and leave the single active slot held forever. Failing the job is what
+	// makes it an internal error rather than a crash or a silent success
+	// (ADR-0041 clause 6).
+	defer func() {
+		if value := recover(); value != nil {
+			_ = m.Fail(id, FailureFromError(recovered(value, "running an analysis")), m.now())
+		}
+	}()
 	if err := m.MarkRunning(id, m.now()); err != nil {
 		return
 	}

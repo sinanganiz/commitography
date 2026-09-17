@@ -155,7 +155,9 @@ func (a *App) Handler() http.Handler {
 		}
 		_, _ = fmt.Fprint(w, indexShell)
 	})
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// The recovery layer is outermost, so every route is behind it, including
+	// the host and session checks above the mux (ADR-0041 clause 6).
+	return withRecovery(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		applySecurityHeaders(w)
 		if !a.hostAllowed(r.Host) {
 			rejectHost(w, r)
@@ -165,7 +167,7 @@ func (a *App) Handler() http.Handler {
 			return
 		}
 		mux.ServeHTTP(w, r)
-	})
+	}))
 }
 
 // filesOnly refuses directory paths. The embedded assets can be fetched by
