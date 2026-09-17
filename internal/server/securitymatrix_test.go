@@ -242,7 +242,8 @@ func TestResponsesCarryOnlyDocumentedData(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	wantStatus := []string{"id", "status", "repoName", "repoPath", "createdAt", "startedAt", "finishedAt", "elapsedMilliseconds", "progress", "warnings", "error"}
+	// No repoPath: an API response carries no path (ADR-0067 clause 2).
+	wantStatus := []string{"id", "status", "repoName", "createdAt", "startedAt", "finishedAt", "elapsedMilliseconds", "progress", "warnings", "error"}
 	if keys := jsonKeys(t, statusBody); len(keys) != len(wantStatus) {
 		t.Errorf("status fields = %v, want exactly %v", keys, wantStatus)
 	} else {

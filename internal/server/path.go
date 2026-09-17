@@ -9,62 +9,74 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/git"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 )
 
-type pathValidationError struct {
-	Code      string
-	Message   string
-	Forbidden bool
-}
+// Remedies for the conditions a repository request is refused for.
+//
+// An allowed root is named in its supplied form: the operator passed it on the
+// command line, which ADR-0067 clause 3 permits a diagnostic to repeat. A
+// requested repository path is never named at all, because it arrived in a
+// request.
+const (
+	allowedRootRemedy = "Pass --allowed-root pointing at a directory that exists; " +
+		"inside a container, mount it there first."
 
-func (e *pathValidationError) Error() string { return e.Message }
+	repositoryPathRemedy = "Give a path that exists on the machine running the server, " +
+		"inside one of its allowed roots."
 
-// MissingRootError reports an allowed root that does not exist. Inside a
-// container it usually means nothing was mounted at that path.
-type MissingRootError struct {
-	Root string
-}
+	outsideRootsRemedy = "Restart with --allowed-root pointing at a directory that contains " +
+		"the repository, including its git directory for a linked worktree."
+)
 
-// Error implements the error interface.
-func (e *MissingRootError) Error() string {
-	return fmt.Sprintf("allowed root %q does not exist", e.Root)
-}
-
-// EmptyAllowedRoots returns the allowed roots that contain nothing. An empty
-// root cannot hold a repository; as a container mount it usually means the
-// source path was mistyped and Docker created an empty folder in its place.
+// EmptyAllowedRoots returns the allowed roots that contain nothing, in the form
+// the operator supplied them (ADR-0067 clause 3). An empty root cannot hold a
+// repository; as a container mount it usually means the source path was
+// mistyped and Docker created an empty folder in its place.
 func (a *App) EmptyAllowedRoots() []string {
 	var empty []string
-	for _, root := range a.allowedRoots {
+	for i, root := range a.allowedRoots {
 		if entries, err := os.ReadDir(root); err == nil && len(entries) == 0 {
-			empty = append(empty, root)
+			empty = append(empty, a.suppliedRoots[i])
 		}
 	}
 	return empty
 }
 
-func canonicalRoots(roots []string) ([]string, error) {
+// canonicalRoots resolves each allowed root and returns the resolved forms
+// alongside the supplied forms, so that no later message has to guess which
+// form it is holding (ADR-0067 clause 5).
+func canonicalRoots(roots []string) (canonical, supplied []string, err error) {
 	if len(roots) == 0 {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return nil, fmt.Errorf("getting current working directory: %w", err)
+			return nil, nil, core.Internalf(err, "getting the current working directory")
 		}
-		roots = []string{cwd}
+		resolved, err := canonicalDirectory(cwd)
+		if err != nil {
+			return nil, nil, core.Internalf(err, "resolving the working directory as the allowed root")
+		}
+		// The default root is the working directory, which the operator did not
+		// type. Its own name is the only form that stands for it without
+		// printing a resolved path.
+		return []string{resolved}, []string{"."}, nil
 	}
-	out := make([]string, 0, len(roots))
+	canonical = make([]string, 0, len(roots))
 	for _, root := range roots {
-		canonical, err := canonicalDirectory(root)
+		resolved, err := canonicalDirectory(root)
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil, &MissingRootError{Root: root}
+			return nil, nil, core.NewUserError(core.ReasonPathNotFound, root, allowedRootRemedy,
+				"an allowed root does not exist")
 		}
 		if err != nil {
-			return nil, fmt.Errorf("allowed root %q: %w", root, err)
+			return nil, nil, core.NewUserError(core.ReasonPathNotFound, root, allowedRootRemedy,
+				"an allowed root could not be used").Wrapping(err)
 		}
-		out = append(out, canonical)
+		canonical = append(canonical, resolved)
 	}
-	return out, nil
+	return canonical, roots, nil
 }
 
 func canonicalDirectory(path string) (string, error) {
@@ -86,42 +98,50 @@ func canonicalDirectory(path string) (string, error) {
 	return filepath.Clean(canonical), nil
 }
 
+// validateRepositoryPath resolves a requested repository path and refuses it
+// unless it exists, lies inside an allowed root together with its git
+// directory, and is a repository this build can analyse.
+//
+// No refusal names the path. It arrived in a request, which ADR-0067 clause 3
+// excludes from the paths a diagnostic may repeat, and clause 2 excludes from
+// an API response outright. The offending value is therefore empty on every
+// error below, and each message carries its remedy instead.
 func (a *App) validateRepositoryPath(path string, allowShallow bool) (string, error) {
 	abs, err := filepath.Abs(strings.TrimSpace(path))
 	if err != nil {
-		return "", &pathValidationError{Code: "invalid_repository_path", Message: err.Error()}
+		return "", core.NewUserError(core.ReasonPathNotFound, "", repositoryPathRemedy,
+			"the requested repository path could not be resolved").Wrapping(err)
 	}
 	canonical, err := resolvePath(abs)
 	if err != nil {
-		return "", &pathValidationError{Code: "invalid_repository_path", Message: "repository path does not exist"}
+		return "", core.NewUserError(core.ReasonPathNotFound, "", repositoryPathRemedy,
+			"the requested repository path does not exist").Wrapping(err)
 	}
 	canonical = filepath.Clean(canonical)
 	if !withinAnyRoot(a.allowedRoots, canonical) {
-		return "", &pathValidationError{
-			Code:      "path_not_allowed",
-			Message:   "repository path is outside the allowed roots",
-			Forbidden: true,
-		}
+		return "", core.NewUserError(core.ReasonPathOutsideAllowedRoots, "", outsideRootsRemedy,
+			"the requested repository path is outside the allowed roots")
 	}
 
-	info, err := collect.Preflight(canonical)
+	// Preflight's refusals already carry a reason code and a remedy, so they
+	// pass through unchanged. It is given the empty supplied path, which is
+	// what keeps the request's own path out of the response.
+	info, err := collect.Preflight(canonical, "")
 	if err != nil {
-		return "", &pathValidationError{Code: "invalid_repository", Message: "path is not a valid Git repository"}
+		return "", err
 	}
 	if info.IsShallow && !allowShallow {
-		return "", &pathValidationError{Code: "shallow_repository", Message: (&collect.ShallowError{Path: canonical}).Error()}
+		return "", collect.ShallowError("")
 	}
 	gitDir, err := git.Run(canonical, "rev-parse", "--absolute-git-dir")
 	if err != nil {
-		return "", &pathValidationError{Code: "invalid_repository", Message: "could not resolve the repository Git directory"}
+		return "", core.NewUserError(core.ReasonNotARepository, "", repositoryPathRemedy,
+			"the repository's git directory could not be resolved").Wrapping(err)
 	}
 	gitDir, err = resolvePath(gitDir)
 	if err != nil || !withinAnyRoot(a.allowedRoots, gitDir) {
-		return "", &pathValidationError{
-			Code:      "path_not_allowed",
-			Message:   "the repository Git directory is outside the allowed roots",
-			Forbidden: true,
-		}
+		return "", core.NewUserError(core.ReasonPathOutsideAllowedRoots, "", outsideRootsRemedy,
+			"the repository's git directory is outside the allowed roots")
 	}
 	return canonical, nil
 }

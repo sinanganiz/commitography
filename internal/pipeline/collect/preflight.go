@@ -2,7 +2,6 @@ package collect
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/model"
 	"github.com/sinanganiz/commitography/internal/git"
 )
@@ -18,19 +18,22 @@ import (
 // versions lack flags the collector depends on.
 const MinGitVersion = "2.22.0"
 
-// ErrGitNotFound is returned when no git executable is present in PATH.
-var ErrGitNotFound = errors.New("git executable not found in PATH; commitography requires git to be installed")
+// Remedies for the conditions preflight refuses. They are constants because a
+// remedy is part of the error's contract, not a sentence a call site composes
+// (ADR-0041 clause 2).
+const (
+	gitMissingRemedy = "Install git and make sure it is on the path; commitography needs no other service."
 
-// ShallowError reports that the analyzed repository is a shallow clone, whose
-// truncated history would make every statistic wrong.
-type ShallowError struct {
-	Path string
-}
+	gitOldRemedy = "Upgrade git to " + MinGitVersion + " or newer."
 
-// ShallowMessage is the exact guidance printed when a shallow clone is refused.
-const ShallowMessage = `this repository is a shallow clone, so its history is incomplete and all statistics would be wrong.
+	notRepositoryRemedy = "Point at the directory that contains .git, and check that git can read it."
 
-Fix it with:
+	emptyRepositoryRemedy = "Make at least one commit, then run the analysis again."
+
+	// ShallowRemedy is exported because the server reports the same condition
+	// for a repository it was asked to analyse, and one condition has one
+	// remedy wherever it surfaces.
+	ShallowRemedy = `Fix it with:
   git fetch --unshallow
 
 In CI, configure a full clone:
@@ -40,72 +43,80 @@ In CI, configure a full clone:
 
 To analyze anyway and accept incorrect results, pass --allow-shallow.`
 
-// Error implements the error interface.
-func (e *ShallowError) Error() string { return ShallowMessage }
+	// ShallowSummary is exported for the same reason as ShallowRemedy.
+	ShallowSummary = "this repository is a shallow clone, so its history is incomplete and all statistics would be wrong"
+)
 
-// NotRepositoryError reports that Git does not recognize a path as a
-// repository. Inside a container this usually means nothing was mounted there.
-type NotRepositoryError struct {
-	Path string
+// ShallowError builds the refusal for a shallow clone. suppliedPath is named in
+// the diagnostic exactly as it arrived, so it must be the operator's own form
+// and never a resolved one (ADR-0067 clauses 3 and 5); the server passes the
+// empty string, because a path from a request may not be echoed at all.
+func ShallowError(suppliedPath string) error {
+	return core.NewUserError(core.ReasonShallowClone, suppliedPath, ShallowRemedy, "%s", ShallowSummary)
 }
-
-// Error implements the error interface.
-func (e *NotRepositoryError) Error() string { return e.Path + " is not a git repository" }
 
 var gitVersionRe = regexp.MustCompile(`(\d+)\.(\d+)(?:\.(\d+))?`)
 
 // Preflight validates that the given path is analyzable and returns repository
 // metadata. Checks run in a fixed order and fail fast, so the first error a
 // user sees is the root cause rather than a downstream symptom.
-func Preflight(repoPath string) (model.RepositoryInfo, error) {
-	return PreflightContext(context.Background(), repoPath)
+//
+// repoPath is used for the git invocations and is therefore whatever form the
+// caller resolved. Messages name suppliedPath instead, which the caller passes
+// unresolved; PreflightContext takes both so no message has to guess which
+// form it holds (ADR-0067 clause 5).
+func Preflight(repoPath, suppliedPath string) (model.RepositoryInfo, error) {
+	return PreflightContext(context.Background(), repoPath, suppliedPath)
 }
 
 // PreflightContext validates a repository with cancellable Git commands.
-func PreflightContext(ctx context.Context, repoPath string) (model.RepositoryInfo, error) {
+func PreflightContext(ctx context.Context, repoPath, suppliedPath string) (model.RepositoryInfo, error) {
 	var info model.RepositoryInfo
 
 	// 1. git availability.
 	if _, err := git.LookPath(); err != nil {
-		return info, ErrGitNotFound
+		return info, gitUnavailable(err)
 	}
 	raw, err := runGitContext(ctx, "", "--version")
 	if err != nil {
-		return info, ErrGitNotFound
+		return info, gitUnavailable(err)
 	}
 
 	// 2. git version.
 	detected, ok := parseGitVersion(raw)
 	if !ok {
-		return info, fmt.Errorf("could not parse git version from %q; commitography requires git %s or newer", raw, MinGitVersion)
+		return info, core.NewUserError(core.ReasonGitUnavailable, raw, gitMissingRemedy,
+			"the version of the installed git could not be determined")
 	}
 	if compareVersions(detected, mustParseVersion(MinGitVersion)) < 0 {
-		return info, fmt.Errorf("git %s is too old; commitography requires git %s or newer",
-			formatVersion(detected), MinGitVersion)
+		return info, core.NewUserError(core.ReasonGitVersionUnsupported, formatVersion(detected), gitOldRemedy,
+			"the installed git is older than %s, which commitography requires", MinGitVersion)
 	}
 
 	// 3. Path is a repository.
 	if _, err := runGitContext(ctx, repoPath, "rev-parse", "--git-dir"); err != nil {
-		return info, &NotRepositoryError{Path: repoPath}
+		return info, core.NewUserError(core.ReasonNotARepository, suppliedPath, notRepositoryRemedy,
+			"the path is not a git repository").Wrapping(err)
 	}
 
 	abs, err := filepath.Abs(repoPath)
 	if err != nil {
-		return info, fmt.Errorf("resolving %s: %w", repoPath, err)
+		return info, core.Internalf(err, "resolving the repository path")
 	}
 	info.Path = abs
 
 	// 4. Shallow check.
 	shallow, err := runGitContext(ctx, repoPath, "rev-parse", "--is-shallow-repository")
 	if err != nil {
-		return info, err
+		return info, core.Internalf(err, "reading whether the repository is shallow")
 	}
 	info.IsShallow = shallow == "true"
 
 	// 5. Graft check.
 	gitDir, err := runGitContext(ctx, repoPath, "rev-parse", "--absolute-git-dir")
 	if err != nil {
-		return info, err
+		return info, core.NewUserError(core.ReasonNotARepository, suppliedPath, notRepositoryRemedy,
+			"the repository's git directory could not be resolved").Wrapping(err)
 	}
 	info.HasGrafts = fileExists(filepath.Join(gitDir, "shallow")) ||
 		fileExists(filepath.Join(gitDir, "info", "grafts"))
@@ -113,7 +124,8 @@ func PreflightContext(ctx context.Context, repoPath string) (model.RepositoryInf
 	// 6. Empty repository check.
 	head, err := runGitContext(ctx, repoPath, "rev-parse", "--verify", "HEAD")
 	if err != nil {
-		return info, errors.New("repository has no commits")
+		return info, core.NewUserError(core.ReasonEmptyRepository, suppliedPath, emptyRepositoryRemedy,
+			"the repository has no commits")
 	}
 
 	// 7. Head and default branch.
@@ -126,6 +138,15 @@ func PreflightContext(ctx context.Context, repoPath string) (model.RepositoryInf
 	info.Name = strings.TrimSuffix(filepath.Base(abs), ".git")
 
 	return info, nil
+}
+
+// gitUnavailable is the refusal for git being absent or unrunnable. The
+// offending value is empty: git's location is not something the operator
+// supplied in this invocation, and naming a resolved one would put an absolute
+// path in a diagnostic (ADR-0067 clause 3).
+func gitUnavailable(cause error) error {
+	return core.NewUserError(core.ReasonGitUnavailable, "", gitMissingRemedy,
+		"git was not found on the path, and commitography cannot read a repository without it").Wrapping(cause)
 }
 
 func fileExists(path string) bool {

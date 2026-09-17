@@ -202,6 +202,17 @@ func ReasonOf(err error) Reason {
 	return ""
 }
 
+// OffendingValue returns the value an error names as offending, or the empty
+// string. It is safe for a diagnostic and not for an artifact (ADR-0067
+// clauses 2 and 3).
+func OffendingValue(err error) string {
+	var user *UserError
+	if errors.As(err, &user) {
+		return user.Value
+	}
+	return ""
+}
+
 // Remedy returns the remedy an error carries, or the empty string.
 func Remedy(err error) string {
 	var user *UserError

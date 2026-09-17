@@ -39,7 +39,14 @@ func NewHandler() http.Handler {
 type App struct {
 	Jobs         *Manager
 	sessionToken string
-	allowedRoots []string
+
+	// allowedRoots holds the resolved form of each root, used for every
+	// containment check. suppliedRoots holds the same roots in the form the
+	// operator gave them, and is the only form a message may name (ADR-0067
+	// clause 5). The two are parallel slices of equal length.
+	allowedRoots  []string
+	suppliedRoots []string
+
 	allowedHosts map[string]bool
 }
 
@@ -59,15 +66,16 @@ func NewAppWithAllowedRoots(manager *Manager, roots []string) (*App, error) {
 	if manager == nil {
 		manager = NewManager(ManagerOptions{})
 	}
-	allowedRoots, err := canonicalRoots(roots)
+	allowedRoots, suppliedRoots, err := canonicalRoots(roots)
 	if err != nil {
 		return nil, err
 	}
 	return &App{
-		Jobs:         manager,
-		sessionToken: newSessionToken(),
-		allowedRoots: allowedRoots,
-		allowedHosts: loopbackHosts(),
+		Jobs:          manager,
+		sessionToken:  newSessionToken(),
+		allowedRoots:  allowedRoots,
+		suppliedRoots: suppliedRoots,
+		allowedHosts:  loopbackHosts(),
 	}, nil
 }
 
@@ -109,14 +117,16 @@ func normalizeHost(host string) string {
 }
 
 // rejectHost refuses a request for another host before a session cookie can
-// be issued to it.
+// be issued to it. The document route answers in plain text, so it takes the
+// status and the message from the same condition the API route reports rather
+// than restating either.
 func rejectHost(w http.ResponseWriter, r *http.Request) {
-	const message = "request host is not allowed; open the dashboard at http://127.0.0.1 or http://localhost"
 	if strings.HasPrefix(r.URL.Path, "/api/") {
-		writeAPIError(w, http.StatusForbidden, "invalid_host", message)
+		writeAPIError(w, refuse(conditionInvalidHost))
 		return
 	}
-	http.Error(w, message, http.StatusForbidden)
+	status, _, message := conditionInvalidHost.response()
+	http.Error(w, message, status)
 }
 
 // Handler returns the application and versioned API routes.
@@ -135,7 +145,8 @@ func (a *App) Handler() http.Handler {
 		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			status, _, message := conditionMethodNotAllowed.response()
+			http.Error(w, message, status)
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -205,7 +216,7 @@ func (a *App) authorize(w http.ResponseWriter, r *http.Request) bool {
 		if r.URL.Path == "/api/v1/capabilities" && r.Method == http.MethodGet {
 			http.SetCookie(w, a.sessionCookie())
 		} else if strings.HasPrefix(r.URL.Path, "/api/") {
-			writeAPIError(w, http.StatusUnauthorized, "invalid_session", "a valid local session is required")
+			writeAPIError(w, refuse(conditionInvalidSession))
 			return false
 		} else {
 			http.SetCookie(w, a.sessionCookie())
@@ -213,7 +224,7 @@ func (a *App) authorize(w http.ResponseWriter, r *http.Request) bool {
 	}
 	if r.Method == http.MethodPost || r.Method == http.MethodDelete {
 		if !sameOrigin(r) {
-			writeAPIError(w, http.StatusForbidden, "invalid_origin", "request origin is not allowed")
+			writeAPIError(w, refuse(conditionInvalidOrigin))
 			return false
 		}
 	}

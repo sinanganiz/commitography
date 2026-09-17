@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/binary"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"testing"
 	"unicode/utf16"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/git"
 )
 
@@ -19,12 +19,13 @@ import (
 func requireForbidden(t *testing.T, app *App, path string) {
 	t.Helper()
 	_, err := app.validateRepositoryPath(path, false)
-	var pathErr *pathValidationError
 	if err == nil {
 		t.Fatalf("%s was accepted outside the allowed root", path)
 	}
-	if errors.As(err, &pathErr) && !pathErr.Forbidden && pathErr.Code != "invalid_repository_path" {
-		t.Fatalf("%s was refused with %s, want a path rejection", path, pathErr.Code)
+	switch reason := core.ReasonOf(err); reason {
+	case core.ReasonPathOutsideAllowedRoots, core.ReasonPathNotFound:
+	default:
+		t.Fatalf("%s was refused with reason %q, want a path rejection", path, reason)
 	}
 }
 
@@ -47,9 +48,9 @@ func TestWindowsJunctionOutOfTheRootIsRejected(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = app.validateRepositoryPath(link, false)
-	var pathErr *pathValidationError
-	if !errors.As(err, &pathErr) || !pathErr.Forbidden {
-		t.Fatalf("a junction to a repository outside the root was not refused as forbidden: %v", err)
+	if got := core.ReasonOf(err); got != core.ReasonPathOutsideAllowedRoots {
+		t.Fatalf("a junction to a repository outside the root was refused with %q, want %q: %v",
+			got, core.ReasonPathOutsideAllowedRoots, err)
 	}
 }
 

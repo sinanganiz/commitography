@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
-	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/pipeline/render"
 )
 
@@ -212,12 +210,11 @@ func TestShallowCloneIsRefused(t *testing.T) {
 	if err == nil {
 		t.Fatal("a shallow clone must be refused")
 	}
-	if ExitCode(err) != ExitUsage {
-		t.Errorf("exit code = %d, want %d", ExitCode(err), ExitUsage)
+	if core.ExitCode(err) != core.ExitUser {
+		t.Errorf("exit code = %d, want %d", core.ExitCode(err), core.ExitUser)
 	}
-	var shallow *collect.ShallowError
-	if !errors.As(err, &shallow) {
-		t.Fatalf("error is not a ShallowError: %v", err)
+	if got := core.ReasonOf(err); got != core.ReasonShallowClone {
+		t.Fatalf("reason = %q, want %q", got, core.ReasonShallowClone)
 	}
 	for _, want := range []string{"git fetch --unshallow", "fetch-depth: 0", "--allow-shallow"} {
 		if !strings.Contains(err.Error(), want) {
@@ -246,16 +243,16 @@ func TestAllowShallowProceeds(t *testing.T) {
 func TestEmptyAndMissingRepositoriesExitTwo(t *testing.T) {
 	empty := baseOptions(t, "empty")
 	empty.outputDirSet = true
-	if err := Run(empty); err == nil || ExitCode(err) != ExitUsage {
-		t.Errorf("empty repository: err = %v, exit = %d", err, ExitCode(err))
+	if err := Run(empty); err == nil || core.ExitCode(err) != core.ExitUser {
+		t.Errorf("empty repository: err = %v, exit = %d", err, core.ExitCode(err))
 	}
 
 	missing := Options{RepoPath: t.TempDir(), OutputDir: t.TempDir(), Quiet: true, outputDirSet: true}
 	err := Run(missing)
-	if err == nil || ExitCode(err) != ExitUsage {
-		t.Errorf("non-repository path: err = %v, exit = %d", err, ExitCode(err))
+	if err == nil || core.ExitCode(err) != core.ExitUser {
+		t.Errorf("non-repository path: err = %v, exit = %d", err, core.ExitCode(err))
 	}
-	if !strings.Contains(err.Error(), "is not a git repository") {
+	if !strings.Contains(err.Error(), "not a git repository") {
 		t.Errorf("unexpected message: %v", err)
 	}
 }
@@ -268,8 +265,11 @@ func TestQuietAndVerboseConflict(t *testing.T) {
 	if err == nil {
 		t.Fatal("--quiet with --verbose must be an error")
 	}
-	if ExitCode(err) != ExitUsage {
-		t.Errorf("exit code = %d, want %d", ExitCode(err), ExitUsage)
+	if core.ExitCode(err) != core.ExitUser {
+		t.Errorf("exit code = %d, want %d", core.ExitCode(err), core.ExitUser)
+	}
+	if got := core.ReasonOf(err); got != core.ReasonInvalidInvocation {
+		t.Errorf("reason = %q, want %q", got, core.ReasonInvalidInvocation)
 	}
 	if !strings.Contains(err.Error(), "--quiet") || !strings.Contains(err.Error(), "--verbose") {
 		t.Errorf("the message should name both flags, got %q", err.Error())
@@ -285,12 +285,16 @@ func TestWrappedRefusesThinYears(t *testing.T) {
 	if err == nil {
 		t.Fatal("a year with no commits must be refused")
 	}
-	if ExitCode(err) != ExitUsage {
-		t.Errorf("exit code = %d, want %d", ExitCode(err), ExitUsage)
+	if core.ExitCode(err) != core.ExitUser {
+		t.Errorf("exit code = %d, want %d", core.ExitCode(err), core.ExitUser)
 	}
-	want := "not enough commits in 1999 to generate a wrapped report (found 0, need at least 10)"
-	if err.Error() != want {
-		t.Errorf("message = %q, want %q", err.Error(), want)
+	if got := core.ReasonOf(err); got != core.ReasonYearBelowThreshold {
+		t.Errorf("reason = %q, want %q", got, core.ReasonYearBelowThreshold)
+	}
+	for _, want := range []string{"1999", "0 analysed commits", "needs 10", "Choose a year"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("message %q is missing %q", err.Error(), want)
+		}
 	}
 }
 

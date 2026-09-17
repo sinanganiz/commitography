@@ -120,7 +120,7 @@ func TestReadHistoryRejectsForeignSchemaVersion(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error for an unsupported schema version")
 	}
-	want := "history artifact schema version 999 is not supported by this version of commitography"
+	want := "the history artifact's schema version 999 is not the 1 this build reads"
 	if err.Error() != want {
 		t.Errorf("error = %q, want %q", err.Error(), want)
 	}

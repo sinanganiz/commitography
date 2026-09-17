@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
@@ -35,11 +36,16 @@ type jobSummary struct {
 	WarningCount int        `json:"warningCount"`
 }
 
+// jobStatusResponse deliberately carries no repository path. An API response
+// is an artifact that can leave the machine, and ADR-0067 clause 2 admits no
+// exception: the name identifies the repository to its owner, and the path
+// would identify the machine to anyone else. The frontend renders the name and
+// treats the path as optional, so nothing breaks by its absence; WP-0046 drops
+// the field from the frontend's own type.
 type jobStatusResponse struct {
 	ID                  string                  `json:"id"`
 	Status              Status                  `json:"status"`
 	RepoName            string                  `json:"repoName"`
-	RepoPath            string                  `json:"repoPath"`
 	CreatedAt           time.Time               `json:"createdAt"`
 	StartedAt           *time.Time              `json:"startedAt"`
 	FinishedAt          *time.Time              `json:"finishedAt"`
@@ -73,9 +79,16 @@ type apiError struct {
 	Error apiErrorBody `json:"error"`
 }
 
+// apiErrorBody carries both identities of a failure during this API version.
+// Reason is the code from docs/metrics.md section 13, which is the one identity
+// a condition has wherever it surfaces (ADR-0041 clause 7); it is empty for a
+// protocol condition, which section 13 does not describe. Code is what the API
+// has published since before reason codes covered user errors, kept stable
+// because the embedded frontend switches on it. WP-0037 collapses the two.
 type apiErrorBody struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code    string      `json:"code"`
+	Reason  core.Reason `json:"reason,omitempty"`
+	Message string      `json:"message"`
 }
 
 func (a *App) apiHandler() http.Handler {
@@ -132,21 +145,14 @@ func (a *App) createJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.TrimSpace(request.RepoPath) == "" {
-		writeAPIError(w, http.StatusBadRequest, "invalid_repository_path", "repoPath is required")
+		writeAPIError(w, refuse(conditionRepoPathMissing))
 		return
 	}
 	canonicalPath, err := a.validateRepositoryPath(request.RepoPath, request.Options.AllowShallow)
 	if err != nil {
-		var pathErr *pathValidationError
-		if errors.As(err, &pathErr) {
-			status := http.StatusBadRequest
-			if pathErr.Forbidden {
-				status = http.StatusForbidden
-			}
-			writeAPIError(w, status, pathErr.Code, pathErr.Message)
-			return
-		}
-		writeAPIError(w, http.StatusBadRequest, "invalid_repository", err.Error())
+		// Every refusal validateRepositoryPath returns is classified, so its
+		// status comes from the one mapping and this route judges nothing.
+		writeAPIError(w, err)
 		return
 	}
 
@@ -167,10 +173,10 @@ func (a *App) createJob(w http.ResponseWriter, r *http.Request) {
 	snapshot, err := a.Jobs.Start(canonicalPath, options)
 	if err != nil {
 		if errors.Is(err, ErrActiveJob) {
-			writeAPIError(w, http.StatusConflict, "active_job", "another analysis job is already active")
+			writeAPIError(w, refuse(conditionActiveJob))
 			return
 		}
-		writeAPIError(w, http.StatusInternalServerError, "job_start_failed", "could not start the analysis job")
+		writeAPIError(w, core.Internalf(err, "starting the analysis job"))
 		return
 	}
 	writeJSON(w, http.StatusAccepted, createJobResponse{ID: snapshot.ID, Status: snapshot.Status})
@@ -180,7 +186,7 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/jobs/")
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	if len(parts) == 0 || parts[0] == "" {
-		writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+		writeAPIError(w, refuse(conditionJobNotFound))
 		return
 	}
 	id := parts[0]
@@ -189,16 +195,16 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 		case http.MethodGet:
 			snapshot, err := a.Jobs.Get(id)
 			if err != nil {
-				writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+				writeAPIError(w, refuse(conditionJobNotFound))
 				return
 			}
 			writeJSON(w, http.StatusOK, statusResponse(snapshot))
 		case http.MethodDelete:
 			if err := a.Jobs.Delete(id); err != nil {
 				if errors.Is(err, ErrJobNotFound) {
-					writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+					writeAPIError(w, refuse(conditionJobNotFound))
 				} else {
-					writeAPIError(w, http.StatusConflict, "invalid_job_state", "active jobs must be cancelled before deletion")
+					writeAPIError(w, refuse(conditionJobNotDeletable))
 				}
 				return
 			}
@@ -209,7 +215,7 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(parts) != 2 {
-		writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+		writeAPIError(w, refuse(conditionJobNotFound))
 		return
 	}
 	switch parts[1] {
@@ -221,9 +227,9 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 		report, err := a.Jobs.Report(id)
 		if err != nil {
 			if errors.Is(err, ErrJobNotFound) {
-				writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+				writeAPIError(w, refuse(conditionJobNotFound))
 			} else {
-				writeAPIError(w, http.StatusConflict, "report_not_ready", "job has no current report")
+				writeAPIError(w, refuse(conditionReportNotReady))
 			}
 			return
 		}
@@ -241,18 +247,18 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := a.Jobs.Cancel(id); err != nil {
 			if errors.Is(err, ErrJobNotFound) {
-				writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+				writeAPIError(w, refuse(conditionJobNotFound))
 			} else {
-				writeAPIError(w, http.StatusConflict, "invalid_job_state", "job cannot be cancelled in its current state")
+				writeAPIError(w, refuse(conditionJobNotCancellable))
 			}
 			return
 		}
 		snapshot, _ := a.Jobs.Get(id)
 		writeJSON(w, http.StatusAccepted, statusResponse(snapshot))
 	case "":
-		writeAPIError(w, http.StatusNotFound, "not_found", "job not found")
+		writeAPIError(w, refuse(conditionJobNotFound))
 	default:
-		writeAPIError(w, http.StatusNotFound, "not_found", "job route not found")
+		writeAPIError(w, refuse(conditionJobRouteNotFound))
 	}
 }
 
@@ -260,14 +266,18 @@ func (a *App) jobRoute(w http.ResponseWriter, r *http.Request) {
 const maxRequestBody = 1 << 20
 
 // writeDecodeError distinguishes a body over the size limit from one that is
-// not a single valid JSON object.
+// not a single valid JSON object. The first is a user error and carries a
+// reason code; the second is a protocol condition, because section 13 lists no
+// code for a malformed body and inventing one needs a decision.
 func writeDecodeError(w http.ResponseWriter, err error, message string) {
 	var tooLarge *http.MaxBytesError
 	if errors.As(err, &tooLarge) {
-		writeAPIError(w, http.StatusRequestEntityTooLarge, "request_too_large", "request body exceeds 1 MiB")
+		writeAPIError(w, core.NewUserError(core.ReasonRequestTooLarge, "",
+			"Send a smaller request body; the cap is 1 MiB.",
+			"the request body is larger than the server accepts").Wrapping(err))
 		return
 	}
-	writeAPIError(w, http.StatusBadRequest, "invalid_json", message)
+	writeAPIError(w, refuseWith(conditionInvalidJSON, message))
 }
 
 func statusResponse(snapshot Snapshot) jobStatusResponse {
@@ -276,7 +286,6 @@ func statusResponse(snapshot Snapshot) jobStatusResponse {
 		ID:                  snapshot.ID,
 		Status:              snapshot.Status,
 		RepoName:            snapshot.RepoName,
-		RepoPath:            snapshot.RepoPath,
 		CreatedAt:           snapshot.CreatedAt,
 		StartedAt:           snapshot.StartedAt,
 		FinishedAt:          snapshot.FinishedAt,
@@ -305,11 +314,14 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 	_ = json.NewEncoder(w).Encode(value)
 }
 
-func writeAPIError(w http.ResponseWriter, status int, code, message string) {
-	writeJSON(w, status, apiError{Error: apiErrorBody{Code: code, Message: message}})
+// writeAPIError is the only site that writes an error response. The status
+// comes from errorResponse, never from the route (ADR-0041 clause 4).
+func writeAPIError(w http.ResponseWriter, err error) {
+	status, code, reason, message := errorResponse(err)
+	writeJSON(w, status, apiError{Error: apiErrorBody{Code: code, Reason: reason, Message: message}})
 }
 
 func methodNotAllowed(w http.ResponseWriter, methods ...string) {
 	w.Header().Set("Allow", strings.Join(methods, ", "))
-	writeAPIError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method is not allowed")
+	writeAPIError(w, refuse(conditionMethodNotAllowed))
 }

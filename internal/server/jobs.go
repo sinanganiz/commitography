@@ -46,10 +46,14 @@ var (
 )
 
 // Failure is a safe, structured terminal error. The manager stores no raw Git
-// stderr; adapters decide how much detail is appropriate for their audience.
+// stderr; the message is an error's artifact rendering, so it is safe wherever
+// the status is shown (ADR-0067 clause 2). Reason and Code are the two
+// identities apiErrorBody documents, and are empty and set respectively for a
+// condition section 13 does not describe.
 type Failure struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code    string      `json:"code"`
+	Reason  core.Reason `json:"reason,omitempty"`
+	Message string      `json:"message"`
 }
 
 // Snapshot is a race-free copy of one job's public state. Report data is kept
@@ -391,21 +395,23 @@ func (m *Manager) Fail(id string, failure Failure, finishedAt time.Time) error {
 	return nil
 }
 
-// FailureFromError classifies an analysis error without exposing package
-// internals in the job status contract.
+// FailureFromError describes a terminal analysis error for the job status
+// contract. The reason code is the condition's one identity and the published
+// code is the job status vocabulary, both as errors.go documents them.
+//
+// A job status is an API response, so the message is the error's artifact
+// rendering: no path, no address, no git output (ADR-0067 clause 2). That is
+// what the manager's promise to store no raw Git stderr now rests on, rather
+// than on each adapter remembering.
 func FailureFromError(err error) Failure {
 	if err == nil {
 		return Failure{Code: "analysis_failed", Message: "analysis failed"}
 	}
-	var usage *pipeline.UsageError
-	if errors.As(err, &usage) {
-		return Failure{Code: "invalid_analysis_request", Message: "analysis request or repository validation failed"}
+	return Failure{
+		Code:    publishedFailureCode(err),
+		Reason:  core.ReasonOf(err),
+		Message: core.Artifact(err),
 	}
-	var year *pipeline.YearError
-	if errors.As(err, &year) {
-		return Failure{Code: "invalid_wrapped_year", Message: err.Error()}
-	}
-	return Failure{Code: "analysis_failed", Message: "analysis failed; no report was produced"}
 }
 
 // staleMessage passes only the fixed consistency-check reasons: a revalidation

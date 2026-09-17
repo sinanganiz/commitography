@@ -1,5 +1,5 @@
 exit code 2
-Error: this repository is a shallow clone, so its history is incomplete and all statistics would be wrong.
+Error: this repository is a shallow clone, so its history is incomplete and all statistics would be wrong (<fixtures>/shallow)
 
 Fix it with:
   git fetch --unshallow

@@ -25,13 +25,34 @@ func (b buildInfo) String() string {
 func main() {
 	version, commit, date := core.BuildMetadata()
 	build := buildInfo{version: version, commit: commit, date: date}
-	if err := newRootCommand(build).Execute(); err != nil {
+	if err := execute(build, os.Args[1:]); err != nil {
 		Report(err)
-		os.Exit(ExitCode(err))
+		os.Exit(core.ExitCode(err))
 	}
 }
 
-func newRootCommand(build buildInfo) *cobra.Command {
+// execute runs the command and classifies what it returns.
+//
+// Cobra rejects a malformed command line — an unknown flag, a value it cannot
+// parse, too many arguments, an unknown subcommand — before the command body
+// runs, and returns a plain error for every one of them. ADR-0034 clause 5
+// makes all of them usage errors, and the body not having run is exactly what
+// identifies them. Until this package they exited on the internal-error code.
+func execute(build buildInfo, args []string) error {
+	entered := false
+	cmd := newRootCommand(build, &entered)
+	cmd.SetArgs(args)
+	err := cmd.Execute()
+	if err == nil || entered {
+		return err
+	}
+	return core.NewUserError(core.ReasonInvalidInvocation, "", invocationRemedy, "%s", err).Wrapping(err)
+}
+
+// newRootCommand builds the command tree. entered is set as soon as the root
+// command's body runs, so execute can tell a rejected command line from a
+// failure inside the analysis.
+func newRootCommand(build buildInfo, entered *bool) *cobra.Command {
 	var (
 		opts        Options
 		showVersion bool
@@ -53,6 +74,7 @@ Repository-level by default; per-contributor breakdowns are opt-in behind
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			*entered = true
 			if showVersion {
 				fmt.Fprintln(cmd.OutOrStdout(), build.String())
 				return nil

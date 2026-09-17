@@ -1,15 +1,16 @@
 package collect
 
 import (
-	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sinanganiz/commitography/internal/core"
 )
 
 func TestPreflightBasicRepository(t *testing.T) {
 	repo := fixture(t, "basic")
-	info, err := Preflight(repo)
+	info, err := Preflight(repo, repo)
 	if err != nil {
 		t.Fatalf("Preflight: %v", err)
 	}
@@ -34,7 +35,8 @@ func TestPreflightBasicRepository(t *testing.T) {
 }
 
 func TestPreflightDetectsShallowClone(t *testing.T) {
-	info, err := Preflight(fixture(t, "shallow"))
+	shallow := fixture(t, "shallow")
+	info, err := Preflight(shallow, shallow)
 	if err != nil {
 		t.Fatalf("Preflight: %v", err)
 	}
@@ -47,7 +49,7 @@ func TestPreflightDetectsShallowClone(t *testing.T) {
 }
 
 func TestShallowErrorMessage(t *testing.T) {
-	err := error(&ShallowError{Path: "/tmp/repo"})
+	err := ShallowError("../repo")
 	if !strings.HasPrefix(err.Error(), "this repository is a shallow clone") {
 		t.Errorf("unexpected message: %q", err.Error())
 	}
@@ -57,36 +59,61 @@ func TestShallowErrorMessage(t *testing.T) {
 		"GIT_DEPTH: 0",
 		"clone: depth: full",
 		"--allow-shallow",
+		// The supplied path, repeated exactly (ADR-0067 clause 3).
+		"../repo",
 	} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("message is missing %q", want)
 		}
 	}
-	var se *ShallowError
-	if !errors.As(err, &se) {
-		t.Error("ShallowError is not recoverable with errors.As")
+	if got := core.ReasonOf(err); got != core.ReasonShallowClone {
+		t.Errorf("reason = %q, want %q", got, core.ReasonShallowClone)
+	}
+	if core.ExitCode(err) != core.ExitUser {
+		t.Errorf("exit code = %d, want %d", core.ExitCode(err), core.ExitUser)
+	}
+	// The artifact rendering keeps the remedy and drops the path.
+	if artifact := core.Artifact(err); strings.Contains(artifact, "../repo") {
+		t.Errorf("artifact rendering %q names the supplied path", artifact)
 	}
 }
 
 func TestPreflightEmptyRepository(t *testing.T) {
-	_, err := Preflight(fixture(t, "empty"))
+	empty := fixture(t, "empty")
+	_, err := Preflight(empty, "fixtures/empty")
 	if err == nil {
 		t.Fatal("expected an error for a repository with no commits")
 	}
-	if err.Error() != "repository has no commits" {
-		t.Errorf("error = %q, want %q", err.Error(), "repository has no commits")
+	if got := core.ReasonOf(err); got != core.ReasonEmptyRepository {
+		t.Errorf("reason = %q, want %q", got, core.ReasonEmptyRepository)
+	}
+	for _, want := range []string{"has no commits", "fixtures/empty", emptyRepositoryRemedy} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("message %q is missing %q", err.Error(), want)
+		}
 	}
 }
 
+// The refusal repeats the path the caller supplied and never the resolved one,
+// so an absolute path reaches the message only when the operator typed one
+// (ADR-0067 clauses 3 and 5).
 func TestPreflightNotARepository(t *testing.T) {
 	dir := t.TempDir()
-	_, err := Preflight(dir)
+	_, err := Preflight(dir, "./somewhere-else")
 	if err == nil {
 		t.Fatal("expected an error for a non-repository path")
 	}
-	want := dir + " is not a git repository"
-	if err.Error() != want {
-		t.Errorf("error = %q, want %q", err.Error(), want)
+	if got := core.ReasonOf(err); got != core.ReasonNotARepository {
+		t.Errorf("reason = %q, want %q", got, core.ReasonNotARepository)
+	}
+	if !strings.Contains(err.Error(), "./somewhere-else") {
+		t.Errorf("message %q does not name the supplied path", err.Error())
+	}
+	if strings.Contains(err.Error(), dir) {
+		t.Errorf("message %q names the resolved path", err.Error())
+	}
+	if !strings.Contains(err.Error(), notRepositoryRemedy) {
+		t.Errorf("message %q does not name the remedy", err.Error())
 	}
 }
 

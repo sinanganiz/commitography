@@ -5,7 +5,6 @@ package pipeline
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/config"
@@ -16,8 +15,15 @@ import (
 // adapter. Output directories and rendering flags deliberately do not belong
 // here: the analysis service returns a report and does not write files.
 type Options struct {
-	RepoPath         string
-	ConfigPath       string
+	RepoPath   string
+	ConfigPath string
+
+	// OperatorSupplied records that RepoPath and ConfigPath are what the
+	// operator typed in this invocation, so a diagnostic may name them
+	// (ADR-0067 clause 3). The server leaves it false: a path that arrived in
+	// a request is echoed nowhere, neither in a response nor on stderr.
+	OperatorSupplied bool
+
 	Since            string
 	Until            string
 	Year             int
@@ -69,26 +75,26 @@ type ProgressSink func(ProgressEvent)
 // implements.
 type RunFunc func(context.Context, Options, ProgressSink) (*Result, error)
 
-// UsageError marks an input, configuration or repository validation failure.
-// CLI adapters map it to their documented usage exit code.
-type UsageError struct{ Err error }
-
-// Error returns the underlying validation message.
-func (e *UsageError) Error() string { return e.Err.Error() }
-
-// Unwrap exposes the underlying error to errors.Is and errors.As.
-func (e *UsageError) Unwrap() error { return e.Err }
-
-// YearError reports that a requested Wrapped year has too little activity.
-type YearError struct {
-	Year  int
-	Found int
-	Need  int
+// SuppliedPath returns the repository path in the form a message may name, or
+// the empty string when no message may name it at all.
+func (o Options) SuppliedPath() string {
+	if o.OperatorSupplied {
+		return o.RepoPath
+	}
+	return ""
 }
 
-// Error returns the stable user-facing Wrapped validation message.
-func (e *YearError) Error() string {
-	return fmt.Sprintf("not enough commits in %d to generate a wrapped report (found %d, need at least %d)", e.Year, e.Found, e.Need)
+// suppliedConfigPath returns the configuration file in the form a message may
+// name. Where the operator gave no explicit path, the file is the repository's
+// own, and its bare name is the accurate answer as well as the safe one.
+func (o Options) suppliedConfigPath() string {
+	if !o.OperatorSupplied {
+		return ""
+	}
+	if o.ConfigPath != "" {
+		return o.ConfigPath
+	}
+	return config.FileName
 }
 
 // Result contains the report and collection metadata returned by the shared
@@ -105,8 +111,9 @@ type Result struct {
 }
 
 // Stale reasons produced by the end-of-run consistency check. A revalidation
-// failure appends the underlying error, which may carry Git output, so
-// adapters that show reasons to a browser should only pass these constants.
+// failure appends the failing error's artifact rendering, which carries no
+// path, address or git output (ADR-0067 clause 2), so a reason is safe to show
+// wherever it surfaces.
 const (
 	StaleHeadChanged        = "repository HEAD changed during analysis"
 	StaleCheckoutChanged    = "repository checkout changed during analysis"

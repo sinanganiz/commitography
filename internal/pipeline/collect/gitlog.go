@@ -6,6 +6,7 @@ package collect
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"runtime"
@@ -14,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/model"
 	"github.com/sinanganiz/commitography/internal/git"
 )
@@ -51,7 +53,14 @@ const (
 
 // Options controls how history is read.
 type Options struct {
-	RepoPath   string
+	RepoPath string
+
+	// SuppliedPath is RepoPath in the form the operator gave it, before any
+	// resolution. Only messages use it, and only they may (ADR-0067 clause 5).
+	// It is empty where the path did not come from the operator, such as a
+	// server request, in which case no message names it at all.
+	SuppliedPath string
+
 	UseMailmap bool
 	Since      string // passed through to git log --since, empty means no bound
 	Until      string // passed through to git log --until, empty means no bound
@@ -103,7 +112,7 @@ func (o Options) progress(current, total int) {
 // a git call per commit; the sharded read keeps the one-diff-per-commit property.
 // Small repositories still take the single-invocation path.
 func Collect(opts Options) (*model.History, error) {
-	info, err := PreflightContext(opts.context(), opts.RepoPath)
+	info, err := PreflightContext(opts.context(), opts.RepoPath, opts.SuppliedPath)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +125,7 @@ func Collect(opts Options) (*model.History, error) {
 	if failed > 0 {
 		opts.warn("%d of %d commit records could not be parsed and were skipped", failed, total)
 		if total > 0 && float64(failed)/float64(total) > maxParseFailureRatio {
-			return nil, fmt.Errorf("%d of %d commit records failed to parse (over %.0f%%); refusing to report statistics from an unreliable read",
+			return nil, core.Internalf(nil, "%d of %d commit records failed to parse, over %.0f%%; refusing to report statistics from an unreliable read",
 				failed, total, maxParseFailureRatio*100)
 		}
 	}
@@ -218,13 +227,13 @@ func collectStreamWithTotal(opts Options, hashes []string, expected int) (commit
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, 0, 0, err
+		return nil, 0, 0, core.Internalf(err, "opening the git log output pipe")
 	}
 	stderr := &strings.Builder{}
 	cmd.Stderr = stderr
 
 	if err := cmd.Start(); err != nil {
-		return nil, 0, 0, fmt.Errorf("starting git log: %w", err)
+		return nil, 0, 0, core.Internalf(err, "starting git log")
 	}
 
 	commits, failed, total, parseErr := parseLog(stdout, opts, expected)
@@ -242,9 +251,12 @@ func collectStreamWithTotal(opts Options, hashes []string, expected int) (commit
 	if waitErr != nil {
 		msg := strings.TrimSpace(stderr.String())
 		if msg == "" {
-			return nil, 0, 0, fmt.Errorf("git log failed: %w", waitErr)
+			return nil, 0, 0, core.Internalf(waitErr, "reading the history with git log")
 		}
-		return nil, 0, 0, fmt.Errorf("git log failed: %s", msg)
+		// git's own stderr is repository-influenced and may name paths, so it
+		// stays inside the internal error, whose artifact rendering discards it
+		// (ADR-0045, ADR-0067 clause 2).
+		return nil, 0, 0, core.Internalf(errors.New(msg), "reading the history with git log")
 	}
 	return commits, failed, total, nil
 }
@@ -356,7 +368,7 @@ func parseLog(r io.Reader, opts Options, expected int) (commits []model.Commit, 
 			return commits, failed, total, nil
 		}
 		if readErr != nil {
-			return commits, failed, total, fmt.Errorf("reading git log output: %w", readErr)
+			return commits, failed, total, core.Internalf(readErr, "reading the git log output")
 		}
 	}
 }

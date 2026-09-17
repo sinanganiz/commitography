@@ -1,11 +1,12 @@
 package server
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/sinanganiz/commitography/internal/core"
 )
 
 func TestWithinRootRejectsPrefixSibling(t *testing.T) {
@@ -33,9 +34,8 @@ func TestValidateRepositoryRejectsOutsideAllowedRoot(t *testing.T) {
 	if err == nil {
 		t.Fatal("outside repository was accepted")
 	}
-	pathErr, ok := err.(*pathValidationError)
-	if !ok || !pathErr.Forbidden {
-		t.Fatalf("error = %T %v, want forbidden path error", err, err)
+	if got := core.ReasonOf(err); got != core.ReasonPathOutsideAllowedRoots {
+		t.Fatalf("reason = %q, want %q", got, core.ReasonPathOutsideAllowedRoots)
 	}
 }
 
@@ -57,15 +57,22 @@ func TestValidateRepositoryAcceptsRepositoryInsideRoot(t *testing.T) {
 	}
 }
 
+// An allowed root comes from the command line, so the refusal names it, in the
+// form it was given (ADR-0067 clause 3).
 func TestMissingAllowedRootIsReportedByName(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "not-mounted")
 	_, err := NewAppWithAllowedRoots(nil, []string{missing})
-	var missingRoot *MissingRootError
-	if !errors.As(err, &missingRoot) || missingRoot.Root != missing {
-		t.Fatalf("error = %T %v, want MissingRootError for %s", err, err, missing)
+	if got := core.ReasonOf(err); got != core.ReasonPathNotFound {
+		t.Fatalf("reason = %q, want %q", got, core.ReasonPathNotFound)
 	}
-	if want := fmt.Sprintf("allowed root %q does not exist", missing); err.Error() != want {
-		t.Fatalf("message = %q, want %q", err.Error(), want)
+	if got := core.OffendingValue(err); got != missing {
+		t.Fatalf("offending value = %q, want %q", got, missing)
+	}
+	if !strings.Contains(err.Error(), missing) {
+		t.Fatalf("message %q does not name the root", err.Error())
+	}
+	if core.Remedy(err) == "" {
+		t.Fatal("the refusal carries no remedy")
 	}
 }
 
@@ -79,12 +86,9 @@ func TestEmptyAllowedRootsAreReported(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := canonicalDirectory(empty)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := app.EmptyAllowedRoots(); len(got) != 1 || got[0] != want {
-		t.Fatalf("empty roots = %v, want [%s]", got, want)
+	// The supplied form is reported, never the resolved one (ADR-0067 clause 3).
+	if got := app.EmptyAllowedRoots(); len(got) != 1 || got[0] != empty {
+		t.Fatalf("empty roots = %v, want [%s]", got, empty)
 	}
 }
 

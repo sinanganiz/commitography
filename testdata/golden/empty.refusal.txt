@@ -1,2 +1,4 @@
 exit code 2
-Error: repository has no commits
+Error: the repository has no commits (<fixtures>/empty)
+
+Make at least one commit, then run the analysis again.

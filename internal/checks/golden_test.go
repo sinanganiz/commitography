@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 	"github.com/sinanganiz/commitography/internal/pipeline/render"
 )
@@ -137,10 +138,10 @@ func kind(refused bool) string {
 
 // produce runs the command's analysis path on a fixture: the pipeline root
 // followed by the report writer, as `commitography <fixture> --json` runs
-// them. The command itself is package main and cannot be imported, so the
-// exit classification is taken from the pipeline root's error types; the
-// command's own tests assert that it maps them to the same codes. It returns
-// the normalised report, or the normalised refusal when the command refuses.
+// them. The command itself is package main and cannot be imported, so the exit
+// code is taken from core.ExitCode, which is the same single mapping the
+// command uses (ADR-0041 clause 4). It returns the normalised report, or the
+// normalised refusal when the command refuses.
 func produce(t *testing.T, repo repository, fixture string) (string, bool) {
 	t.Helper()
 	root := filepath.Join(repo.root, "testdata", "fixtures")
@@ -149,9 +150,12 @@ func produce(t *testing.T, repo repository, fixture string) (string, bool) {
 		fatal(t, 64, "fixture %q is missing; the gates generate it with `make fixtures`", fixture)
 	}
 	out := filepath.Join(t.TempDir(), render.ReportFile)
-	result, err := pipeline.Run(context.Background(), pipeline.Options{RepoPath: dir}, nil)
+	// OperatorSupplied mirrors the command line, so a refusal names the path
+	// the way the command would (ADR-0067 clause 3); normalise then replaces
+	// the fixture root, as it already does for the report.
+	result, err := pipeline.Run(context.Background(), pipeline.Options{RepoPath: dir, OperatorSupplied: true}, nil)
 	if err != nil {
-		return normalise(fmt.Sprintf("exit code %d\nError: %v\n", exitCode(err), err), root), true
+		return normalise(fmt.Sprintf("exit code %d\nError: %v\n", core.ExitCode(err), err), root), true
 	}
 	if err := render.WriteReportJSON(result.Report, out); err != nil {
 		fatal(t, 19, "fixture %s: writing report.json: %v", fixture, err)
@@ -161,17 +165,6 @@ func produce(t *testing.T, repo repository, fixture string) (string, bool) {
 		fatal(t, 19, "fixture %s: the analysis succeeded but wrote no report.json: %v", fixture, err)
 	}
 	return normalise(string(data), root), false
-}
-
-// exitCode is the command's exit code for an analysis error: 2 for a usage
-// refusal, 1 for anything else (ADR-0034).
-func exitCode(err error) int {
-	var usage *pipeline.UsageError
-	var year *pipeline.YearError
-	if errors.As(err, &usage) || errors.As(err, &year) {
-		return 2
-	}
-	return 1
 }
 
 // normalise removes what legitimately differs between runs of one analysis:
@@ -187,6 +180,10 @@ func normalise(s, root string) string {
 	for _, r := range []string{strings.ReplaceAll(root, `\`, `\\`), root, filepath.ToSlash(root)} {
 		s = strings.ReplaceAll(s, r, "<fixtures>")
 	}
+	// A refusal repeats the supplied path, whose separator is the platform's,
+	// so the separator directly after the root is normalised as well. Without
+	// this the golden refusals would differ between platforms.
+	s = strings.ReplaceAll(s, `<fixtures>\`, "<fixtures>/")
 	return s
 }
 

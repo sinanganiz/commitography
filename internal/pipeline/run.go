@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/config"
@@ -16,6 +17,11 @@ import (
 
 const minWrappedCommits = 10
 
+// configurationRemedy is the remedy for every configuration refusal: they all
+// come from the same file and are all fixed the same way.
+const configurationRemedy = "Correct the setting in " + config.FileName +
+	", or remove the file to use the defaults; --config points at another file."
+
 // Run performs one complete analysis without rendering or writing output
 // files. It runs one fixed stage order so CLI and server callers receive the
 // same report for the same inputs.
@@ -27,19 +33,22 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		return nil, err
 	}
 
+	// repoPath is the resolved form, used for every git invocation and every
+	// containment check. opts.RepoPath is the form the operator supplied, and
+	// is the only one a message may name (ADR-0067 clause 5).
 	repoPath, err := filepath.Abs(opts.RepoPath)
 	if err != nil {
-		return nil, &UsageError{Err: fmt.Errorf("resolving %s: %w", opts.RepoPath, err)}
+		return nil, core.Internalf(err, "resolving the repository path")
 	}
 
 	emit := eventEmitter{sink: sink}
 	emit.emit(StagePreflight, "validating repository")
-	info, err := collect.Preflight(repoPath)
+	info, err := collect.Preflight(repoPath, opts.SuppliedPath())
 	if err != nil {
-		return nil, &UsageError{Err: err}
+		return nil, err
 	}
 	if info.IsShallow && !opts.AllowShallow {
-		return nil, &UsageError{Err: &collect.ShallowError{Path: repoPath}}
+		return nil, collect.ShallowError(opts.SuppliedPath())
 	}
 	if err := contextError(ctx); err != nil {
 		return nil, err
@@ -52,7 +61,12 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	}
 	cfg, err := config.LoadWithWarn(opts.ConfigPath, repoPath, configWarn)
 	if err != nil {
-		return nil, &UsageError{Err: err}
+		// The configuration package may not import core (ADR-0066 clause 3),
+		// so its errors are classified here, by their single consumer. Its
+		// message names the resolved file, so the cause is kept for errors.As
+		// and the offending value is the file as the operator named it.
+		return nil, core.NewUserError(core.ReasonInvalidConfiguration, opts.suppliedConfigPath(),
+			configurationRemedy, "the configuration could not be read").Wrapping(err)
 	}
 	if opts.Anonymize {
 		cfg.Anonymize = true
@@ -61,7 +75,10 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		cfg.CountMerges = opts.CountMerges
 	}
 	if err := cfg.Validate(); err != nil {
-		return nil, &UsageError{Err: err}
+		// Validate's message names the offending setting and its value and no
+		// path, so it is the offending value itself.
+		return nil, core.NewUserError(core.ReasonInvalidConfiguration, err.Error(),
+			configurationRemedy, "the configuration carries a value the analysis cannot use")
 	}
 
 	warnings := make([]string, 0)
@@ -73,13 +90,14 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	}
 	emit.emit(StageCollecting, "reading history")
 	history, err := collect.Collect(collect.Options{
-		RepoPath:    repoPath,
-		UseMailmap:  cfg.UseMailmap,
-		ToolVersion: opts.ToolVersion,
-		Since:       opts.Since,
-		Until:       opts.Until,
-		Context:     ctx,
-		OnWarning:   collectWarn,
+		RepoPath:     repoPath,
+		SuppliedPath: opts.SuppliedPath(),
+		UseMailmap:   cfg.UseMailmap,
+		ToolVersion:  opts.ToolVersion,
+		Since:        opts.Since,
+		Until:        opts.Until,
+		Context:      ctx,
+		OnWarning:    collectWarn,
 		OnProgress: func(current, total int) {
 			if total > 0 {
 				emit.emitCount(StageCollecting, fmt.Sprintf("%d of %d commits", current, total), current, total)
@@ -101,7 +119,8 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 
 	pathFilter, err := filter.NewPathFilter(cfg, repoPath)
 	if err != nil {
-		return nil, &UsageError{Err: err}
+		return nil, core.NewUserError(core.ReasonInvalidConfiguration, err.Error(),
+			configurationRemedy, "an exclude_paths pattern could not be compiled")
 	}
 	filtered := filter.Apply(history.Commits, cfg, resolver, pathFilter)
 	emit.emitCount(StageFiltering, fmt.Sprintf("%d excluded", filtered.TotalCommits-filtered.AnalyzedCommits), filtered.TotalCommits-filtered.AnalyzedCommits, filtered.TotalCommits)
@@ -109,7 +128,10 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	if opts.Year != 0 {
 		inYear := countInYear(filtered.Commits, opts.Year, cfg)
 		if inYear < minWrappedCommits {
-			return nil, &YearError{Year: opts.Year, Found: inYear, Need: minWrappedCommits}
+			return nil, core.NewUserError(core.ReasonYearBelowThreshold, strconv.Itoa(opts.Year),
+				fmt.Sprintf("Choose a year with at least %d analysed commits, or drop --wrapped.", minWrappedCommits),
+				"the requested year has %d analysed commits and the year in review needs %d",
+				inYear, minWrappedCommits)
 		}
 	}
 
@@ -176,10 +198,10 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		if err := contextError(ctx); err != nil {
 			return nil, err
 		}
-		end, err := collect.PreflightContext(ctx, repoPath)
+		end, err := collect.PreflightContext(ctx, repoPath, opts.SuppliedPath())
 		if err != nil {
 			result.Stale = true
-			result.StaleReason = fmt.Sprintf("%s: %v", StaleRevalidationFailed, err)
+			result.StaleReason = fmt.Sprintf("%s: %s", StaleRevalidationFailed, core.Artifact(err))
 		} else {
 			result.EndRepository = &end
 			result.Stale, result.StaleReason = repositoryChanged(history.Repository, end)
@@ -298,8 +320,3 @@ func contextError(ctx context.Context) error {
 		return nil
 	}
 }
-
-// Ensure the error types remain discoverable by callers without forcing them
-// to import implementation details from the CLI package.
-var _ error = (*UsageError)(nil)
-var _ error = (*YearError)(nil)
