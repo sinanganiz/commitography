@@ -1,7 +1,7 @@
 # WP-0008: Report document and schema versioning
 
 **Area:** core
-**Implements:** ADR-0021, ADR-0031, ADR-0032, ADR-0062
+**Implements:** ADR-0021, ADR-0031, ADR-0032, ADR-0062, ADR-0010
 **Requires:** WP-0005, WP-0006
 
 ## Goal
@@ -41,6 +41,31 @@ without that statement is a defect.
    ADR-0061 clause 6).
 7. Reserve the section that carries the resolved analysis configuration. WP-0010
    fills it; this package defines its place and its absence-is-an-error status.
+7a. **Define the identities section, which the catalogue currently lacks.**
+   ADR-0010 clause 2 requires the reader to select from a list of resolved
+   contributors, and the report is the only artifact that can carry it. Add the
+   section to `docs/metrics.md` and to the schema, then emit it.
+
+   It is **not a metric family**. ADR-0024 clause 5 fixes the family set and this
+   is not in it. It is a top-level reference section, beside the generation
+   metadata and the resolved configuration.
+
+   Each entry carries: the stable identity digest as its `id`, a display name,
+   first and last commit dates, and the analysed commit count. The list is
+   ordered by **first commit date ascending**, ties broken by `id`
+   (ADR-0009 clause 3: no default ordering by output volume).
+
+   The list is bounded as ADR-0018 clause 4 bounds the breakdown: the 200
+   identities with the most analysed commits appear individually, and the
+   remainder folds into **one** entry flagged as aggregate, whose display name
+   states how many identities it represents.
+
+   This package emits `id` and `display_name` using the digest function that
+   already exists, so no raw address enters the report. The remaining identity
+   fields, the resolution order, the merge suggestions and anonymisation arrive
+   with WP-0009.
+7b. Adding a top-level section and setting identity representation is a
+   **document minor version increment** (ADR-0031 clause 1). Record it.
 8. Write the new schema at `docs/report-schema.json` and validate every golden
    file against it in the full gate. The superseded schema stays in
    `docs/legacy/`.
@@ -58,14 +83,19 @@ without that statement is a defect.
 - Time series, cross-version and cross-repository data, which ADR-0021 clause 3
   puts behind the API, never in this document.
 - Filling the analysis configuration section (WP-0010).
-- Changing `docs/metrics.md`. If the document and the intended types disagree,
-  the document is correct (ADR-0062 clause 3); if the document is wrong, that is
-  a separate change with its own reasoning, not a silent edit here.
+- Changing any part of `docs/metrics.md` other than adding the identities
+  section. If the document and the intended types disagree elsewhere, the
+  document is correct (ADR-0062 clause 3).
+- Filling the identity fields beyond `id` and `display_name`, resolving
+  identities through mailmap, producing merge suggestions, or implementing
+  anonymisation. All of that is WP-0009.
 
 ## Files
 **May create or modify:** `internal/core/**`, `internal/**`, `cmd/**`,
-`docs/report-schema.json`, `testdata/**` golden files, `internal/checks/**`.
-**Must not touch:** `docs/decisions/**`, `docs/metrics.md`, `docs/legacy/**`,
+`docs/report-schema.json`, `docs/metrics.md` **for the new identities section
+only**, `testdata/**` golden files, `internal/checks/**`.
+**Must not touch:** `docs/decisions/**`, any existing section of
+`docs/metrics.md`, `docs/legacy/**`,
 `internal/pipeline/interpret/taxonomy/**`, `web/**`.
 
 ## Steps
@@ -82,7 +112,11 @@ without that statement is a defect.
 7. Regenerate the golden files in a single commit with the required statement.
 
 ## Definition of done
-- Every family in ADR-0024 clause 5 appears in every report with a status.
+- Every family in ADR-0024 clause 5 appears in every report with a status, and
+  the identities section appears beside them without being one of them.
+- The identities list is ordered by first commit date ascending and is bounded
+  at 200 individual entries plus one aggregate entry.
+- No raw address appears in the identities section.
 - No report contains a field, reason code or limit absent from
   `docs/metrics.md`; the checker fails when one is introduced.
 - A `skipped` family's data fields are empty; a test distinguishes them from a

@@ -74,6 +74,14 @@ to be amended mid-flight.
   WP-0006 said exit codes must not change, which would have preserved a flag
   parsing failure exiting on the internal-error code. Say which values are
   fixed, not that the current behaviour is correct.
+- **Check that the artifact has somewhere to put the thing.** WP-0009 was asked
+  to make the report carry identities while no section of the catalogue held
+  one. Before a package writes a value, confirm the structure that receives it
+  exists, and if it does not, the package that builds the structure defines it.
+- **A record can require a field the catalogue never got.** ADR-0010 required a
+  contributor list from the first day and `docs/metrics.md` never defined one.
+  When a package hits that, the catalogue is the defect (ADR-0062 clause 3), not
+  the package's allow list.
 
 ---
 
@@ -88,8 +96,8 @@ to be amended mid-flight.
 | [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040, ADR-0049, ADR-0060, ADR-0061, ADR-0063, ADR-0065, ADR-0066 | WP-0003, WP-0004 | Done |
 | [0006](0006-error-model.md) | foundation | Error model and reason codes | ADR-0041, ADR-0032, ADR-0062, ADR-0064, ADR-0067 | WP-0005 | Done |
 | [0007](0007-dependency-wiring.md) | foundation | Dependency wiring and ambient state removal | ADR-0042, ADR-0061, ADR-0021, ADR-0044, ADR-0067 | WP-0005 | Done |
-| [0008](0008-report-document.md) | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032, ADR-0062 | WP-0005, WP-0006 | Done |
-| [0009](0009-identity-and-privacy.md) | core | Identity model and privacy layers | ADR-0033, ADR-0010, ADR-0032 | WP-0008 | Ready |
+| [0008](0008-report-document.md) | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032, ADR-0062, ADR-0010 | WP-0005, WP-0006 | Ready |
+| [0009](0009-identity-and-privacy.md) | core | Identity model and privacy layers | ADR-0033, ADR-0010, ADR-0032, ADR-0062 | WP-0008 | Ready |
 | [0010](0010-configuration-planes.md) | core | Configuration planes and resolution | ADR-0026, ADR-0021, ADR-0062 | WP-0008 | Ready |
 | [0011](0011-git-chokepoint.md) | pipeline | Git invocation chokepoint | ADR-0065, ADR-0044, ADR-0066, ADR-0041 | WP-0005, WP-0006, WP-0007 | Ready |
 | 0012 | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052 | WP-0011, WP-0009, WP-0010 | Draft |
@@ -179,7 +187,7 @@ to be amended mid-flight.
 | 0005 | The tree matches the layout, import direction is enforced, goldens unchanged. |
 | 0006 | Errors are classified user or internal, with one enumerated reason set and one exit-code mapping. |
 | 0007 | No globals, no clock reads, no services in context; wiring is explicit in one place. |
-| 0008 | The report document exists, versioned per family, every family present with a status. |
+| 0008 | The report document exists, versioned per family, with every family and the identities section present. |
 | 0009 | Raw identities stay internal; exported artifacts carry display name and digest only. |
 | 0010 | Resolved analysis configuration is embedded in the report and reproduces it exactly. |
 | 0011 | All git invocation passes one hardened package, NUL-delimited and context-bound. |

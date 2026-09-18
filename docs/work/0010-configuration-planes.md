@@ -33,12 +33,17 @@ the report or affects any metric.
    metadata section. Observe it failing when an analysis value is dropped from
    the embedded section, then revert.
 8. Add a checker that fails when an operational key appears in a report.
+9. **Remove the `hash_emails` key.** ADR-0033 replaced optional hashing with a
+   layered rule in which the report never carries a raw address, so the key
+   offers a choice that no longer exists. Removing it is not a behavioural
+   change under the new identity representation; it is removing a switch with
+   one reachable position.
 
 ## Out of scope
 - Storage or the cache itself (WP-0033).
 - The server's configuration surface and recurrence (WP-0037, WP-0042).
-- Adding or removing any configuration key. This package gives the existing keys
-  a plane and a resolution order.
+- Adding any configuration key, or removing any key other than `hash_emails`.
+  This package gives the existing keys a plane and a resolution order.
 - Cardinality limit values, which `docs/metrics.md` section 12 defines and
   ADR-0062 makes authoritative.
 
@@ -67,6 +72,8 @@ the report or affects any metric.
   two differing only in key ordering or whitespace produce the same digest.
 - An empty exclusion list disables the built-in list; a populated one appends.
 - An unknown key warns on standard error and the run succeeds.
+- `hash_emails` is absent from the configuration types, the documentation and
+  the example configuration, and supplying it warns rather than failing.
 
 ## Verification
 ```

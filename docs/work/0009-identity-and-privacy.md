@@ -1,7 +1,7 @@
 # WP-0009: Identity model and privacy layers
 
 **Area:** core
-**Implements:** ADR-0033, ADR-0010, ADR-0032
+**Implements:** ADR-0033, ADR-0010, ADR-0032, ADR-0062
 **Requires:** WP-0008
 
 ## Goal
@@ -9,6 +9,13 @@ The internal working layer holds raw identities, every exported artifact carries
 a display name and a stable digest and no raw address, path or hostname, the
 digest is stable for the same address across repositories, and candidate
 identity merges are suggested but never applied automatically.
+
+## Where identities live in the report
+
+WP-0008 defines the **identities section** and emits `id` and `display_name`
+into it. This package completes it. That section is not a metric family, and it
+is the only place a report names a contributor outside the family breakdowns
+that depend on replay state.
 
 ## In scope
 1. Define the identity type in a subpackage under `internal/core` (ADR-0066
@@ -26,14 +33,25 @@ identity merges are suggested but never applied automatically.
 5. Compute candidate merge signals in the internal layer, where raw data is
    available: identical display name after normalisation, identical address
    local part, and the hosting provider `noreply` address pattern. Expose them
-   as **suggestions**. Nothing applies them (ADR-0010 clause 4).
+   as **suggestions** on the identities section, each naming the signal that
+   produced it. Nothing applies them (ADR-0010 clause 4).
+5a. Complete the identity entry with the fields WP-0008 left out: the number of
+   source addresses folded into this identity, and the merge candidates from
+   clause 5. Adding fields is a **document minor version increment**
+   (ADR-0031 clause 1). Update `docs/report-schema.json` accordingly.
 6. Implement anonymised output: display names become stable pseudonyms, in
    addition to the rules above (ADR-0033 clause 5).
 7. Extend the leak scan checker to the exported artifacts that now exist:
    report, API responses and logs. Exported images arrive with WP-0057.
-8. Where an identity cannot be resolved, the affected family reports `degraded`
-   with a reason code, rather than silently splitting one person into several
-   (ADR-0032).
+8. Where a commit's author cannot be resolved into an identity, the affected
+   family reports `degraded` rather than silently dropping or splitting it
+   (ADR-0032). **Add the code `unresolved_identity` to `docs/metrics.md`
+   section 13 in this same change** (ADR-0062 clause 2); section 13 has no code
+   for this condition. Add that code and no others.
+9. **ADR-0033 clause 6 is not implementable here.** It governs public mode,
+   which WP-0045 introduces. Implement clauses 1 to 5 and 7, record the
+   narrowing next to the checker naming **WP-0045**, and do not treat the
+   missing clause as satisfied.
 
 ## Out of scope
 - Cross-repository person records (WP-0036).
@@ -45,9 +63,11 @@ identity merges are suggested but never applied automatically.
 
 ## Files
 **May create or modify:** `internal/core/**`, `internal/**`, `cmd/**`,
-`internal/checks/**`, `testdata/**` golden files.
-**Must not touch:** `docs/decisions/**`, `docs/metrics.md`, `docs/legacy/**`,
-`internal/pipeline/interpret/taxonomy/**`, `web/**`.
+`internal/checks/**`, `testdata/**` golden files, `docs/report-schema.json`,
+and `docs/metrics.md` **for the identities section's remaining fields and the
+one reason code in clause 8 only**.
+**Must not touch:** `docs/decisions/**`, any other part of `docs/metrics.md`,
+`docs/legacy/**`, `internal/pipeline/interpret/taxonomy/**`, `web/**`.
 
 ## Steps
 1. Define the identity type with the raw address unserialisable.
@@ -71,7 +91,11 @@ identity merges are suggested but never applied automatically.
   path.
 - Anonymised output replaces display names with stable pseudonyms and changes
   nothing else.
-- An unresolvable identity produces a `degraded` family with a reason code.
+- An unresolvable author produces a `degraded` family with the
+  `unresolved_identity` code, and section 13 gained that code and no other.
+- The identities section carries source address counts and merge candidates,
+  and the schema validates them.
+- The narrowing for ADR-0033 clause 6 is recorded and names WP-0045.
 
 ## Verification
 ```
