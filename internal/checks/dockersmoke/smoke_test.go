@@ -34,49 +34,70 @@ import (
 	"github.com/sinanganiz/commitography/internal/server"
 )
 
-var (
-	// image is the image under test.
-	image string
-	// fixtures is the generated fixture directory.
+// smoke is what the tests here share: the fixture directory, the image under
+// test, and the clock the timing test reads. TestDockerSmoke establishes it
+// once and passes it to each case, so nothing is held in a package variable
+// (ADR-0042 clause 2).
+type smoke struct {
 	fixtures string
-	// skipReason explains why this environment cannot run the tests.
-	skipReason string
-	// missingFixtures fails every test: absent fixtures are a missing
-	// precondition, not an environment limit (ADR-0064 clause 2).
-	missingFixtures string
-)
-
-func TestMain(m *testing.M) {
-	os.Exit(run(m))
+	image    string
+	clock    core.Clock
 }
 
-func run(m *testing.M) int {
+// TestDockerSmoke builds the image once, or uses COMMITOGRAPHY_IMAGE, and runs
+// every case against it.
+func TestDockerSmoke(t *testing.T) {
+	s := setUp(t)
+	for _, tc := range []struct {
+		name string
+		run  func(*testing.T)
+	}{
+		{"ImageKeepsTheCLIContract", s.imageKeepsTheCLIContract},
+		{"CLIDefaultCommandWritesTheDashboard", s.cliDefaultCommandWritesTheDashboard},
+		{"CLIReadsReadOnlyRepositoriesAsAnyUser", s.cliReadsReadOnlyRepositoriesAsAnyUser},
+		{"ServerModeMatchesTheNativeServer", s.serverModeMatchesTheNativeServer},
+		{"ServerDoesNotWriteToMountedRepositories", s.serverDoesNotWriteToMountedRepositories},
+		{"ServerRefusesForeignHostsAndUndocumentedPaths", s.serverRefusesForeignHostsAndUndocumentedPaths},
+		{"StopSignalReachesTheServerThroughTini", s.stopSignalReachesTheServerThroughTini},
+		{"MissingMountsExplainThemselves", s.missingMountsExplainThemselves},
+	} {
+		t.Run(tc.name, tc.run)
+	}
+}
+
+// setUp establishes the environment every case needs. Absent fixtures are a
+// missing precondition and fail (ADR-0064 clause 2); an absent Docker daemon
+// is an environment limit and skips.
+func setUp(t *testing.T) smoke {
+	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
+		t.Fatal(err)
 	}
-	fixtures = filepath.Join(root, "testdata", "fixtures")
-	if _, err := os.Stat(filepath.Join(fixtures, "basic", ".git")); err != nil {
-		missingFixtures = "ADR-0064: fixture \"basic\" is missing; generate the fixtures with `make fixtures`"
-		return m.Run()
+	s := smoke{fixtures: filepath.Join(root, "testdata", "fixtures"), clock: core.SystemClock()}
+	if _, err := os.Stat(filepath.Join(s.fixtures, "basic", ".git")); err != nil {
+		t.Fatal("ADR-0064: fixture \"basic\" is missing; generate the fixtures with `make fixtures`")
 	}
 	if _, err := docker("version", "--format", "{{.Server.Arch}}"); err != nil {
-		skipReason = "the Docker CLI or daemon is not available"
-		return m.Run()
+		t.Skip("the Docker CLI or daemon is not available")
 	}
 	if name := os.Getenv("COMMITOGRAPHY_IMAGE"); name != "" {
-		image = name
-		return m.Run()
+		s.image = name
+		return s
 	}
-	tag := fmt.Sprintf("commitography:smoke-%d", time.Now().UnixNano())
+	// The tag only has to be unique among concurrent runs, so it is drawn from
+	// randomness rather than from the clock.
+	suffix := make([]byte, 8)
+	if _, err := io.ReadFull(core.SystemRandom(), suffix); err != nil {
+		t.Fatal(err)
+	}
+	tag := fmt.Sprintf("commitography:smoke-%x", suffix)
 	if err := buildImage(root, tag); err != nil {
-		fmt.Fprintf(os.Stderr, "building the image: %v\n", err)
-		return 1
+		t.Fatalf("building the image: %v", err)
 	}
-	defer docker("image", "rm", "-f", tag)
-	image = tag
-	return m.Run()
+	t.Cleanup(func() { docker("image", "rm", "-f", tag) })
+	s.image = tag
+	return s
 }
 
 // buildImage builds the image the way `make docker-image` does: a static Linux
@@ -113,9 +134,8 @@ func buildImage(root, tag string) error {
 	return nil
 }
 
-func TestImageKeepsTheCLIContract(t *testing.T) {
-	requireEnvironment(t)
-	out, err := docker("image", "inspect", "--format", "{{json .Config}}", image)
+func (s smoke) imageKeepsTheCLIContract(t *testing.T) {
+	out, err := docker("image", "inspect", "--format", "{{json .Config}}", s.image)
 	must(t, err, out)
 	var config struct {
 		Entrypoint   []string
@@ -143,23 +163,22 @@ func TestImageKeepsTheCLIContract(t *testing.T) {
 		t.Errorf("image declares a health check %v, but the server has no health endpoint", config.Healthcheck.Test)
 	}
 
-	out, err = docker("run", "--rm", "--entrypoint", "git", image, "--version")
+	out, err = docker("run", "--rm", "--entrypoint", "git", s.image, "--version")
 	must(t, err, out)
 	if !strings.HasPrefix(out, "git version") {
 		t.Errorf("git --version = %q", out)
 	}
-	out, err = docker("run", "--rm", "--entrypoint", "ls", image, "/usr/local/bin")
+	out, err = docker("run", "--rm", "--entrypoint", "ls", s.image, "/usr/local/bin")
 	must(t, err, out)
 	if out != "commitography" {
 		t.Errorf("/usr/local/bin holds %q, want only commitography", out)
 	}
 }
 
-func TestCLIDefaultCommandWritesTheDashboard(t *testing.T) {
-	requireEnvironment(t)
-	repo := copyFixture(t, "basic", t.TempDir())
+func (s smoke) cliDefaultCommandWritesTheDashboard(t *testing.T) {
+	repo := s.copyFixture(t, "basic", t.TempDir())
 	args := append([]string{"run", "--rm"}, hostUser()...)
-	out, err := docker(append(args, "--mount", mount(repo, "/repo", false), image)...)
+	out, err := docker(append(args, "--mount", mount(repo, "/repo", false), s.image)...)
 	must(t, err, out)
 
 	page, err := os.ReadFile(filepath.Join(repo, "out", "index.html"))
@@ -179,16 +198,15 @@ func TestCLIDefaultCommandWritesTheDashboard(t *testing.T) {
 	}
 }
 
-func TestCLIReadsReadOnlyRepositoriesAsAnyUser(t *testing.T) {
-	requireEnvironment(t)
-	repo := filepath.Join(fixtures, "basic")
+func (s smoke) cliReadsReadOnlyRepositoriesAsAnyUser(t *testing.T) {
+	repo := filepath.Join(s.fixtures, "basic")
 	output := t.TempDir()
 	if err := os.Chmod(output, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	out, err := docker("run", "--rm", "--user", nonRootUser(),
 		"--mount", mount(repo, "/repo", true), "--mount", mount(output, "/out", false),
-		image, "/repo", "-o", "/out", "-q")
+		s.image, "/repo", "-o", "/out", "-q")
 	must(t, err, out)
 	for _, name := range []string{"index.html", "report.json"} {
 		if _, err := os.Stat(filepath.Join(output, name)); err != nil {
@@ -197,15 +215,14 @@ func TestCLIReadsReadOnlyRepositoriesAsAnyUser(t *testing.T) {
 	}
 
 	// The default output lies inside the read-only mount and must fail clearly.
-	out, err = docker("run", "--rm", "--mount", mount(repo, "/repo", true), image)
+	out, err = docker("run", "--rm", "--mount", mount(repo, "/repo", true), s.image)
 	if exitCode(err) != 1 || !strings.Contains(out, "read-only file system") {
 		t.Errorf("default output into a read-only mount: exit %d, output %q", exitCode(err), out)
 	}
 }
 
-func TestServerModeMatchesTheNativeServer(t *testing.T) {
-	requireEnvironment(t)
-	base, _ := startServer(t, fixtures, true)
+func (s smoke) serverModeMatchesTheNativeServer(t *testing.T) {
+	base, _ := s.startServer(t, s.fixtures, true)
 	client := newClient()
 
 	if page := get(t, client, base+"/", http.StatusOK); !strings.Contains(page, "commitography-root") {
@@ -215,13 +232,13 @@ func TestServerModeMatchesTheNativeServer(t *testing.T) {
 	get(t, client, base+"/assets/app.css", http.StatusOK)
 	fromDocker := analyze(t, client, base, "/repos/basic")
 
-	app, err := newApp([]string{fixtures})
+	app, err := newApp([]string{s.fixtures})
 	if err != nil {
 		t.Fatal(err)
 	}
 	native := httptest.NewServer(app.Handler())
 	defer native.Close()
-	fromNative := analyze(t, newClient(), native.URL, filepath.Join(fixtures, "basic"))
+	fromNative := analyze(t, newClient(), native.URL, filepath.Join(s.fixtures, "basic"))
 
 	// The generation time and tool version describe the run, not the repository.
 	for _, report := range []map[string]any{fromDocker, fromNative} {
@@ -236,13 +253,12 @@ func TestServerModeMatchesTheNativeServer(t *testing.T) {
 	}
 }
 
-func TestServerDoesNotWriteToMountedRepositories(t *testing.T) {
-	requireEnvironment(t)
+func (s smoke) serverDoesNotWriteToMountedRepositories(t *testing.T) {
 	parent := t.TempDir()
-	repo := copyFixture(t, "basic", parent)
+	repo := s.copyFixture(t, "basic", parent)
 	before := snapshot(t, repo)
 
-	base, _ := startServer(t, parent, false)
+	base, _ := s.startServer(t, parent, false)
 	analyze(t, newClient(), base, "/repos/basic")
 
 	if after := snapshot(t, repo); !reflect.DeepEqual(before, after) {
@@ -272,9 +288,8 @@ func changes(before, after []string) []string {
 	return out
 }
 
-func TestServerRefusesForeignHostsAndUndocumentedPaths(t *testing.T) {
-	requireEnvironment(t)
-	base, _ := startServer(t, fixtures, true)
+func (s smoke) serverRefusesForeignHostsAndUndocumentedPaths(t *testing.T) {
+	base, _ := s.startServer(t, s.fixtures, true)
 
 	req, err := http.NewRequest(http.MethodGet, base+"/api/v1/capabilities", nil)
 	if err != nil {
@@ -297,9 +312,8 @@ func TestServerRefusesForeignHostsAndUndocumentedPaths(t *testing.T) {
 	}
 }
 
-func TestStopSignalReachesTheServerThroughTini(t *testing.T) {
-	requireEnvironment(t)
-	_, id := startServer(t, fixtures, true)
+func (s smoke) stopSignalReachesTheServerThroughTini(t *testing.T) {
+	_, id := s.startServer(t, s.fixtures, true)
 
 	cmdline, err := docker("exec", id, "cat", "/proc/1/cmdline")
 	must(t, err, cmdline)
@@ -307,10 +321,10 @@ func TestStopSignalReachesTheServerThroughTini(t *testing.T) {
 		t.Errorf("PID 1 is %q, want /sbin/tini", cmdline)
 	}
 
-	started := time.Now()
+	started := s.clock.Now()
 	out, err := docker("stop", "-t", "10", id)
 	must(t, err, out)
-	elapsed := time.Since(started)
+	elapsed := s.clock.Now().Sub(started)
 	code, err := docker("inspect", "--format", "{{.State.ExitCode}}", id)
 	must(t, err, code)
 	// A signal that never reached the server would end in Docker's kill after
@@ -320,11 +334,9 @@ func TestStopSignalReachesTheServerThroughTini(t *testing.T) {
 	}
 }
 
-func TestMissingMountsExplainThemselves(t *testing.T) {
-	requireEnvironment(t)
-
+func (s smoke) missingMountsExplainThemselves(t *testing.T) {
 	t.Run("repository", func(t *testing.T) {
-		out, err := docker("run", "--rm", image)
+		out, err := docker("run", "--rm", s.image)
 		if exitCode(err) != 2 {
 			t.Errorf("exit code = %d, want 2: %s", exitCode(err), out)
 		}
@@ -336,7 +348,7 @@ func TestMissingMountsExplainThemselves(t *testing.T) {
 	})
 
 	t.Run("allowed root", func(t *testing.T) {
-		out, err := docker("run", "--rm", image, "serve", "--listen", "0.0.0.0:8080", "--allowed-root", "/repos")
+		out, err := docker("run", "--rm", s.image, "serve", "--listen", "0.0.0.0:8080", "--allowed-root", "/repos")
 		if exitCode(err) != 1 {
 			t.Errorf("exit code = %d, want 1: %s", exitCode(err), out)
 		}
@@ -351,7 +363,7 @@ func TestMissingMountsExplainThemselves(t *testing.T) {
 	// empty folder instead. Either way the user must learn what went wrong.
 	t.Run("mistyped source", func(t *testing.T) {
 		missing := filepath.Join(t.TempDir(), "mistyped")
-		out, err := docker("run", "--rm", "--mount", mount(missing, "/repo", true), image)
+		out, err := docker("run", "--rm", "--mount", mount(missing, "/repo", true), s.image)
 		if err == nil {
 			t.Fatalf("a mistyped mount source succeeded:\n%s", out)
 		}
@@ -361,23 +373,13 @@ func TestMissingMountsExplainThemselves(t *testing.T) {
 	})
 
 	t.Run("empty allowed root", func(t *testing.T) {
-		_, id := startServer(t, t.TempDir(), true)
+		_, id := s.startServer(t, t.TempDir(), true)
 		logs, err := docker("logs", id)
 		must(t, err, logs)
 		if !strings.Contains(logs, `allowed root "/repos" is empty`) {
 			t.Errorf("the server did not warn about its empty allowed root:\n%s", logs)
 		}
 	})
-}
-
-func requireEnvironment(t *testing.T) {
-	t.Helper()
-	if missingFixtures != "" {
-		t.Fatal(missingFixtures)
-	}
-	if skipReason != "" {
-		t.Skip(skipReason)
-	}
 }
 
 // commandTimeout bounds every process these tests start (ADR-0065 clause 4).
@@ -438,9 +440,9 @@ func nonRootUser() string {
 
 // copyFixture copies a generated fixture, including its .git directory, so a
 // test may let a container write to it.
-func copyFixture(t *testing.T, name, parent string) string {
+func (s smoke) copyFixture(t *testing.T, name, parent string) string {
 	t.Helper()
-	src := filepath.Join(fixtures, name)
+	src := filepath.Join(s.fixtures, name)
 	dst := filepath.Join(parent, name)
 	err := filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -499,10 +501,10 @@ func snapshot(t *testing.T, root string) []string {
 
 // startServer runs the image in server mode with source mounted at /repos,
 // published on a free host loopback port, and returns its URL and container ID.
-func startServer(t *testing.T, source string, readonly bool) (string, string) {
+func (s smoke) startServer(t *testing.T, source string, readonly bool) (string, string) {
 	t.Helper()
 	out, err := docker("run", "-d", "--publish", "127.0.0.1::8080", "--mount", mount(source, "/repos", readonly),
-		image, "serve", "--listen", "0.0.0.0:8080", "--allowed-root", "/repos")
+		s.image, "serve", "--listen", "0.0.0.0:8080", "--allowed-root", "/repos")
 	must(t, err, out)
 	lines := strings.Split(out, "\n")
 	id := strings.TrimSpace(lines[len(lines)-1])
@@ -512,8 +514,9 @@ func startServer(t *testing.T, source string, readonly bool) (string, string) {
 	must(t, err, port)
 	base := "http://" + strings.TrimSpace(strings.Split(port, "\n")[0])
 
-	deadline := time.Now().Add(30 * time.Second)
-	for {
+	// 150 polls of 200ms is thirty seconds.
+	const maxPolls = 150
+	for poll := 0; ; poll++ {
 		res, err := http.Get(base + "/")
 		if err == nil {
 			res.Body.Close()
@@ -521,7 +524,7 @@ func startServer(t *testing.T, source string, readonly bool) (string, string) {
 				return base, id
 			}
 		}
-		if time.Now().After(deadline) {
+		if poll == maxPolls {
 			logs, _ := docker("logs", id)
 			t.Fatalf("the server at %s did not answer: %v\n%s", base, err, logs)
 		}
@@ -575,8 +578,9 @@ func analyze(t *testing.T, client *http.Client, base, repoPath string) map[strin
 		t.Fatalf("creating a job for %s = %d: %s", repoPath, res.StatusCode, body)
 	}
 
-	deadline := time.Now().Add(2 * time.Minute)
-	for {
+	// 600 polls of 200ms is two minutes.
+	const maxPolls = 600
+	for poll := 0; ; poll++ {
 		var status struct {
 			Status string          `json:"status"`
 			Error  json.RawMessage `json:"error"`
@@ -590,7 +594,7 @@ func analyze(t *testing.T, client *http.Client, base, repoPath string) map[strin
 		if status.Status != "queued" && status.Status != "running" {
 			t.Fatalf("the job for %s ended %s: %s", repoPath, status.Status, status.Error)
 		}
-		if time.Now().After(deadline) {
+		if poll == maxPolls {
 			t.Fatalf("the job for %s did not finish", repoPath)
 		}
 		time.Sleep(200 * time.Millisecond)

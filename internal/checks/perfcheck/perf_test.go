@@ -43,49 +43,73 @@ const (
 	retainedHeapSlack      = 8 << 20
 )
 
-var (
+// perf is what the measurements share: the checkout, the generated
+// repositories, an optional real repository, and the clock every duration is
+// read from. The measurements need the process clock, and receive it by
+// injection like everything else (ADR-0042 clause 4). TestPerformance
+// establishes it once and passes it to each case, so nothing is held in a
+// package variable (ADR-0042 clause 2).
+type perf struct {
 	checkout string
 	// repos is the allowed root that holds the generated repositories.
 	repos  string
 	large  string
 	medium string
 	// realRepo is an optional real repository for the analysis timings.
-	realRepo = os.Getenv("COMMITOGRAPHY_PERF_REPO")
-)
-
-func TestMain(m *testing.M) {
-	os.Exit(run(m))
+	realRepo string
+	clock    core.Clock
 }
 
-func run(m *testing.M) int {
+// TestPerformance generates the repositories once and runs every measurement
+// against them.
+func TestPerformance(t *testing.T) {
+	p := setUp(t)
+	for _, tc := range []struct {
+		name string
+		run  func(*testing.T)
+	}{
+		{"AnalysisDuration", p.analysisDuration},
+		{"ServerStaysResponsiveDuringAnalysis", p.serverStaysResponsiveDuringAnalysis},
+		{"CancellationLatency", p.cancellationLatency},
+		{"RetainedReportsAreBoundedByTheJobLimit", p.retainedReportsAreBoundedByTheJobLimit},
+		{"NativeStartupAndCLI", p.nativeStartupAndCLI},
+		{"DockerStartupAndMountOverhead", p.dockerStartupAndMountOverhead},
+	} {
+		t.Run(tc.name, tc.run)
+	}
+}
+
+func setUp(t *testing.T) perf {
+	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
+		t.Fatal(err)
 	}
-	checkout = root
 	dir, err := os.MkdirTemp("", "commitography-perf-")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
+		t.Fatal(err)
 	}
-	defer removeTree(dir)
-	repos = dir
-	large = filepath.Join(dir, "large")
-	medium = filepath.Join(dir, "medium")
+	t.Cleanup(func() { removeTree(dir) })
+	p := perf{
+		checkout: root,
+		repos:    dir,
+		large:    filepath.Join(dir, "large"),
+		medium:   filepath.Join(dir, "medium"),
+		realRepo: os.Getenv("COMMITOGRAPHY_PERF_REPO"),
+		clock:    core.SystemClock(),
+	}
 
-	started := time.Now()
+	started := p.clock.Now()
 	for _, repo := range []struct {
 		path    string
 		commits int
-	}{{large, 15000}, {medium, 3000}} {
+	}{{p.large, 15000}, {p.medium, 3000}} {
 		if err := generateRepository(repo.path, repo.commits, 400); err != nil {
-			fmt.Fprintf(os.Stderr, "generating %s: %v\n", repo.path, err)
-			return 1
+			t.Fatalf("generating %s: %v", repo.path, err)
 		}
 	}
-	fmt.Printf("generated a 15,000-commit and a 3,000-commit repository in %s\n", time.Since(started).Round(time.Millisecond))
-	return m.Run()
+	t.Logf("generated a 15,000-commit and a 3,000-commit repository in %s", p.clock.Now().Sub(started).Round(time.Millisecond))
+	return p
 }
 
 // generateRepository writes a linear history with git fast-import: each commit
@@ -137,33 +161,33 @@ func removeTree(dir string) {
 
 // --- analysis timings ------------------------------------------------------------
 
-func timeAnalysis(t *testing.T, repo string, noBlame bool) time.Duration {
+func (p perf) timeAnalysis(t *testing.T, repo string, noBlame bool) time.Duration {
 	t.Helper()
-	started := time.Now()
-	clock, files := core.SystemClock(), core.SystemFilesystem()
+	started := p.clock.Now()
+	clock, files := p.clock, core.SystemFilesystem()
 	analyzer := pipeline.New(collect.New(clock, files), aggregate.New(clock, files), files)
 	if _, err := analyzer.Run(context.Background(), pipeline.Options{RepoPath: repo, NoBlame: noBlame, PerAuthor: true}, nil); err != nil {
 		t.Fatalf("analyzing %s: %v", repo, err)
 	}
-	return time.Since(started)
+	return p.clock.Now().Sub(started)
 }
 
-func TestAnalysisDuration(t *testing.T) {
+func (p perf) analysisDuration(t *testing.T) {
 	targets := []struct{ name, path string }{
-		{"basic fixture", filepath.Join(checkout, "testdata", "fixtures", "basic")},
-		{"generated, 3,000 commits", medium},
-		{"generated, 15,000 commits", large},
+		{"basic fixture", filepath.Join(p.checkout, "testdata", "fixtures", "basic")},
+		{"generated, 3,000 commits", p.medium},
+		{"generated, 15,000 commits", p.large},
 	}
-	if realRepo != "" {
-		targets = append(targets, struct{ name, path string }{"COMMITOGRAPHY_PERF_REPO", realRepo})
+	if p.realRepo != "" {
+		targets = append(targets, struct{ name, path string }{"COMMITOGRAPHY_PERF_REPO", p.realRepo})
 	}
 	for _, target := range targets {
 		if _, err := os.Stat(target.path); err != nil {
 			t.Logf("%-28s skipped: %v", target.name, err)
 			continue
 		}
-		withBlame := timeAnalysis(t, target.path, false)
-		withoutBlame := timeAnalysis(t, target.path, true)
+		withBlame := p.timeAnalysis(t, target.path, false)
+		withoutBlame := p.timeAnalysis(t, target.path, true)
 		t.Logf("%-28s with blame %8s   --no-blame %8s", target.name, withBlame.Round(time.Millisecond), withoutBlame.Round(time.Millisecond))
 	}
 }
@@ -172,6 +196,7 @@ func TestAnalysisDuration(t *testing.T) {
 
 type harness struct {
 	t      *testing.T
+	clock  core.Clock
 	app    *server.App
 	server *httptest.Server
 	client *http.Client
@@ -185,13 +210,13 @@ type jobStatus struct {
 	} `json:"progress"`
 }
 
-func newHarness(t *testing.T) *harness {
+func (p perf) newHarness(t *testing.T) *harness {
 	t.Helper()
-	app, err := newApp([]string{repos})
+	app, err := newApp(p.clock, []string{p.repos})
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := &harness{t: t, app: app, server: httptest.NewServer(app.Handler())}
+	h := &harness{t: t, clock: p.clock, app: app, server: httptest.NewServer(app.Handler())}
 	jar, _ := cookiejar.New(nil)
 	h.client = &http.Client{Jar: jar, Timeout: time.Minute}
 	t.Cleanup(func() {
@@ -229,14 +254,14 @@ func (h *harness) do(method, path string, body, out any) (int, time.Duration) {
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	started := time.Now()
+	started := h.clock.Now()
 	res, err := h.client.Do(req)
 	if err != nil {
 		h.t.Fatalf("%s %s: %v", method, path, err)
 	}
 	data, _ := io.ReadAll(res.Body)
 	res.Body.Close()
-	elapsed := time.Since(started)
+	elapsed := h.clock.Now().Sub(started)
 	if out != nil {
 		if err := json.Unmarshal(data, out); err != nil {
 			h.t.Fatalf("%s %s answered %d: %s", method, path, res.StatusCode, data)
@@ -272,13 +297,13 @@ func (h *harness) status(id string) jobStatus {
 
 func (h *harness) waitUntil(id string, timeout time.Duration, done func(jobStatus) bool) (jobStatus, bool) {
 	h.t.Helper()
-	deadline := time.Now().Add(timeout)
+	deadline := h.clock.Now().Add(timeout)
 	for {
 		status := h.status(id)
 		if done(status) {
 			return status, true
 		}
-		if time.Now().After(deadline) {
+		if h.clock.Now().After(deadline) {
 			return status, false
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -293,9 +318,9 @@ func percentile(samples []time.Duration, p float64) time.Duration {
 	return sorted[int(float64(len(sorted)-1)*p)]
 }
 
-func TestServerStaysResponsiveDuringAnalysis(t *testing.T) {
-	h := newHarness(t)
-	id := h.start(large, false)
+func (p perf) serverStaysResponsiveDuringAnalysis(t *testing.T) {
+	h := p.newHarness(t)
+	id := h.start(p.large, false)
 	if _, ok := h.waitUntil(id, time.Minute, func(s jobStatus) bool { return s.Status == "running" }); !ok {
 		t.Fatal("the job did not start")
 	}
@@ -326,7 +351,7 @@ func TestServerStaysResponsiveDuringAnalysis(t *testing.T) {
 	}
 }
 
-func TestCancellationLatency(t *testing.T) {
+func (p perf) cancellationLatency(t *testing.T) {
 	var worst time.Duration
 	for _, target := range []struct {
 		stage   string
@@ -337,8 +362,8 @@ func TestCancellationLatency(t *testing.T) {
 		{stage: "code", noBlame: false},
 		{stage: "messages", noBlame: false},
 	} {
-		h := newHarness(t)
-		id := h.start(large, target.noBlame)
+		h := p.newHarness(t)
+		id := h.start(p.large, target.noBlame)
 		// Reaching the messages stage means waiting out blame on 15,000 commits.
 		if _, ok := h.waitUntil(id, 5*time.Minute, func(s jobStatus) bool {
 			return finished(s) || (s.Status == "running" && s.Progress != nil && s.Progress.Stage == target.stage)
@@ -349,10 +374,10 @@ func TestCancellationLatency(t *testing.T) {
 			t.Logf("stage %-10s not measured: the job finished first", target.stage)
 			continue
 		}
-		requested := time.Now()
+		requested := p.clock.Now()
 		h.do(http.MethodPost, "/api/v1/jobs/"+id+"/cancel", nil, nil)
 		status, ok := h.waitUntil(id, time.Minute, finished)
-		latency := time.Since(requested)
+		latency := p.clock.Now().Sub(requested)
 		if !ok || status.Status != "cancelled" {
 			t.Fatalf("cancelling during %s ended %s", target.stage, status.Status)
 		}
@@ -375,11 +400,11 @@ func heapInUse() uint64 {
 	return stats.HeapAlloc
 }
 
-func TestRetainedReportsAreBoundedByTheJobLimit(t *testing.T) {
-	h := newHarness(t)
+func (p perf) retainedReportsAreBoundedByTheJobLimit(t *testing.T) {
+	h := p.newHarness(t)
 	heap := map[int]uint64{0: heapInUse()}
 	for i := 1; i <= 20; i++ {
-		id := h.start(medium, true)
+		id := h.start(p.medium, true)
 		if status, ok := h.waitUntil(id, 5*time.Minute, finished); !ok || status.Status != "succeeded" {
 			t.Fatalf("job %d ended %s", i, status.Status)
 		}
@@ -411,9 +436,9 @@ func freePort(t *testing.T) int {
 	return listener.Addr().(*net.TCPAddr).Port
 }
 
-func waitForOK(url string, timeout time.Duration) bool {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
+func waitForOK(clock core.Clock, url string, timeout time.Duration) bool {
+	deadline := clock.Now().Add(timeout)
+	for clock.Now().Before(deadline) {
 		if res, err := http.Get(url); err == nil {
 			res.Body.Close()
 			if res.StatusCode == http.StatusOK {
@@ -425,7 +450,7 @@ func waitForOK(url string, timeout time.Duration) bool {
 	return false
 }
 
-func buildBinary(t *testing.T, goos, goarch string) string {
+func (p perf) buildBinary(t *testing.T, goos, goarch string) string {
 	t.Helper()
 	dir := t.TempDir()
 	name := "commitography"
@@ -435,7 +460,7 @@ func buildBinary(t *testing.T, goos, goarch string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
 	defer cancel()
 	build := exec.CommandContext(ctx, "go", "build", "-trimpath", "-o", filepath.Join(dir, name), "./cmd/commitography")
-	build.Dir = checkout
+	build.Dir = p.checkout
 	build.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+goos, "GOARCH="+goarch)
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("go build: %v: %s", err, out)
@@ -445,20 +470,20 @@ func buildBinary(t *testing.T, goos, goarch string) string {
 
 func median(samples []time.Duration) time.Duration { return percentile(samples, 0.5) }
 
-func TestNativeStartupAndCLI(t *testing.T) {
-	binary := buildBinary(t, runtime.GOOS, runtime.GOARCH)
+func (p perf) nativeStartupAndCLI(t *testing.T) {
+	binary := p.buildBinary(t, runtime.GOOS, runtime.GOARCH)
 	var startups []time.Duration
 	for i := 0; i < 5; i++ {
 		port := freePort(t)
-		started := time.Now()
+		started := p.clock.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
-		cmd := exec.CommandContext(ctx, binary, "serve", "--listen", fmt.Sprintf("127.0.0.1:%d", port), "--allowed-root", repos)
+		cmd := exec.CommandContext(ctx, binary, "serve", "--listen", fmt.Sprintf("127.0.0.1:%d", port), "--allowed-root", p.repos)
 		if err := cmd.Start(); err != nil {
 			cancel()
 			t.Fatal(err)
 		}
-		ok := waitForOK(fmt.Sprintf("http://127.0.0.1:%d/", port), 30*time.Second)
-		startups = append(startups, time.Since(started))
+		ok := waitForOK(p.clock, fmt.Sprintf("http://127.0.0.1:%d/", port), 30*time.Second)
+		startups = append(startups, p.clock.Now().Sub(started))
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
 		cancel()
@@ -468,20 +493,20 @@ func TestNativeStartupAndCLI(t *testing.T) {
 	}
 	t.Logf("native serve, start to first response: median %s, max %s", median(startups).Round(time.Millisecond), percentile(startups, 1).Round(time.Millisecond))
 
-	for _, target := range []struct{ name, path string }{{"basic fixture", filepath.Join(checkout, "testdata", "fixtures", "basic")}, {"generated, 15,000 commits", large}} {
+	for _, target := range []struct{ name, path string }{{"basic fixture", filepath.Join(p.checkout, "testdata", "fixtures", "basic")}, {"generated, 15,000 commits", p.large}} {
 		for _, noBlame := range []bool{false, true} {
 			args := []string{target.path, "-o", t.TempDir(), "-q"}
 			if noBlame {
 				args = append(args, "--no-blame")
 			}
-			started := time.Now()
+			started := p.clock.Now()
 			ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
 			out, err := exec.CommandContext(ctx, binary, args...).CombinedOutput()
 			cancel()
 			if err != nil {
 				t.Fatalf("native CLI on %s: %v: %s", target.name, err, out)
 			}
-			t.Logf("native CLI %-26s no-blame=%-5v %s", target.name, noBlame, time.Since(started).Round(time.Millisecond))
+			t.Logf("native CLI %-26s no-blame=%-5v %s", target.name, noBlame, p.clock.Now().Sub(started).Round(time.Millisecond))
 		}
 	}
 }
@@ -497,13 +522,13 @@ func docker(args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
-func TestDockerStartupAndMountOverhead(t *testing.T) {
+func (p perf) dockerStartupAndMountOverhead(t *testing.T) {
 	arch, err := docker("version", "--format", "{{.Server.Arch}}")
 	if err != nil {
 		t.Skip("Docker is not available")
 	}
 	context := t.TempDir()
-	linux := buildBinary(t, "linux", arch)
+	linux := p.buildBinary(t, "linux", arch)
 	data, err := os.ReadFile(linux)
 	if err != nil {
 		t.Fatal(err)
@@ -511,14 +536,20 @@ func TestDockerStartupAndMountOverhead(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(context, "commitography"), data, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	dockerfile, err := os.ReadFile(filepath.Join(checkout, "Dockerfile"))
+	dockerfile, err := os.ReadFile(filepath.Join(p.checkout, "Dockerfile"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(context, "Dockerfile"), dockerfile, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	image := fmt.Sprintf("commitography:perf-%d", time.Now().UnixNano())
+	// The tag only has to be unique among concurrent runs, so it is drawn from
+	// randomness rather than from the clock.
+	suffix := make([]byte, 8)
+	if _, err := io.ReadFull(core.SystemRandom(), suffix); err != nil {
+		t.Fatal(err)
+	}
+	image := fmt.Sprintf("commitography:perf-%x", suffix)
 	if out, err := docker("build", "-q", "-t", image, context); err != nil {
 		t.Fatalf("docker build: %v: %s", err, out)
 	}
@@ -526,26 +557,26 @@ func TestDockerStartupAndMountOverhead(t *testing.T) {
 
 	var empty []time.Duration
 	for i := 0; i < 3; i++ {
-		started := time.Now()
+		started := p.clock.Now()
 		if out, err := docker("run", "--rm", "--entrypoint", "true", image); err != nil {
 			t.Fatalf("docker run: %v: %s", err, out)
 		}
-		empty = append(empty, time.Since(started))
+		empty = append(empty, p.clock.Now().Sub(started))
 	}
 	t.Logf("docker run of an empty command: median %s", median(empty).Round(time.Millisecond))
 
 	var startups []time.Duration
 	for i := 0; i < 3; i++ {
 		port := freePort(t)
-		started := time.Now()
+		started := p.clock.Now()
 		id, err := docker("run", "-d", "--publish", fmt.Sprintf("127.0.0.1:%d:8080", port),
-			"--mount", "type=bind,source="+repos+",target=/repos,readonly",
+			"--mount", "type=bind,source="+p.repos+",target=/repos,readonly",
 			image, "serve", "--listen", "0.0.0.0:8080", "--allowed-root", "/repos")
 		if err != nil {
 			t.Fatalf("docker run serve: %v: %s", err, id)
 		}
-		ok := waitForOK(fmt.Sprintf("http://127.0.0.1:%d/", port), 60*time.Second)
-		startups = append(startups, time.Since(started))
+		ok := waitForOK(p.clock, fmt.Sprintf("http://127.0.0.1:%d/", port), 60*time.Second)
+		startups = append(startups, p.clock.Now().Sub(started))
 		docker("rm", "-f", id)
 		if !ok {
 			t.Fatal("the container did not answer")
@@ -553,9 +584,9 @@ func TestDockerStartupAndMountOverhead(t *testing.T) {
 	}
 	t.Logf("docker serve, docker run to first response: median %s, max %s", median(startups).Round(time.Millisecond), percentile(startups, 1).Round(time.Millisecond))
 
-	targets := []struct{ name, path string }{{"basic fixture", filepath.Join(checkout, "testdata", "fixtures", "basic")}, {"generated, 15,000 commits", large}}
-	if realRepo != "" {
-		targets = append(targets, struct{ name, path string }{"COMMITOGRAPHY_PERF_REPO", realRepo})
+	targets := []struct{ name, path string }{{"basic fixture", filepath.Join(p.checkout, "testdata", "fixtures", "basic")}, {"generated, 15,000 commits", p.large}}
+	if p.realRepo != "" {
+		targets = append(targets, struct{ name, path string }{"COMMITOGRAPHY_PERF_REPO", p.realRepo})
 	}
 	for _, target := range targets {
 		for _, noBlame := range []bool{false, true} {
@@ -563,19 +594,19 @@ func TestDockerStartupAndMountOverhead(t *testing.T) {
 			if noBlame {
 				args = append(args, "--no-blame")
 			}
-			started := time.Now()
+			started := p.clock.Now()
 			if out, err := docker(args...); err != nil {
 				t.Fatalf("docker CLI on %s: %v: %s", target.name, err, out)
 			}
-			t.Logf("docker CLI %-26s no-blame=%-5v %s", target.name, noBlame, time.Since(started).Round(time.Millisecond))
+			t.Logf("docker CLI %-26s no-blame=%-5v %s", target.name, noBlame, p.clock.Now().Sub(started).Round(time.Millisecond))
 		}
 	}
 }
 
 // newApp is the local application wired the way the server command wires it
 // (cmd/commitography/compose.go), allowing the given roots.
-func newApp(roots []string) (*server.App, error) {
-	clock, random, files := core.SystemClock(), core.SystemRandom(), core.SystemFilesystem()
+func newApp(clock core.Clock, roots []string) (*server.App, error) {
+	random, files := core.SystemRandom(), core.SystemFilesystem()
 	collector := collect.New(clock, files)
 	manager := server.NewManager(server.ManagerOptions{
 		Clock:  clock,
