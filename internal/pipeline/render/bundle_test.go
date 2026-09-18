@@ -6,20 +6,19 @@ import (
 	"testing"
 )
 
-// allowedURLPrefixes are the absolute URLs the bundled libraries carry as
-// plain strings: XML namespaces that name SVG and MathML elements, and the
-// documentation pages React and MUI link from their production error
-// messages. None of them is fetched. A new URL fails this test until someone
-// confirms it is not a remote resource and adds it here.
-var allowedURLPrefixes = []string{
-	"http://www.w3.org/",
-	"https://react.dev/errors/",
-	"https://mui.com/production-error/",
-}
-
-var absoluteURL = regexp.MustCompile(`https?://[^\s"'` + "`" + `)<>\\]*`)
-
 func TestEmbeddedBundleReferencesNoExternalResources(t *testing.T) {
+	// allowedURLPrefixes are the absolute URLs the bundled libraries carry as
+	// plain strings: XML namespaces that name SVG and MathML elements, and the
+	// documentation pages React and MUI link from their production error
+	// messages. None of them is fetched. A new URL fails this test until
+	// someone confirms it is not a remote resource and adds it here.
+	allowedURLPrefixes := []string{
+		"http://www.w3.org/",
+		"https://react.dev/errors/",
+		"https://mui.com/production-error/",
+	}
+	absoluteURL := regexp.MustCompile(`https?://[^\s"'` + "`" + `)<>\\]*`)
+
 	for _, name := range []string{"assets/app.js", "assets/app.css"} {
 		data, err := assets.ReadFile(name)
 		if err != nil {

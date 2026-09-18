@@ -19,6 +19,12 @@ import (
 // assets holds the built frontend. Shipping it inside the binary is what makes
 // commitography a single file with no runtime dependency but git itself.
 //
+// It is the one package-level variable outside the build metadata file, and it
+// is not state: the toolchain fills it at compile time, go:embed accepts
+// nothing but a package-level variable, and nothing assigns to it. The
+// package-variable lint rule exempts embedded files for that reason, so no
+// suppression is needed.
+//
 //go:embed assets/app.js assets/app.css
 var assets embed.FS
 
@@ -32,10 +38,10 @@ const (
 	ReportFile = "report.json"
 )
 
-// pageTemplate is the whole document. CSS, JS and the report are inlined, so
+// pageSource is the whole document. CSS, JS and the report are inlined, so
 // the output opens correctly from anywhere with no adjacent files and no
 // network access.
-var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
+const pageSource = `<!doctype html>
 <html lang="en" data-mode="{{.Mode}}"{{if .Year}} data-year="{{.Year}}"{{end}}{{if .PreviousYearCommits}} data-previous-year-commits="{{.PreviousYearCommits}}"{{end}}>
 <head>
 <meta charset="utf-8">
@@ -50,7 +56,7 @@ var pageTemplate = template.Must(template.New("page").Parse(`<!doctype html>
 <script>{{.JS}}</script>
 </body>
 </html>
-`))
+`
 
 type pageData struct {
 	Mode                string
@@ -153,8 +159,12 @@ func buildPage(r *core.Report, data pageData) ([]byte, error) {
 	data.JS = template.JS(js)
 	data.Data = template.JS(payload)
 
+	page, err := template.New("page").Parse(pageSource)
+	if err != nil {
+		return nil, core.Internalf(err, "parsing the page template")
+	}
 	var buf bytes.Buffer
-	if err := pageTemplate.Execute(&buf, data); err != nil {
+	if err := page.Execute(&buf, data); err != nil {
 		return nil, core.Internalf(err, "rendering the page")
 	}
 	return buf.Bytes(), nil
@@ -168,13 +178,15 @@ func buildPage(r *core.Report, data pageData) ([]byte, error) {
 // well makes the guarantee independent of that default ever changing. The two
 // line separators are not escaped by encoding/json and have historically
 // broken JavaScript parsers.
-var scriptSafeEscapes = strings.NewReplacer(
-	"<", "\\u003c",
-	">", "\\u003e",
-	"&", "\\u0026",
-	" ", "\\u2028",
-	" ", "\\u2029",
-)
+func scriptSafeEscapes() *strings.Replacer {
+	return strings.NewReplacer(
+		"<", "\\u003c",
+		">", "\\u003e",
+		"&", "\\u0026",
+		" ", "\\u2028",
+		" ", "\\u2029",
+	)
+}
 
 // encodeReport serializes the report for embedding in a script element. A
 // commit subject containing "</script>" must not be able to close the tag.
@@ -183,7 +195,7 @@ func encodeReport(r *core.Report) (string, error) {
 	if err != nil {
 		return "", core.Internalf(err, "encoding the report")
 	}
-	return scriptSafeEscapes.Replace(string(data)), nil
+	return scriptSafeEscapes().Replace(string(data)), nil
 }
 
 func pageTitle(r *core.Report, year int) string {
