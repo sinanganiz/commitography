@@ -13,7 +13,7 @@ import (
 
 func collectFixture(t *testing.T, name string, useMailmap bool) []model.Commit {
 	t.Helper()
-	h, err := collect.Collect(collect.Options{RepoPath: fixture(t, name), UseMailmap: useMailmap})
+	h, err := newCollector().Collect(collect.Options{RepoPath: fixture(t, name), UseMailmap: useMailmap})
 	if err != nil {
 		t.Fatalf("Collect(%s): %v", name, err)
 	}

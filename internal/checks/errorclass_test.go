@@ -71,13 +71,13 @@ func TestErrorClassAtPackageBoundaries(t *testing.T) {
 	}{
 		{
 			name:   "collect: the path is not a repository",
-			err:    second(collect.Preflight(t.TempDir(), "./not-a-repository")),
+			err:    second(newCollector().Preflight(context.Background(), t.TempDir(), "./not-a-repository")),
 			class:  core.ClassUser,
 			reason: core.ReasonNotARepository,
 		},
 		{
 			name:   "collect: the repository has no commits",
-			err:    second(collect.Preflight(fixture("empty"), "./empty")),
+			err:    second(newCollector().Preflight(context.Background(), fixture("empty"), "./empty")),
 			class:  core.ClassUser,
 			reason: core.ReasonEmptyRepository,
 		},

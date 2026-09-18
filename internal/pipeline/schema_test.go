@@ -57,7 +57,7 @@ func buildFromFixture(t *testing.T, name string, cfg config.Config, mutate func(
 	t.Helper()
 	repo := fixturePath(t, name)
 
-	history, err := collect.Collect(collect.Options{RepoPath: repo, UseMailmap: cfg.UseMailmap})
+	history, err := newCollector().Collect(collect.Options{RepoPath: repo, UseMailmap: cfg.UseMailmap})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}

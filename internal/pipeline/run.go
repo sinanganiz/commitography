@@ -43,7 +43,8 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 
 	emit := eventEmitter{sink: sink}
 	emit.emit(StagePreflight, "validating repository")
-	info, err := collect.Preflight(repoPath, opts.SuppliedPath())
+	collector := collect.New(core.SystemClock(), core.SystemFilesystem())
+	info, err := collector.Preflight(ctx, repoPath, opts.SuppliedPath())
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +90,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		}
 	}
 	emit.emit(StageCollecting, "reading history")
-	history, err := collect.Collect(collect.Options{
+	history, err := collector.Collect(collect.Options{
 		RepoPath:     repoPath,
 		SuppliedPath: opts.SuppliedPath(),
 		UseMailmap:   cfg.UseMailmap,
@@ -198,7 +199,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		if err := contextError(ctx); err != nil {
 			return nil, err
 		}
-		end, err := collect.PreflightContext(ctx, repoPath, opts.SuppliedPath())
+		end, err := collector.Preflight(ctx, repoPath, opts.SuppliedPath())
 		if err != nil {
 			result.Stale = true
 			result.StaleReason = fmt.Sprintf("%s: %s", StaleRevalidationFailed, core.Artifact(err))

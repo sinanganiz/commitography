@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -126,7 +127,7 @@ func (a *App) validateRepositoryPath(path string, allowShallow bool) (string, er
 	// Preflight's refusals already carry a reason code and a remedy, so they
 	// pass through unchanged. It is given the empty supplied path, which is
 	// what keeps the request's own path out of the response.
-	info, err := collect.Preflight(canonical, "")
+	info, err := collect.New(core.SystemClock(), core.SystemFilesystem()).Preflight(context.Background(), canonical, "")
 	if err != nil {
 		return "", err
 	}

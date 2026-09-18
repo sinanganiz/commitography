@@ -51,6 +51,19 @@ const (
 	minCommitsPerShard = 500
 )
 
+// Collector is the collect stage. It holds the clock that stamps the history
+// it produces and the file access its preflight uses, both injected
+// (ADR-0042 clause 1).
+type Collector struct {
+	clock core.Clock
+	files core.Filesystem
+}
+
+// New constructs the collect stage.
+func New(clock core.Clock, files core.Filesystem) *Collector {
+	return &Collector{clock: clock, files: files}
+}
+
 // Options controls how history is read.
 type Options struct {
 	RepoPath string
@@ -111,8 +124,8 @@ func (o Options) progress(current, total int) {
 // A single pass does not mean a single git invocation. What must be avoided is
 // a git call per commit; the sharded read keeps the one-diff-per-commit property.
 // Small repositories still take the single-invocation path.
-func Collect(opts Options) (*model.History, error) {
-	info, err := PreflightContext(opts.context(), opts.RepoPath, opts.SuppliedPath)
+func (c *Collector) Collect(opts Options) (*model.History, error) {
+	info, err := c.Preflight(opts.context(), opts.RepoPath, opts.SuppliedPath)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +145,7 @@ func Collect(opts Options) (*model.History, error) {
 
 	return &model.History{
 		SchemaVersion: model.SchemaVersion,
-		GeneratedAt:   time.Now().UTC(),
+		GeneratedAt:   c.clock.Now().UTC(),
 		ToolVersion:   opts.ToolVersion,
 		Repository:    info,
 		Commits:       commits,
@@ -287,9 +300,8 @@ func collectSharded(opts Options, hashes []string, shards int) (commits []model.
 			end = len(hashes)
 		}
 
-		wg.Add(1)
-		go func(idx int, chunk []string) {
-			defer wg.Done()
+		idx, chunk := i, hashes[start:end]
+		wg.Go(func() {
 			// Warnings are buffered per shard rather than reported as they occur:
 			// OnWarning belongs to the caller and is not required to be safe for
 			// concurrent use.
@@ -302,7 +314,7 @@ func collectSharded(opts Options, hashes []string, shards int) (commits []model.
 			}
 			c, f, t, err := collectStreamWithTotal(local, chunk, len(chunk))
 			results[idx].commits, results[idx].failed, results[idx].total, results[idx].err = c, f, t, err
-		}(i, hashes[start:end])
+		})
 	}
 	wg.Wait()
 

@@ -3,7 +3,6 @@ package collect
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -55,22 +54,15 @@ func ShallowError(suppliedPath string) error {
 	return core.NewUserError(core.ReasonShallowClone, suppliedPath, ShallowRemedy, "%s", ShallowSummary)
 }
 
-var gitVersionRe = regexp.MustCompile(`(\d+)\.(\d+)(?:\.(\d+))?`)
-
 // Preflight validates that the given path is analyzable and returns repository
 // metadata. Checks run in a fixed order and fail fast, so the first error a
 // user sees is the root cause rather than a downstream symptom.
 //
 // repoPath is used for the git invocations and is therefore whatever form the
 // caller resolved. Messages name suppliedPath instead, which the caller passes
-// unresolved; PreflightContext takes both so no message has to guess which
-// form it holds (ADR-0067 clause 5).
-func Preflight(repoPath, suppliedPath string) (model.RepositoryInfo, error) {
-	return PreflightContext(context.Background(), repoPath, suppliedPath)
-}
-
-// PreflightContext validates a repository with cancellable Git commands.
-func PreflightContext(ctx context.Context, repoPath, suppliedPath string) (model.RepositoryInfo, error) {
+// unresolved; Preflight takes both so no message has to guess which form it
+// holds (ADR-0067 clause 5). Its git commands are cancelled with ctx.
+func (c *Collector) Preflight(ctx context.Context, repoPath, suppliedPath string) (model.RepositoryInfo, error) {
 	var info model.RepositoryInfo
 
 	// 1. git availability.
@@ -118,8 +110,8 @@ func PreflightContext(ctx context.Context, repoPath, suppliedPath string) (model
 		return info, core.NewUserError(core.ReasonNotARepository, suppliedPath, notRepositoryRemedy,
 			"the repository's git directory could not be resolved").Wrapping(err)
 	}
-	info.HasGrafts = fileExists(filepath.Join(gitDir, "shallow")) ||
-		fileExists(filepath.Join(gitDir, "info", "grafts"))
+	info.HasGrafts = c.fileExists(filepath.Join(gitDir, "shallow")) ||
+		c.fileExists(filepath.Join(gitDir, "info", "grafts"))
 
 	// 6. Empty repository check.
 	head, err := runGitContext(ctx, repoPath, "rev-parse", "--verify", "HEAD")
@@ -149,8 +141,8 @@ func gitUnavailable(cause error) error {
 		"git was not found on the path, and commitography cannot read a repository without it").Wrapping(cause)
 }
 
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
+func (c *Collector) fileExists(path string) bool {
+	_, err := c.files.Stat(path)
 	return err == nil
 }
 
@@ -158,7 +150,7 @@ func fileExists(path string) bool {
 // line. Distribution builds append arbitrary suffixes (".windows.3", ".msysgit"),
 // so only the first three numbers are considered.
 func parseGitVersion(s string) ([3]int, bool) {
-	m := gitVersionRe.FindStringSubmatch(s)
+	m := regexp.MustCompile(`(\d+)\.(\d+)(?:\.(\d+))?`).FindStringSubmatch(s)
 	if m == nil {
 		return [3]int{}, false
 	}

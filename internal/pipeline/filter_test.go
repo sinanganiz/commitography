@@ -14,7 +14,7 @@ import (
 func analyze(t *testing.T, name string, cfg config.Config) (filter.Result, *filter.PathFilter) {
 	t.Helper()
 	repo := fixture(t, name)
-	h, err := collect.Collect(collect.Options{RepoPath: repo, UseMailmap: cfg.UseMailmap})
+	h, err := newCollector().Collect(collect.Options{RepoPath: repo, UseMailmap: cfg.UseMailmap})
 	if err != nil {
 		t.Fatalf("Collect(%s): %v", name, err)
 	}

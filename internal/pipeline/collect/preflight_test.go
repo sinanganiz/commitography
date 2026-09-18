@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -10,7 +11,7 @@ import (
 
 func TestPreflightBasicRepository(t *testing.T) {
 	repo := fixture(t, "basic")
-	info, err := Preflight(repo, repo)
+	info, err := newCollector().Preflight(context.Background(), repo, repo)
 	if err != nil {
 		t.Fatalf("Preflight: %v", err)
 	}
@@ -36,7 +37,7 @@ func TestPreflightBasicRepository(t *testing.T) {
 
 func TestPreflightDetectsShallowClone(t *testing.T) {
 	shallow := fixture(t, "shallow")
-	info, err := Preflight(shallow, shallow)
+	info, err := newCollector().Preflight(context.Background(), shallow, shallow)
 	if err != nil {
 		t.Fatalf("Preflight: %v", err)
 	}
@@ -80,7 +81,7 @@ func TestShallowErrorMessage(t *testing.T) {
 
 func TestPreflightEmptyRepository(t *testing.T) {
 	empty := fixture(t, "empty")
-	_, err := Preflight(empty, "fixtures/empty")
+	_, err := newCollector().Preflight(context.Background(), empty, "fixtures/empty")
 	if err == nil {
 		t.Fatal("expected an error for a repository with no commits")
 	}
@@ -99,7 +100,7 @@ func TestPreflightEmptyRepository(t *testing.T) {
 // (ADR-0067 clauses 3 and 5).
 func TestPreflightNotARepository(t *testing.T) {
 	dir := t.TempDir()
-	_, err := Preflight(dir, "./somewhere-else")
+	_, err := newCollector().Preflight(context.Background(), dir, "./somewhere-else")
 	if err == nil {
 		t.Fatal("expected an error for a non-repository path")
 	}

@@ -6,9 +6,17 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/git"
 )
+
+// newCollector is the collect stage with a fixed clock, so nothing a test
+// produces depends on when it ran.
+func newCollector() *Collector {
+	return New(core.FixedClock(time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)), core.SystemFilesystem())
+}
 
 // fixture returns the path to a built fixture repository, failing the test
 // when fixtures have not been generated. No test in this package touches the
@@ -36,7 +44,7 @@ func gitOutput(t *testing.T, repo string, args ...string) string {
 
 func TestCollectCommitCountMatchesRevList(t *testing.T) {
 	repo := fixture(t, "basic")
-	h, err := Collect(Options{RepoPath: repo})
+	h, err := newCollector().Collect(Options{RepoPath: repo})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
@@ -52,7 +60,7 @@ func TestCollectCommitCountMatchesRevList(t *testing.T) {
 
 func TestCollectTotalAddedLinesMatchesGit(t *testing.T) {
 	repo := fixture(t, "basic")
-	h, err := Collect(Options{RepoPath: repo})
+	h, err := newCollector().Collect(Options{RepoPath: repo})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
@@ -86,7 +94,7 @@ func TestCollectTotalAddedLinesMatchesGit(t *testing.T) {
 
 func TestCollectPreservesAuthorTimezoneOffsets(t *testing.T) {
 	repo := fixture(t, "basic")
-	h, err := Collect(Options{RepoPath: repo})
+	h, err := newCollector().Collect(Options{RepoPath: repo})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
@@ -153,7 +161,7 @@ func offsetMinutesFromISO(iso string) (int, error) {
 
 func TestCollectRootCommitHasNoParents(t *testing.T) {
 	repo := fixture(t, "basic")
-	h, err := Collect(Options{RepoPath: repo})
+	h, err := newCollector().Collect(Options{RepoPath: repo})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
@@ -187,7 +195,7 @@ func TestCollectRootCommitHasNoParents(t *testing.T) {
 
 func TestCollectMergeCommitsCarryNoFiles(t *testing.T) {
 	repo := fixture(t, "merges")
-	h, err := Collect(Options{RepoPath: repo})
+	h, err := newCollector().Collect(Options{RepoPath: repo})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
@@ -211,7 +219,7 @@ func TestCollectMergeCommitsCarryNoFiles(t *testing.T) {
 }
 
 func TestCollectSingleCommitRepository(t *testing.T) {
-	h, err := Collect(Options{RepoPath: fixture(t, "single")})
+	h, err := newCollector().Collect(Options{RepoPath: fixture(t, "single")})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
@@ -224,7 +232,7 @@ func TestCollectSingleCommitRepository(t *testing.T) {
 }
 
 func TestCollectUnusualPaths(t *testing.T) {
-	h, err := Collect(Options{RepoPath: fixture(t, "binary")})
+	h, err := newCollector().Collect(Options{RepoPath: fixture(t, "binary")})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
@@ -266,7 +274,7 @@ func TestCollectUnusualPaths(t *testing.T) {
 
 func TestCollectMailmapReconcilesWithShortlog(t *testing.T) {
 	repo := fixture(t, "mailmap")
-	h, err := Collect(Options{RepoPath: repo, UseMailmap: true})
+	h, err := newCollector().Collect(Options{RepoPath: repo, UseMailmap: true})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
