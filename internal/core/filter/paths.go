@@ -5,8 +5,9 @@ package filter
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -17,7 +18,14 @@ import (
 
 // caseInsensitiveFS mirrors git's own default: path comparisons ignore case on
 // Windows and macOS-style filesystems, and respect it elsewhere.
-var caseInsensitiveFS = runtime.GOOS == "windows"
+const caseInsensitiveFS = runtime.GOOS == "windows"
+
+// Files is the read access the path filter needs, for the repository's
+// attribute file. The caller injects it (ADR-0042 clause 4); core.Filesystem
+// satisfies it.
+type Files interface {
+	Open(name string) (fs.File, error)
+}
 
 // PathFilter decides which files are omitted from line-based metrics.
 type PathFilter struct {
@@ -29,7 +37,7 @@ type PathFilter struct {
 }
 
 // NewPathFilter compiles the exclusion patterns and reads .gitattributes.
-func NewPathFilter(cfg config.Config, repoPath string) (*PathFilter, error) {
+func NewPathFilter(files Files, cfg config.Config, repoPath string) (*PathFilter, error) {
 	f := &PathFilter{cache: make(map[string]bool)}
 
 	for _, pattern := range cfg.ExcludePaths {
@@ -43,7 +51,7 @@ func NewPathFilter(cfg config.Config, repoPath string) (*PathFilter, error) {
 		f.exclude = append(f.exclude, normalizePattern(pattern))
 	}
 
-	generated, reincluded, err := readGitAttributes(repoPath)
+	generated, reincluded, err := readGitAttributes(files, repoPath)
 	if err != nil {
 		return nil, err
 	}
@@ -104,11 +112,11 @@ func normalizePattern(pattern string) string {
 // Only the repository-root .gitattributes is consulted. Nested attribute files
 // are rare in practice and walking for them would cost a full tree scan on
 // every run.
-func readGitAttributes(repoPath string) (generated, reincluded []string, err error) {
+func readGitAttributes(files Files, repoPath string) (generated, reincluded []string, err error) {
 	path := filepath.Join(repoPath, ".gitattributes")
-	file, err := os.Open(path)
+	file, err := files.Open(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("reading %s: %w", path, err)

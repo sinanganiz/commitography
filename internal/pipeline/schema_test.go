@@ -61,7 +61,7 @@ func buildFromFixture(t *testing.T, name string, cfg config.Config, mutate func(
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
 	}
-	pf, err := filter.NewPathFilter(cfg, repo)
+	pf, err := filter.NewPathFilter(core.SystemFilesystem(), cfg, repo)
 	if err != nil {
 		t.Fatalf("NewPathFilter: %v", err)
 	}

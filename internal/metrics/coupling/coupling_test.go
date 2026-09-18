@@ -17,7 +17,7 @@ func socialInput(t *testing.T) core.Input {
 	t.Helper()
 	cfg := config.Default()
 	cfg.ExcludePaths = nil
-	pf, err := filter.NewPathFilter(cfg, t.TempDir())
+	pf, err := filter.NewPathFilter(core.SystemFilesystem(), cfg, t.TempDir())
 	if err != nil {
 		t.Fatalf("NewPathFilter: %v", err)
 	}

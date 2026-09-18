@@ -59,7 +59,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 			opts.OnWarning(fmt.Sprintf(format, args...))
 		}
 	}
-	cfg, err := config.LoadWithWarn(opts.ConfigPath, repoPath, configWarn)
+	cfg, err := config.Load(core.SystemFilesystem(), opts.ConfigPath, repoPath, configWarn)
 	if err != nil {
 		// The configuration package may not import core (ADR-0066 clause 3),
 		// so its errors are classified here, by their single consumer. Its
@@ -117,7 +117,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	identities := resolver.Identities()
 	emit.emitCount(StageIdentity, fmt.Sprintf("%d contributors", len(identities)), len(identities), len(identities))
 
-	pathFilter, err := filter.NewPathFilter(cfg, repoPath)
+	pathFilter, err := filter.NewPathFilter(core.SystemFilesystem(), cfg, repoPath)
 	if err != nil {
 		return nil, core.NewUserError(core.ReasonInvalidConfiguration, err.Error(),
 			configurationRemedy, "an exclude_paths pattern could not be compiled")

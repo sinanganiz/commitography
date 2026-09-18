@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,12 @@ import (
 	"github.com/sinanganiz/commitography/internal/core/identity"
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
+
+// osFiles is the operating system's filesystem. Core's own implementation
+// cannot be imported here, because core imports this package.
+type osFiles struct{}
+
+func (osFiles) Open(name string) (fs.File, error) { return os.Open(name) }
 
 func fixture(t *testing.T, name string) string {
 	t.Helper()
@@ -28,7 +35,7 @@ func TestLinguistGeneratedIsExcluded(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(repo, ".gitattributes")); err != nil {
 		t.Fatal("ADR-0064: the noise fixture has no .gitattributes; regenerate it with `make fixtures`")
 	}
-	pf, err := NewPathFilter(config.Default(), repo)
+	pf, err := NewPathFilter(osFiles{}, config.Default(), repo)
 	if err != nil {
 		t.Fatalf("NewPathFilter: %v", err)
 	}
@@ -50,7 +57,7 @@ func TestGitAttributesNegationReincludes(t *testing.T) {
 	}
 	cfg := config.Default()
 	cfg.ExcludePaths = nil
-	pf, err := NewPathFilter(cfg, dir)
+	pf, err := NewPathFilter(osFiles{}, cfg, dir)
 	if err != nil {
 		t.Fatalf("NewPathFilter: %v", err)
 	}
@@ -63,7 +70,7 @@ func TestGitAttributesNegationReincludes(t *testing.T) {
 }
 
 func TestDefaultPatternsMatchAtAnyDepth(t *testing.T) {
-	pf, err := NewPathFilter(config.Default(), t.TempDir())
+	pf, err := NewPathFilter(osFiles{}, config.Default(), t.TempDir())
 	if err != nil {
 		t.Fatalf("NewPathFilter: %v", err)
 	}
@@ -94,7 +101,7 @@ func TestDefaultPatternsMatchAtAnyDepth(t *testing.T) {
 // are excluded too. Without these, the defaults excluded generated paths only in
 // repositories with a single package at the root.
 func TestDefaultsCoverNestedMonorepoPaths(t *testing.T) {
-	pf, err := NewPathFilter(config.Default(), t.TempDir())
+	pf, err := NewPathFilter(osFiles{}, config.Default(), t.TempDir())
 	if err != nil {
 		t.Fatalf("NewPathFilter: %v", err)
 	}
@@ -142,7 +149,7 @@ func TestDefaultsCoverNestedMonorepoPaths(t *testing.T) {
 func TestEmptyExcludeListDisablesFiltering(t *testing.T) {
 	cfg := config.Default()
 	cfg.ExcludePaths = nil
-	pf, err := NewPathFilter(cfg, t.TempDir())
+	pf, err := NewPathFilter(osFiles{}, cfg, t.TempDir())
 	if err != nil {
 		t.Fatalf("NewPathFilter: %v", err)
 	}
@@ -156,12 +163,12 @@ func TestApplyDoesNotMutateInput(t *testing.T) {
 		Hash:        "a",
 		AuthorName:  "Ada",
 		AuthorEmail: "ada@example.com",
-		AuthorDate:  time.Now(),
+		AuthorDate:  time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC),
 		Parents:     []string{"x", "y"},
 		IsMerge:     true,
 	}}
 	cfg := config.Default()
-	pf, err := NewPathFilter(cfg, t.TempDir())
+	pf, err := NewPathFilter(osFiles{}, cfg, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}

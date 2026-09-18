@@ -3,6 +3,7 @@ package pipeline
 import (
 	"testing"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/config"
 	"github.com/sinanganiz/commitography/internal/core/filter"
 	"github.com/sinanganiz/commitography/internal/core/identity"
@@ -17,7 +18,7 @@ func analyze(t *testing.T, name string, cfg config.Config) (filter.Result, *filt
 	if err != nil {
 		t.Fatalf("Collect(%s): %v", name, err)
 	}
-	pf, err := filter.NewPathFilter(cfg, repo)
+	pf, err := filter.NewPathFilter(core.SystemFilesystem(), cfg, repo)
 	if err != nil {
 		t.Fatalf("NewPathFilter: %v", err)
 	}

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,30 +19,32 @@ func writeConfig(t *testing.T, body string) string {
 	return dir
 }
 
-func captureWarnings(t *testing.T) *[]string {
-	t.Helper()
-	var got []string
-	original := Warn
-	Warn = func(format string, args ...any) {
-		got = append(got, format)
-	}
-	t.Cleanup(func() { Warn = original })
-	return &got
+// osFiles is the operating system's filesystem. The configuration package may
+// import nothing from the tree, its tests included, so it cannot use
+// core.SystemFilesystem.
+type osFiles struct{}
+
+func (osFiles) Stat(name string) (fs.FileInfo, error) { return os.Stat(name) }
+func (osFiles) ReadFile(name string) ([]byte, error)  { return os.ReadFile(name) }
+
+// load reads configuration with warnings discarded.
+func load(explicitPath, repoPath string) (Config, error) {
+	return Load(osFiles{}, explicitPath, repoPath, func(string, ...any) {})
 }
 
 func TestLoadWithoutFileYieldsDefaults(t *testing.T) {
-	cfg, err := Load("", t.TempDir())
+	cfg, err := load("", t.TempDir())
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
 	if !reflect.DeepEqual(cfg, Default()) {
 		t.Errorf("Load without a file did not return Default()")
 	}
-	if len(cfg.ExcludePaths) != len(DefaultExcludePaths) {
-		t.Errorf("ExcludePaths has %d entries, want %d", len(cfg.ExcludePaths), len(DefaultExcludePaths))
+	if len(cfg.ExcludePaths) != len(DefaultExcludePaths()) {
+		t.Errorf("ExcludePaths has %d entries, want %d", len(cfg.ExcludePaths), len(DefaultExcludePaths()))
 	}
-	if len(cfg.ExcludeAuthors) != len(DefaultExcludeAuthors) {
-		t.Errorf("ExcludeAuthors has %d entries, want %d", len(cfg.ExcludeAuthors), len(DefaultExcludeAuthors))
+	if len(cfg.ExcludeAuthors) != len(DefaultExcludeAuthors()) {
+		t.Errorf("ExcludeAuthors has %d entries, want %d", len(cfg.ExcludeAuthors), len(DefaultExcludeAuthors()))
 	}
 }
 
@@ -52,12 +55,12 @@ exclude_paths:
 exclude_authors:
   - "release-robot"
 `)
-	cfg, err := Load("", dir)
+	cfg, err := load("", dir)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if len(cfg.ExcludePaths) != len(DefaultExcludePaths)+1 {
-		t.Errorf("ExcludePaths has %d entries, want %d", len(cfg.ExcludePaths), len(DefaultExcludePaths)+1)
+	if len(cfg.ExcludePaths) != len(DefaultExcludePaths())+1 {
+		t.Errorf("ExcludePaths has %d entries, want %d", len(cfg.ExcludePaths), len(DefaultExcludePaths())+1)
 	}
 	if cfg.ExcludePaths[len(cfg.ExcludePaths)-1] != "generated/**" {
 		t.Error("user pattern was not appended to the defaults")
@@ -69,7 +72,7 @@ exclude_authors:
 
 func TestExplicitEmptyListClearsDefaults(t *testing.T) {
 	dir := writeConfig(t, "exclude_paths: []\n")
-	cfg, err := Load("", dir)
+	cfg, err := load("", dir)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -77,7 +80,7 @@ func TestExplicitEmptyListClearsDefaults(t *testing.T) {
 		t.Errorf("exclude_paths: [] left %d exclusions in place", len(cfg.ExcludePaths))
 	}
 	// The other list must be untouched by the empty one.
-	if len(cfg.ExcludeAuthors) != len(DefaultExcludeAuthors) {
+	if len(cfg.ExcludeAuthors) != len(DefaultExcludeAuthors()) {
 		t.Error("clearing exclude_paths also affected exclude_authors")
 	}
 }
@@ -97,7 +100,7 @@ identities:
       - ada@example.com
       - ada.lovelace@corp.example.com
 `)
-	cfg, err := Load("", dir)
+	cfg, err := load("", dir)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -116,7 +119,7 @@ func TestExplicitPathReplacesRepositoryConfig(t *testing.T) {
 	otherDir := writeConfig(t, "outlier_threshold_lines: 222\n")
 	explicit := filepath.Join(otherDir, FileName)
 
-	cfg, err := Load(explicit, repoDir)
+	cfg, err := load(explicit, repoDir)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -127,7 +130,7 @@ func TestExplicitPathReplacesRepositoryConfig(t *testing.T) {
 
 func TestInvalidDateSourceIsAnError(t *testing.T) {
 	dir := writeConfig(t, "date_source: invalid\n")
-	_, err := Load("", dir)
+	_, err := load("", dir)
 	if err == nil {
 		t.Fatal("expected an error for an invalid date_source")
 	}
@@ -138,40 +141,42 @@ func TestInvalidDateSourceIsAnError(t *testing.T) {
 
 func TestInvalidThresholdAndThemeAreErrors(t *testing.T) {
 	for _, body := range []string{"outlier_threshold_lines: 0\n", "theme: neon\n"} {
-		if _, err := Load("", writeConfig(t, body)); err == nil {
+		if _, err := load("", writeConfig(t, body)); err == nil {
 			t.Errorf("expected an error for %q", strings.TrimSpace(body))
 		}
 	}
 }
 
 func TestUnknownKeyWarnsButDoesNotFail(t *testing.T) {
-	warnings := captureWarnings(t)
+	var warnings []string
 	dir := writeConfig(t, "excludePaths:\n  - foo\ncount_merges: true\n")
 
-	cfg, err := Load("", dir)
+	cfg, err := Load(osFiles{}, "", dir, func(format string, args ...any) {
+		warnings = append(warnings, format)
+	})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
 	if !cfg.CountMerges {
 		t.Error("recognized keys should still be applied alongside an unknown one")
 	}
-	if len(*warnings) != 1 {
-		t.Errorf("got %d warnings, want 1: %v", len(*warnings), *warnings)
+	if len(warnings) != 1 {
+		t.Errorf("got %d warnings, want 1: %v", len(warnings), warnings)
 	}
 }
 
 func TestLoadWithWarnUsesCallLocalSink(t *testing.T) {
 	dir := writeConfig(t, "unknown_key: true\n")
 	var first, second []string
-	if _, err := LoadWithWarn("", dir, func(format string, args ...any) {
+	if _, err := Load(osFiles{}, "", dir, func(format string, args ...any) {
 		first = append(first, format)
 	}); err != nil {
-		t.Fatalf("first LoadWithWarn: %v", err)
+		t.Fatalf("first Load: %v", err)
 	}
-	if _, err := LoadWithWarn("", dir, func(format string, args ...any) {
+	if _, err := Load(osFiles{}, "", dir, func(format string, args ...any) {
 		second = append(second, format)
 	}); err != nil {
-		t.Fatalf("second LoadWithWarn: %v", err)
+		t.Fatalf("second Load: %v", err)
 	}
 	if len(first) != 1 || len(second) != 1 {
 		t.Fatalf("call-local warnings = %d and %d, want one each", len(first), len(second))
