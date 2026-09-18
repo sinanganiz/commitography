@@ -186,14 +186,16 @@ func (s smoke) cliDefaultCommandWritesTheDashboard(t *testing.T) {
 		t.Fatalf("out/index.html is missing or is not the dashboard: %v", err)
 	}
 	var report struct {
-		SchemaVersion int `json:"schemaVersion"`
-		Repository    struct {
+		DocumentVersion struct {
+			Major int `json:"major"`
+		} `json:"document_version"`
+		Repository struct {
 			Name string `json:"name"`
 		} `json:"repository"`
 	}
 	// The CLI names the repository after the path it analyzed, here /repo.
 	data, err := os.ReadFile(filepath.Join(repo, "out", "report.json"))
-	if err != nil || json.Unmarshal(data, &report) != nil || report.SchemaVersion != 1 || report.Repository.Name != "repo" {
+	if err != nil || json.Unmarshal(data, &report) != nil || report.DocumentVersion.Major != 1 || report.Repository.Name != "repo" {
 		t.Fatalf("out/report.json = %+v (%v)", report, err)
 	}
 }

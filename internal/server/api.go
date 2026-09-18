@@ -106,7 +106,7 @@ func (a *App) capabilities(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, capabilitiesResponse{
 		APIVersion:          "v1",
-		ReportSchemaVersion: 1,
+		ReportSchemaVersion: core.DocumentVersion().Major,
 		MaxRecentJobs:       10,
 		ActiveJobLimit:      1,
 		PollIntervalMS:      750,

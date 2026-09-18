@@ -1,410 +1,215 @@
 {
-  "schemaVersion": 1,
-  "generatedAt": "<generated-at>",
-  "toolVersion": "<tool-version>",
+  "document_version": {
+    "major": 1,
+    "minor": 0
+  },
+  "metadata": {
+    "generated_at": "<generated-at>",
+    "tool_version": "<tool-version>"
+  },
   "repository": {
     "name": "coupling",
-    "defaultBranch": "main",
-    "headCommit": "532ddcd441ca0f2f594c39353b529d19ddfc8d33",
-    "firstCommit": "2025-10-01T00:00:00Z",
-    "lastCommit": "2025-10-12T00:00:00Z",
-    "ageDays": 12,
-    "commitsTotal": 12,
-    "commitsAnalyzed": 12,
-    "commitsExcluded": {
-      "merges": 0,
-      "bots": 0,
-      "total": 0
-    },
-    "contributors": 1,
-    "trackedFiles": 3,
-    "trackedLines": 28,
-    "isShallow": false
+    "commit": "532ddcd441ca0f2f594c39353b529d19ddfc8d33"
   },
-  "temporal": {
-    "hourHistogram": [
-      12,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "weekdayHistogram": [
-      1,
-      1,
-      2,
-      2,
-      2,
-      2,
-      2
-    ],
-    "hourWeekdayGrid": [
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ]
-    ],
-    "braveDeploys": 0,
-    "nightOwlRatio": 1,
-    "busiestDay": {
-      "date": "2025-10-01",
-      "count": 1
-    },
-    "longestStreak": {
-      "days": 12,
-      "startDate": "2025-10-01",
-      "endDate": "2025-10-12"
-    },
-    "longestSilence": {
-      "days": 1,
-      "startDate": "2025-10-01",
-      "endDate": "2025-10-02"
-    },
-    "commitsPerMonth": [
-      {
-        "month": "2025-10",
-        "count": 12
-      }
-    ],
-    "firstCommit": "2025-10-01T00:00:00Z",
-    "lastCommit": "2025-10-12T00:00:00Z"
-  },
-  "code": {
-    "mostTouchedFiles": [
-      {
-        "path": "alpha.go",
-        "commits": 12,
-        "added": 12,
-        "deleted": 0,
-        "deletedFromHead": false
+  "configuration": {},
+  "families": {
+    "temporal": {
+      "version": {
+        "major": 1,
+        "minor": 0
       },
-      {
-        "path": "beta.go",
-        "commits": 12,
-        "added": 12,
-        "deleted": 0,
-        "deletedFromHead": false
+      "status": "ok",
+      "metrics": {
+        "hour_histogram": [
+          12,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "weekday_histogram": [
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "night_ratio": 1,
+        "weekend_ratio": 0.3333,
+        "friday_evening_count": 0,
+        "busiest_day": {
+          "date": "2025-10-01",
+          "count": 1
+        },
+        "longest_streak_days": 12,
+        "longest_silence_days": 1,
+        "first_commit_date": "2025-10-01",
+        "last_commit_date": "2025-10-12"
+      }
+    },
+    "commit-size": {
+      "version": {
+        "major": 1,
+        "minor": 0
       },
-      {
-        "path": "gamma.go",
-        "commits": 4,
-        "added": 4,
-        "deleted": 0,
-        "deletedFromHead": false
+      "status": "ok",
+      "metrics": {
+        "mean_lines": 2.3,
+        "median_lines": 2,
+        "largest_commit": {
+          "hash": "fdb584133953cd2fd5e003e25086be631ccc0aff",
+          "date": "2025-10-04",
+          "lines": 3,
+          "files": 3
+        }
       }
-    ],
-    "largestCommit": {
-      "hash": "fdb584133953cd2fd5e003e25086be631ccc0aff",
-      "subject": "feat: change 3",
-      "date": "2025-10-04T00:00:00Z",
-      "linesChanged": 3,
-      "added": 3,
-      "deleted": 0,
-      "files": 3
     },
-    "averageCommitSize": 2.3,
-    "medianCommitSize": 2,
-    "totalAdded": 28,
-    "totalDeleted": 0,
-    "oldestUntouchedFile": {
-      "path": "gamma.go",
-      "lastModified": "2025-10-04T00:00:00Z"
-    },
-    "fileTypeDistribution": [
-      {
-        "extension": "go",
-        "changes": 28,
-        "added": 28,
-        "deleted": 0
-      }
-    ],
-    "codeAge": [
-      {
-        "year": 2025,
-        "lines": 28
-      }
-    ],
-    "survivingFromFirstYear": 1,
-    "codeAgeSampledFiles": 3,
-    "codeAgeTotalFiles": 3,
-    "trackedFiles": 3,
-    "trackedLines": 28
-  },
-  "messages": {
-    "typeDistribution": {
-      "feat": 12
-    },
-    "conventionalRatio": 1,
-    "lowConfidence": false,
-    "shortMessages": 0,
-    "longestSubject": {
-      "hash": "532ddcd441ca0f2f594c39353b529d19ddfc8d33",
-      "length": 15,
-      "subject": "feat: change 11"
-    },
-    "averageSubjectLength": 14.2,
-    "emojiCommits": 0,
-    "topEmoji": [],
-    "revertCount": 0,
-    "typoFixCount": 0,
-    "topWords": [
-      {
-        "word": "feat",
-        "count": 12
-      }
-    ]
-  },
-  "social": {
-    "busFactor": 1,
-    "directoryBusFactor": [],
-    "coupling": [
-      {
-        "a": "alpha.go",
-        "b": "beta.go",
-        "support": 12,
-        "confidence": 1,
-        "expected": false
-      }
-    ],
-    "churn": [
-      {
-        "path": "alpha.go",
-        "maxCommitsInWindow": 12,
-        "windowStart": "2025-10-01T00:00:00Z",
-        "totalCommits": 12,
-        "added": 12,
-        "deleted": 0
+    "messages": {
+      "version": {
+        "major": 1,
+        "minor": 0
       },
-      {
-        "path": "beta.go",
-        "maxCommitsInWindow": 12,
-        "windowStart": "2025-10-01T00:00:00Z",
-        "totalCommits": 12,
-        "added": 12,
-        "deleted": 0
+      "status": "ok",
+      "metrics": {
+        "conventional_ratio": 1,
+        "mean_subject_length": 14.2,
+        "revert_count": 0,
+        "fix_typo_count": 0
       }
-    ],
-    "knowledgeConcentration": []
-  },
-  "notables": {
-    "bulkCommits": [],
-    "latestNightCommit": {
-      "hash": "532ddcd441ca0f2f594c39353b529d19ddfc8d33",
-      "subject": "feat: change 11",
-      "date": "2025-10-12T00:00:00Z",
-      "linesChanged": 2,
-      "added": 2,
-      "deleted": 0,
-      "files": 2
     },
-    "earliestMorningCommit": null,
-    "weekendRatio": 0.3333,
-    "holidayCommits": 0,
-    "firstCommitSubject": "feat: change 0",
-    "mergeCount": 0,
-    "timezoneSpread": [
-      {
-        "offsetMinutes": 0,
-        "commits": 12
+    "files": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "most_modified": [
+          {
+            "path": "alpha.go",
+            "commits": 12,
+            "removed": false
+          },
+          {
+            "path": "beta.go",
+            "commits": 12,
+            "removed": false
+          },
+          {
+            "path": "gamma.go",
+            "commits": 4,
+            "removed": false
+          }
+        ],
+        "oldest_untouched": {
+          "path": "gamma.go",
+          "date": "2025-10-04"
+        },
+        "head_file_count": 3,
+        "tracked_text_file_count": 3
       }
-    ]
-  },
-  "warnings": []
+    },
+    "coupling": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "pairs": [
+          {
+            "a": "alpha.go",
+            "b": "beta.go",
+            "support": 12,
+            "confidence": 1,
+            "expected": false
+          }
+        ]
+      }
+    },
+    "ownership": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "worktype": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "ai-archaeology": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "hotspot": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "churn_files": [
+          {
+            "path": "alpha.go",
+            "commits_in_window": 12
+          },
+          {
+            "path": "beta.go",
+            "commits_in_window": 12
+          }
+        ]
+      }
+    },
+    "static-analysis": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    }
+  }
 }

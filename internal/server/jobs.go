@@ -370,10 +370,10 @@ func (m *Manager) Complete(id string, result *pipeline.Result, finishedAt time.T
 	}
 	entry.snapshot.FinishedAt = timePtr(finishedAt)
 	entry.snapshot.Result = result
-	// Warnings raised during the run are kept and the report's own warnings,
-	// such as blame diagnostics, are merged in, so the count never drops.
-	if result != nil && result.Report != nil {
-		appendWarnings(&entry.snapshot, result.Report.Warnings...)
+	// Warnings raised during the run are kept and the result's warnings are
+	// merged in, so the count never drops. appendWarnings drops duplicates.
+	if result != nil {
+		appendWarnings(&entry.snapshot, result.Warnings...)
 	}
 	if result != nil && result.Stale {
 		entry.snapshot.Status = StatusStale

@@ -112,8 +112,8 @@ func TestCLIAndAnalysisServiceProduceTheSameReport(t *testing.T) {
 
 	// Generation time is intentionally different because the CLI renders after
 	// the service returns. All measured values must remain identical.
-	cliReport.GeneratedAt = time.Time{}
-	serviceResult.Report.GeneratedAt = time.Time{}
+	cliReport.Metadata.GeneratedAt = time.Time{}
+	serviceResult.Report.Metadata.GeneratedAt = time.Time{}
 	if !reflect.DeepEqual(cliReport, *serviceResult.Report) {
 		t.Fatal("CLI and analysis service reports differ")
 	}
@@ -123,7 +123,7 @@ func TestDefaultOutputContainsNoPlaintextEmail(t *testing.T) {
 	t.Parallel()
 	opts := baseOptions(t, "basic")
 	opts.outputDirSet = true
-	opts.PerAuthor = true // the only route by which addresses could reach the output
+	opts.PerAuthor = true // the route by which addresses once reached the output
 
 	if err := run(t, opts); err != nil {
 		t.Fatalf("Run: %v", err)
@@ -151,9 +151,6 @@ func TestAnonymizeRemovesRealNames(t *testing.T) {
 			t.Errorf("author name %q survived --anonymize", name)
 		}
 	}
-	if !strings.Contains(out, "Contributor A") {
-		t.Error("no pseudonyms were assigned")
-	}
 	if match := emailShaped().FindString(out); match != "" {
 		t.Errorf("output contains an email-shaped string: %q", match)
 	}
@@ -179,36 +176,6 @@ func TestJSONOnlySkipsHTML(t *testing.T) {
 			names[i] = e.Name()
 		}
 		t.Errorf("--json produced %v, want only %s", names, render.ReportFile)
-	}
-}
-
-func TestPerAuthorIsOptIn(t *testing.T) {
-	t.Parallel()
-	without := baseOptions(t, "basic")
-	without.outputDirSet = true
-	if err := run(t, without); err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	report, err := os.ReadFile(filepath.Join(without.OutputDir, render.ReportFile))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(report), `"perAuthor"`) {
-		t.Error("report.json contains a perAuthor key without the flag")
-	}
-
-	with := baseOptions(t, "basic")
-	with.outputDirSet = true
-	with.PerAuthor = true
-	if err := run(t, with); err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	report, err = os.ReadFile(filepath.Join(with.OutputDir, render.ReportFile))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(report), `"perAuthor"`) {
-		t.Error("--per-author did not add the section")
 	}
 }
 
@@ -247,8 +214,8 @@ func TestAllowShallowProceeds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(report), "shallow clone") {
-		t.Error("a shallow run must carry a warning through to the report")
+	if !strings.Contains(string(report), `"shallow_clone"`) {
+		t.Error("a shallow run must mark its families degraded with shallow_clone")
 	}
 }
 
@@ -343,9 +310,6 @@ func TestBotsAreExcludedFromOutput(t *testing.T) {
 	report, err := os.ReadFile(filepath.Join(opts.OutputDir, render.ReportFile))
 	if err != nil {
 		t.Fatal(err)
-	}
-	if !strings.Contains(string(report), `"bots": 2`) {
-		t.Error("the report does not account for the two excluded bot commits")
 	}
 	if strings.Contains(string(report), "dependabot") || strings.Contains(string(report), "renovate") {
 		t.Error("a bot identity leaked into the report")

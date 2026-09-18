@@ -2,10 +2,11 @@ package checks
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -24,15 +25,32 @@ import (
 // The half that compares differing parallelism degrees arrives with
 // parallelism in WP-0012 (ADR-0064 clause 5).
 
-// withoutGenerationMetadata removes the fields ADR-0021 clause 6 designates as
-// generation metadata: the generation time and the tool version. WP-0008
-// gathers them into one section; until then they are these two top-level
-// fields.
+// metadataSection is the path of the generation metadata in the report.
+const metadataSection = "metadata"
+
+// withoutGenerationMetadata removes the section ADR-0021 clause 6 designates
+// for generation metadata, by its path: the top-level "metadata" object,
+// whatever it holds. Anything that is not a JSON object, such as a refusal, is
+// returned unchanged. Every other top-level value is kept as the exact bytes
+// the report carries, so a difference in formatting or ordering inside it is
+// still a difference (ADR-0021 clause 4 requires byte identity).
 func withoutGenerationMetadata(report string) string {
-	for _, field := range []string{"generatedAt", "toolVersion"} {
-		report = regexp.MustCompile(`(?m)^(\s*"`+field+`": )"[^"]*"`).ReplaceAllString(report, `${1}"<generation metadata>"`)
+	var document map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(report), &document); err != nil {
+		return report
 	}
-	return report
+	keys := make([]string, 0, len(document))
+	for key := range document {
+		if key != metadataSection {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	for _, key := range keys {
+		fmt.Fprintf(&b, "%q: %s\n", key, document[key])
+	}
+	return b.String()
 }
 
 // analyseAt runs the command's analysis path on a fixture with the clock
@@ -85,7 +103,7 @@ func TestDeterminism(t *testing.T) {
 				fatal(t, 64, "fixture %q is missing; the gates generate it with `make fixtures`", fixture)
 			}
 			a, b := analyseAt(t, dir, first), analyseAt(t, dir, second)
-			if a == b && strings.Contains(a, `"generatedAt"`) {
+			if a == b && strings.Contains(a, `"generated_at"`) {
 				fatal(t, 64, "two runs at different times produced the same generation time, so the clock "+
 					"did not reach the report and this check proves nothing")
 			}
@@ -102,9 +120,13 @@ func TestDeterminism(t *testing.T) {
 // generation metadata must be reported, and one inside it must not.
 func TestDeterminismRejectsAClockDependentValue(t *testing.T) {
 	t.Parallel()
-	run := func(at string, age string) string {
-		return "{\n  \"schemaVersion\": 1,\n  \"generatedAt\": \"" + at + "\",\n  \"toolVersion\": \"dev\",\n" +
-			"  \"repository\": {\n    \"ageDays\": " + age + "\n  }\n}\n"
+	run := func(at string, days string) string {
+		return `{
+  "document_version": {"major": 1, "minor": 0},
+  "metadata": {"generated_at": "` + at + `", "tool_version": "dev"},
+  "families": {"temporal": {"metrics": {"longest_silence_days": ` + days + `}}}
+}
+`
 	}
 	if diff := sameInputDifference(run("2026-09-11T12:00:00Z", "3"), run("2026-09-12T13:00:00Z", "3")); diff != "" {
 		report(t, 21, "the determinism checker refused a difference inside the generation metadata:\n%s", diff)

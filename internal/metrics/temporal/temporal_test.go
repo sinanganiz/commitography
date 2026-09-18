@@ -21,11 +21,14 @@ func at(year int, month time.Month, day, hour, minute, offsetHours int) model.Co
 	}
 }
 
-// testInput builds the minimal Input the metric builders need. The commit
-// slice is passed to the builder directly, so it is only here for readability
-// at the call sites.
-func testInput(_ []model.Commit) core.Input {
-	return core.Input{Config: config.Default()}
+// build runs the family over commits and requires it to be computed.
+func build(t *testing.T, commits []model.Commit) core.TemporalMetrics {
+	t.Helper()
+	f := Build(core.Input{Config: config.Default()}, commits)
+	if f.Status != core.StatusOK {
+		t.Fatalf("status = %s %v, want ok", f.Status, f.Reasons)
+	}
+	return f.Metrics
 }
 
 func TestTemporalHistogramsUseAuthorLocalTime(t *testing.T) {
@@ -34,20 +37,20 @@ func TestTemporalHistogramsUseAuthorLocalTime(t *testing.T) {
 		// 2026-01-05 is a Monday.
 		at(2026, time.January, 5, 9, 0, 0),   // Mon 09:00 UTC
 		at(2026, time.January, 5, 23, 0, 3),  // Mon 23:00 +03 -> still Monday locally
-		at(2026, time.January, 9, 18, 0, -5), // Fri 18:00 -05, a brave deploy
-		at(2026, time.January, 10, 2, 30, 0), // Sat 02:30, night owl and weekend
+		at(2026, time.January, 9, 18, 0, -5), // Fri 18:00 -05, a Friday evening
+		at(2026, time.January, 10, 2, 30, 0), // Sat 02:30, night and weekend
 	}
-	m := BuildTemporal(testInput(commits), commits)
+	m := build(t, commits)
 
 	if m.HourHistogram[9] != 1 || m.HourHistogram[23] != 1 ||
 		m.HourHistogram[18] != 1 || m.HourHistogram[2] != 1 {
 		t.Errorf("hour histogram = %v", m.HourHistogram)
 	}
 	if sum(m.HourHistogram) != len(commits) {
-		t.Errorf("sum(hourHistogram) = %d, want %d", sum(m.HourHistogram), len(commits))
+		t.Errorf("sum(hour_histogram) = %d, want %d", sum(m.HourHistogram), len(commits))
 	}
 	if sum(m.WeekdayHistogram) != len(commits) {
-		t.Errorf("sum(weekdayHistogram) = %d, want %d", sum(m.WeekdayHistogram), len(commits))
+		t.Errorf("sum(weekday_histogram) = %d, want %d", sum(m.WeekdayHistogram), len(commits))
 	}
 
 	// Index 0 is Monday, index 5 is Saturday.
@@ -61,23 +64,15 @@ func TestTemporalHistogramsUseAuthorLocalTime(t *testing.T) {
 		t.Errorf("Saturday count = %d, want 1", m.WeekdayHistogram[5])
 	}
 
-	if m.HourWeekdayGrid[0][23] != 1 {
-		t.Errorf("grid[Monday][23] = %d, want 1", m.HourWeekdayGrid[0][23])
+	if *m.FridayEveningCount != 1 {
+		t.Errorf("friday_evening_count = %d, want 1 (Friday 18:00 local)", *m.FridayEveningCount)
 	}
-	total := 0
-	for _, row := range m.HourWeekdayGrid {
-		total += sum(row)
+	// 23:00 and 02:30 are night hours; 09:00 and 18:00 are not.
+	if *m.NightRatio != 0.5 {
+		t.Errorf("night_ratio = %v, want 0.5", *m.NightRatio)
 	}
-	if total != len(commits) {
-		t.Errorf("grid total = %d, want %d", total, len(commits))
-	}
-
-	if m.BraveDeploys != 1 {
-		t.Errorf("braveDeploys = %d, want 1 (Friday 18:00 local)", m.BraveDeploys)
-	}
-	// 23:00 and 02:30 are night-owl hours; 09:00 and 18:00 are not.
-	if m.NightOwlRatio != 0.5 {
-		t.Errorf("nightOwlRatio = %v, want 0.5", m.NightOwlRatio)
+	if *m.WeekendRatio != 0.25 {
+		t.Errorf("weekend_ratio = %v, want 0.25", *m.WeekendRatio)
 	}
 }
 
@@ -89,12 +84,9 @@ func TestBusiestDayBreaksTiesOnEarliestDate(t *testing.T) {
 		at(2026, time.March, 5, 10, 0, 0),
 		at(2026, time.March, 5, 11, 0, 0),
 	}
-	m := BuildTemporal(testInput(commits), commits)
-	if m.BusiestDay == nil {
-		t.Fatal("busiestDay is nil")
-	}
+	m := build(t, commits)
 	if m.BusiestDay.Date != "2026-03-02" || m.BusiestDay.Count != 2 {
-		t.Errorf("busiestDay = %+v, want 2026-03-02 with 2", *m.BusiestDay)
+		t.Errorf("busiest_day = %+v, want 2026-03-02 with 2", *m.BusiestDay)
 	}
 }
 
@@ -107,21 +99,12 @@ func TestLongestStreakAndSilence(t *testing.T) {
 		at(2026, time.April, 20, 10, 0, 0),
 		at(2026, time.April, 21, 10, 0, 0),
 	}
-	m := BuildTemporal(testInput(commits), commits)
-
-	if m.LongestStreak == nil || m.LongestStreak.Days != 3 {
-		t.Fatalf("longestStreak = %+v, want 3 days", m.LongestStreak)
+	m := build(t, commits)
+	if *m.LongestStreakDays != 3 {
+		t.Errorf("longest_streak_days = %d, want 3", *m.LongestStreakDays)
 	}
-	if m.LongestStreak.StartDate != "2026-04-01" || m.LongestStreak.EndDate != "2026-04-03" {
-		t.Errorf("streak span = %s..%s, want 2026-04-01..2026-04-03",
-			m.LongestStreak.StartDate, m.LongestStreak.EndDate)
-	}
-	if m.LongestSilence == nil || m.LongestSilence.Days != 17 {
-		t.Fatalf("longestSilence = %+v, want 17 days", m.LongestSilence)
-	}
-	if m.LongestSilence.StartDate != "2026-04-03" || m.LongestSilence.EndDate != "2026-04-20" {
-		t.Errorf("silence span = %s..%s, want 2026-04-03..2026-04-20",
-			m.LongestSilence.StartDate, m.LongestSilence.EndDate)
+	if *m.LongestSilenceDays != 17 {
+		t.Errorf("longest_silence_days = %d, want 17", *m.LongestSilenceDays)
 	}
 }
 
@@ -131,12 +114,12 @@ func TestSingleDayRepositoryEdgeCase(t *testing.T) {
 		at(2026, time.May, 4, 9, 0, 0),
 		at(2026, time.May, 4, 17, 0, 0),
 	}
-	m := BuildTemporal(testInput(commits), commits)
-	if m.LongestStreak == nil || m.LongestStreak.Days != 1 {
-		t.Errorf("longestStreak = %+v, want 1 day", m.LongestStreak)
+	m := build(t, commits)
+	if *m.LongestStreakDays != 1 {
+		t.Errorf("longest_streak_days = %d, want 1", *m.LongestStreakDays)
 	}
-	if m.LongestSilence == nil || m.LongestSilence.Days != 0 {
-		t.Errorf("longestSilence = %+v, want 0 days", m.LongestSilence)
+	if *m.LongestSilenceDays != 0 {
+		t.Errorf("longest_silence_days = %d, want 0", *m.LongestSilenceDays)
 	}
 }
 
@@ -149,58 +132,37 @@ func TestStreakUsesLocalDatesNotUTC(t *testing.T) {
 		at(2026, time.June, 1, 23, 0, 3),
 		at(2026, time.June, 2, 1, 0, 3),
 	}
-	m := BuildTemporal(testInput(commits), commits)
-	if m.LongestStreak == nil || m.LongestStreak.Days != 2 {
-		t.Errorf("longestStreak = %+v, want 2 days across local dates", m.LongestStreak)
+	m := build(t, commits)
+	if *m.LongestStreakDays != 2 {
+		t.Errorf("longest_streak_days = %d, want 2 across local dates", *m.LongestStreakDays)
 	}
 }
 
-func TestCommitsPerMonthZeroFillsGaps(t *testing.T) {
-	t.Parallel()
-	commits := []model.Commit{
-		at(2025, time.November, 1, 10, 0, 0),
-		at(2026, time.February, 1, 10, 0, 0),
-		at(2026, time.February, 2, 10, 0, 0),
-	}
-	m := BuildTemporal(testInput(commits), commits)
-
-	want := []core.MonthCount{
-		{Month: "2025-11", Count: 1}, {Month: "2025-12", Count: 0},
-		{Month: "2026-01", Count: 0}, {Month: "2026-02", Count: 2},
-	}
-	if len(m.CommitsPerMonth) != len(want) {
-		t.Fatalf("commitsPerMonth = %v, want %v", m.CommitsPerMonth, want)
-	}
-	for i, w := range want {
-		if m.CommitsPerMonth[i] != w {
-			t.Errorf("month %d = %+v, want %+v", i, m.CommitsPerMonth[i], w)
-		}
-	}
-}
-
+// TestTemporalOnEmptyInput is docs/metrics.md section 1: a metric over an
+// empty population is absent, with the family degraded, never zero.
 func TestTemporalOnEmptyInput(t *testing.T) {
 	t.Parallel()
-	m := BuildTemporal(testInput(nil), nil)
-	if len(m.HourHistogram) != 24 || len(m.WeekdayHistogram) != 7 || len(m.HourWeekdayGrid) != 7 {
-		t.Error("histograms must keep their fixed shape even with no commits")
+	f := Build(core.Input{Config: config.Default()}, nil)
+	if f.Status != core.StatusDegraded || len(f.Reasons) != 1 || f.Reasons[0] != core.ReasonEmptyPopulation {
+		t.Errorf("family = %s %v, want degraded with empty_population", f.Status, f.Reasons)
 	}
-	if m.BusiestDay != nil || m.LongestStreak != nil || m.LongestSilence != nil {
-		t.Error("absent metrics must be null, not zero-valued")
+	if f.Metrics.HourHistogram != nil || f.Metrics.NightRatio != nil || f.Metrics.BusiestDay != nil {
+		t.Errorf("metrics over no commits = %+v, want every metric absent", f.Metrics)
 	}
 }
 
-func TestFirstAndLastCommitPreserveOffsets(t *testing.T) {
+func TestFirstAndLastCommitDatesAreLocal(t *testing.T) {
 	t.Parallel()
+	// 01:00 at +03 on 1 July is 30 June in UTC; 22:00 at -05 on 9 July is
+	// 10 July in UTC.
 	commits := []model.Commit{
-		at(2026, time.July, 1, 12, 0, 3),
-		at(2026, time.July, 9, 12, 0, -5),
+		at(2026, time.July, 1, 1, 0, 3),
+		at(2026, time.July, 9, 22, 0, -5),
 	}
-	m := BuildTemporal(testInput(commits), commits)
-	if _, offset := m.FirstCommit.Zone(); offset != 3*3600 {
-		t.Errorf("firstCommit offset = %d, want %d", offset, 3*3600)
-	}
-	if _, offset := m.LastCommit.Zone(); offset != -5*3600 {
-		t.Errorf("lastCommit offset = %d, want %d", offset, -5*3600)
+	m := build(t, commits)
+	if *m.FirstCommitDate != "2026-07-01" || *m.LastCommitDate != "2026-07-09" {
+		t.Errorf("first/last commit date = %s/%s, want 2026-07-01/2026-07-09",
+			*m.FirstCommitDate, *m.LastCommitDate)
 	}
 }
 

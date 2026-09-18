@@ -1,1532 +1,358 @@
 {
-  "schemaVersion": 1,
-  "generatedAt": "<generated-at>",
-  "toolVersion": "<tool-version>",
+  "document_version": {
+    "major": 1,
+    "minor": 0
+  },
+  "metadata": {
+    "generated_at": "<generated-at>",
+    "tool_version": "<tool-version>"
+  },
   "repository": {
     "name": "large-history",
-    "defaultBranch": "main",
-    "headCommit": "3de6c8809832b71322fd7792930053d6d46b381a",
-    "firstCommit": "2012-01-23T11:30:00+05:30",
-    "lastCommit": "2025-09-30T17:00:00-07:00",
-    "ageDays": 5000,
-    "commitsTotal": 20000,
-    "commitsAnalyzed": 20000,
-    "commitsExcluded": {
-      "merges": 0,
-      "bots": 0,
-      "total": 0
-    },
-    "contributors": 12,
-    "trackedFiles": 40,
-    "trackedLines": 1200,
-    "isShallow": false
+    "commit": "3de6c8809832b71322fd7792930053d6d46b381a"
   },
-  "temporal": {
-    "hourHistogram": [
-      1666,
-      0,
-      0,
-      0,
-      0,
-      3334,
-      1666,
-      0,
-      0,
-      0,
-      0,
-      3333,
-      1667,
-      0,
-      0,
-      0,
-      0,
-      3333,
-      1667,
-      0,
-      0,
-      0,
-      0,
-      3334
-    ],
-    "weekdayHistogram": [
-      2860,
-      2860,
-      2856,
-      2856,
-      2856,
-      2856,
-      2856
-    ],
-    "hourWeekdayGrid": [
-      [
-        238,
-        0,
-        0,
-        0,
-        0,
-        477,
-        238,
-        0,
-        0,
-        0,
-        0,
-        477,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        239,
-        0,
-        0,
-        0,
-        0,
-        477
+  "configuration": {},
+  "families": {
+    "temporal": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "hour_histogram": [
+          1666,
+          0,
+          0,
+          0,
+          0,
+          3334,
+          1666,
+          0,
+          0,
+          0,
+          0,
+          3333,
+          1667,
+          0,
+          0,
+          0,
+          0,
+          3333,
+          1667,
+          0,
+          0,
+          0,
+          0,
+          3334
+        ],
+        "weekday_histogram": [
+          2860,
+          2860,
+          2856,
+          2856,
+          2856,
+          2856,
+          2856
+        ],
+        "night_ratio": 0.4167,
+        "weekend_ratio": 0.2856,
+        "friday_evening_count": 1190,
+        "busiest_day": {
+          "date": "2012-01-26",
+          "count": 5
+        },
+        "longest_streak_days": 5000,
+        "longest_silence_days": 0,
+        "first_commit_date": "2012-01-23",
+        "last_commit_date": "2025-09-30"
+      }
+    },
+    "commit-size": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "mean_lines": 8.8,
+        "median_lines": 6,
+        "largest_commit": {
+          "hash": "0f2ab92e91256e50a4a3fb401e7686be734acbb2",
+          "date": "2023-07-24",
+          "lines": 64,
+          "files": 2
+        }
+      }
+    },
+    "messages": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "conventional_ratio": 1,
+        "mean_subject_length": 18.1,
+        "revert_count": 0,
+        "fix_typo_count": 0
+      }
+    },
+    "files": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "degraded",
+      "reasons": [
+        "cardinality_limit"
       ],
-      [
-        238,
-        0,
-        0,
-        0,
-        0,
-        477,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        239,
-        0,
-        0,
-        0,
-        0,
-        477,
-        238,
-        0,
-        0,
-        0,
-        0,
-        477
+      "confidence": "partial",
+      "metrics": {
+        "most_modified": [
+          {
+            "path": "pkg1/file1.go",
+            "commits": 1000,
+            "removed": false
+          },
+          {
+            "path": "pkg3/file11.go",
+            "commits": 1000,
+            "removed": false
+          },
+          {
+            "path": "pkg5/file21.go",
+            "commits": 1000,
+            "removed": false
+          },
+          {
+            "path": "pkg7/file31.go",
+            "commits": 1000,
+            "removed": false
+          },
+          {
+            "path": "pkg0/file0.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg0/file16.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg0/file24.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg0/file32.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg0/file8.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg1/file17.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg1/file25.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg1/file33.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg1/file9.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg2/file10.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg2/file18.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg2/file2.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg2/file26.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg2/file34.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg3/file19.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg3/file27.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg3/file3.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg3/file35.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg4/file12.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg4/file20.go",
+            "commits": 500,
+            "removed": false
+          },
+          {
+            "path": "pkg4/file28.go",
+            "commits": 500,
+            "removed": false
+          }
+        ],
+        "oldest_untouched": {
+          "path": "pkg7/file7.go",
+          "date": "2025-09-20"
+        },
+        "head_file_count": 40,
+        "tracked_text_file_count": 40
+      }
+    },
+    "coupling": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "pairs": [
+          {
+            "a": "pkg0/file0.go",
+            "b": "pkg1/file1.go",
+            "support": 500,
+            "confidence": 1,
+            "expected": false
+          },
+          {
+            "a": "pkg2/file10.go",
+            "b": "pkg3/file11.go",
+            "support": 500,
+            "confidence": 1,
+            "expected": false
+          },
+          {
+            "a": "pkg4/file20.go",
+            "b": "pkg5/file21.go",
+            "support": 500,
+            "confidence": 1,
+            "expected": false
+          },
+          {
+            "a": "pkg6/file30.go",
+            "b": "pkg7/file31.go",
+            "support": 500,
+            "confidence": 1,
+            "expected": false
+          }
+        ]
+      }
+    },
+    "ownership": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476
+      "metrics": {}
+    },
+    "worktype": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476
+      "metrics": {}
+    },
+    "ai-archaeology": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476
+      "metrics": {}
+    },
+    "hotspot": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "churn_files": [
+          {
+            "path": "pkg1/file1.go",
+            "commits_in_window": 7
+          },
+          {
+            "path": "pkg3/file11.go",
+            "commits_in_window": 7
+          },
+          {
+            "path": "pkg5/file21.go",
+            "commits_in_window": 7
+          },
+          {
+            "path": "pkg7/file31.go",
+            "commits_in_window": 7
+          }
+        ]
+      }
+    },
+    "static-analysis": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476
-      ],
-      [
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476,
-        238,
-        0,
-        0,
-        0,
-        0,
-        476
-      ]
-    ],
-    "braveDeploys": 1190,
-    "nightOwlRatio": 0.4167,
-    "busiestDay": {
-      "date": "2012-01-26",
-      "count": 5
-    },
-    "longestStreak": {
-      "days": 5000,
-      "startDate": "2012-01-23",
-      "endDate": "2025-09-30"
-    },
-    "longestSilence": {
-      "days": 0,
-      "startDate": "2012-01-23",
-      "endDate": "2012-01-23"
-    },
-    "commitsPerMonth": [
-      {
-        "month": "2012-01",
-        "count": 35
-      },
-      {
-        "month": "2012-02",
-        "count": 117
-      },
-      {
-        "month": "2012-03",
-        "count": 123
-      },
-      {
-        "month": "2012-04",
-        "count": 120
-      },
-      {
-        "month": "2012-05",
-        "count": 125
-      },
-      {
-        "month": "2012-06",
-        "count": 120
-      },
-      {
-        "month": "2012-07",
-        "count": 124
-      },
-      {
-        "month": "2012-08",
-        "count": 123
-      },
-      {
-        "month": "2012-09",
-        "count": 120
-      },
-      {
-        "month": "2012-10",
-        "count": 125
-      },
-      {
-        "month": "2012-11",
-        "count": 120
-      },
-      {
-        "month": "2012-12",
-        "count": 124
-      },
-      {
-        "month": "2013-01",
-        "count": 123
-      },
-      {
-        "month": "2013-02",
-        "count": 113
-      },
-      {
-        "month": "2013-03",
-        "count": 124
-      },
-      {
-        "month": "2013-04",
-        "count": 120
-      },
-      {
-        "month": "2013-05",
-        "count": 123
-      },
-      {
-        "month": "2013-06",
-        "count": 120
-      },
-      {
-        "month": "2013-07",
-        "count": 125
-      },
-      {
-        "month": "2013-08",
-        "count": 124
-      },
-      {
-        "month": "2013-09",
-        "count": 120
-      },
-      {
-        "month": "2013-10",
-        "count": 123
-      },
-      {
-        "month": "2013-11",
-        "count": 120
-      },
-      {
-        "month": "2013-12",
-        "count": 125
-      },
-      {
-        "month": "2014-01",
-        "count": 124
-      },
-      {
-        "month": "2014-02",
-        "count": 111
-      },
-      {
-        "month": "2014-03",
-        "count": 125
-      },
-      {
-        "month": "2014-04",
-        "count": 120
-      },
-      {
-        "month": "2014-05",
-        "count": 124
-      },
-      {
-        "month": "2014-06",
-        "count": 120
-      },
-      {
-        "month": "2014-07",
-        "count": 123
-      },
-      {
-        "month": "2014-08",
-        "count": 125
-      },
-      {
-        "month": "2014-09",
-        "count": 120
-      },
-      {
-        "month": "2014-10",
-        "count": 124
-      },
-      {
-        "month": "2014-11",
-        "count": 120
-      },
-      {
-        "month": "2014-12",
-        "count": 123
-      },
-      {
-        "month": "2015-01",
-        "count": 125
-      },
-      {
-        "month": "2015-02",
-        "count": 112
-      },
-      {
-        "month": "2015-03",
-        "count": 123
-      },
-      {
-        "month": "2015-04",
-        "count": 120
-      },
-      {
-        "month": "2015-05",
-        "count": 125
-      },
-      {
-        "month": "2015-06",
-        "count": 120
-      },
-      {
-        "month": "2015-07",
-        "count": 124
-      },
-      {
-        "month": "2015-08",
-        "count": 123
-      },
-      {
-        "month": "2015-09",
-        "count": 120
-      },
-      {
-        "month": "2015-10",
-        "count": 125
-      },
-      {
-        "month": "2015-11",
-        "count": 120
-      },
-      {
-        "month": "2015-12",
-        "count": 124
-      },
-      {
-        "month": "2016-01",
-        "count": 123
-      },
-      {
-        "month": "2016-02",
-        "count": 117
-      },
-      {
-        "month": "2016-03",
-        "count": 123
-      },
-      {
-        "month": "2016-04",
-        "count": 120
-      },
-      {
-        "month": "2016-05",
-        "count": 125
-      },
-      {
-        "month": "2016-06",
-        "count": 120
-      },
-      {
-        "month": "2016-07",
-        "count": 124
-      },
-      {
-        "month": "2016-08",
-        "count": 123
-      },
-      {
-        "month": "2016-09",
-        "count": 120
-      },
-      {
-        "month": "2016-10",
-        "count": 125
-      },
-      {
-        "month": "2016-11",
-        "count": 120
-      },
-      {
-        "month": "2016-12",
-        "count": 124
-      },
-      {
-        "month": "2017-01",
-        "count": 123
-      },
-      {
-        "month": "2017-02",
-        "count": 113
-      },
-      {
-        "month": "2017-03",
-        "count": 124
-      },
-      {
-        "month": "2017-04",
-        "count": 120
-      },
-      {
-        "month": "2017-05",
-        "count": 123
-      },
-      {
-        "month": "2017-06",
-        "count": 120
-      },
-      {
-        "month": "2017-07",
-        "count": 125
-      },
-      {
-        "month": "2017-08",
-        "count": 124
-      },
-      {
-        "month": "2017-09",
-        "count": 120
-      },
-      {
-        "month": "2017-10",
-        "count": 123
-      },
-      {
-        "month": "2017-11",
-        "count": 120
-      },
-      {
-        "month": "2017-12",
-        "count": 125
-      },
-      {
-        "month": "2018-01",
-        "count": 124
-      },
-      {
-        "month": "2018-02",
-        "count": 111
-      },
-      {
-        "month": "2018-03",
-        "count": 125
-      },
-      {
-        "month": "2018-04",
-        "count": 120
-      },
-      {
-        "month": "2018-05",
-        "count": 124
-      },
-      {
-        "month": "2018-06",
-        "count": 120
-      },
-      {
-        "month": "2018-07",
-        "count": 123
-      },
-      {
-        "month": "2018-08",
-        "count": 125
-      },
-      {
-        "month": "2018-09",
-        "count": 120
-      },
-      {
-        "month": "2018-10",
-        "count": 124
-      },
-      {
-        "month": "2018-11",
-        "count": 120
-      },
-      {
-        "month": "2018-12",
-        "count": 123
-      },
-      {
-        "month": "2019-01",
-        "count": 125
-      },
-      {
-        "month": "2019-02",
-        "count": 112
-      },
-      {
-        "month": "2019-03",
-        "count": 123
-      },
-      {
-        "month": "2019-04",
-        "count": 120
-      },
-      {
-        "month": "2019-05",
-        "count": 125
-      },
-      {
-        "month": "2019-06",
-        "count": 120
-      },
-      {
-        "month": "2019-07",
-        "count": 124
-      },
-      {
-        "month": "2019-08",
-        "count": 123
-      },
-      {
-        "month": "2019-09",
-        "count": 120
-      },
-      {
-        "month": "2019-10",
-        "count": 125
-      },
-      {
-        "month": "2019-11",
-        "count": 120
-      },
-      {
-        "month": "2019-12",
-        "count": 124
-      },
-      {
-        "month": "2020-01",
-        "count": 123
-      },
-      {
-        "month": "2020-02",
-        "count": 117
-      },
-      {
-        "month": "2020-03",
-        "count": 123
-      },
-      {
-        "month": "2020-04",
-        "count": 120
-      },
-      {
-        "month": "2020-05",
-        "count": 125
-      },
-      {
-        "month": "2020-06",
-        "count": 120
-      },
-      {
-        "month": "2020-07",
-        "count": 124
-      },
-      {
-        "month": "2020-08",
-        "count": 123
-      },
-      {
-        "month": "2020-09",
-        "count": 120
-      },
-      {
-        "month": "2020-10",
-        "count": 125
-      },
-      {
-        "month": "2020-11",
-        "count": 120
-      },
-      {
-        "month": "2020-12",
-        "count": 124
-      },
-      {
-        "month": "2021-01",
-        "count": 123
-      },
-      {
-        "month": "2021-02",
-        "count": 113
-      },
-      {
-        "month": "2021-03",
-        "count": 124
-      },
-      {
-        "month": "2021-04",
-        "count": 120
-      },
-      {
-        "month": "2021-05",
-        "count": 123
-      },
-      {
-        "month": "2021-06",
-        "count": 120
-      },
-      {
-        "month": "2021-07",
-        "count": 125
-      },
-      {
-        "month": "2021-08",
-        "count": 124
-      },
-      {
-        "month": "2021-09",
-        "count": 120
-      },
-      {
-        "month": "2021-10",
-        "count": 123
-      },
-      {
-        "month": "2021-11",
-        "count": 120
-      },
-      {
-        "month": "2021-12",
-        "count": 125
-      },
-      {
-        "month": "2022-01",
-        "count": 124
-      },
-      {
-        "month": "2022-02",
-        "count": 111
-      },
-      {
-        "month": "2022-03",
-        "count": 125
-      },
-      {
-        "month": "2022-04",
-        "count": 120
-      },
-      {
-        "month": "2022-05",
-        "count": 124
-      },
-      {
-        "month": "2022-06",
-        "count": 120
-      },
-      {
-        "month": "2022-07",
-        "count": 123
-      },
-      {
-        "month": "2022-08",
-        "count": 125
-      },
-      {
-        "month": "2022-09",
-        "count": 120
-      },
-      {
-        "month": "2022-10",
-        "count": 124
-      },
-      {
-        "month": "2022-11",
-        "count": 120
-      },
-      {
-        "month": "2022-12",
-        "count": 123
-      },
-      {
-        "month": "2023-01",
-        "count": 125
-      },
-      {
-        "month": "2023-02",
-        "count": 112
-      },
-      {
-        "month": "2023-03",
-        "count": 123
-      },
-      {
-        "month": "2023-04",
-        "count": 120
-      },
-      {
-        "month": "2023-05",
-        "count": 125
-      },
-      {
-        "month": "2023-06",
-        "count": 120
-      },
-      {
-        "month": "2023-07",
-        "count": 124
-      },
-      {
-        "month": "2023-08",
-        "count": 123
-      },
-      {
-        "month": "2023-09",
-        "count": 120
-      },
-      {
-        "month": "2023-10",
-        "count": 125
-      },
-      {
-        "month": "2023-11",
-        "count": 120
-      },
-      {
-        "month": "2023-12",
-        "count": 124
-      },
-      {
-        "month": "2024-01",
-        "count": 123
-      },
-      {
-        "month": "2024-02",
-        "count": 117
-      },
-      {
-        "month": "2024-03",
-        "count": 123
-      },
-      {
-        "month": "2024-04",
-        "count": 120
-      },
-      {
-        "month": "2024-05",
-        "count": 125
-      },
-      {
-        "month": "2024-06",
-        "count": 120
-      },
-      {
-        "month": "2024-07",
-        "count": 124
-      },
-      {
-        "month": "2024-08",
-        "count": 123
-      },
-      {
-        "month": "2024-09",
-        "count": 120
-      },
-      {
-        "month": "2024-10",
-        "count": 125
-      },
-      {
-        "month": "2024-11",
-        "count": 120
-      },
-      {
-        "month": "2024-12",
-        "count": 124
-      },
-      {
-        "month": "2025-01",
-        "count": 123
-      },
-      {
-        "month": "2025-02",
-        "count": 113
-      },
-      {
-        "month": "2025-03",
-        "count": 124
-      },
-      {
-        "month": "2025-04",
-        "count": 120
-      },
-      {
-        "month": "2025-05",
-        "count": 123
-      },
-      {
-        "month": "2025-06",
-        "count": 120
-      },
-      {
-        "month": "2025-07",
-        "count": 125
-      },
-      {
-        "month": "2025-08",
-        "count": 124
-      },
-      {
-        "month": "2025-09",
-        "count": 120
-      }
-    ],
-    "firstCommit": "2012-01-23T11:30:00+05:30",
-    "lastCommit": "2025-09-30T17:00:00-07:00"
-  },
-  "code": {
-    "mostTouchedFiles": [
-      {
-        "path": "pkg1/file1.go",
-        "commits": 1000,
-        "added": 4012,
-        "deleted": 3982,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg3/file11.go",
-        "commits": 1000,
-        "added": 4012,
-        "deleted": 3982,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg5/file21.go",
-        "commits": 1000,
-        "added": 4012,
-        "deleted": 3982,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg7/file31.go",
-        "commits": 1000,
-        "added": 4012,
-        "deleted": 3982,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg0/file0.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg0/file16.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg0/file24.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg0/file32.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg0/file8.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg1/file17.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg1/file25.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg1/file33.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg1/file9.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg2/file10.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg2/file18.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg2/file2.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg2/file26.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg2/file34.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg3/file19.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg3/file27.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg3/file3.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg3/file35.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg4/file12.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg4/file20.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      },
-      {
-        "path": "pkg4/file28.go",
-        "commits": 500,
-        "added": 2014,
-        "deleted": 1984,
-        "deletedFromHead": false
-      }
-    ],
-    "largestCommit": {
-      "hash": "0f2ab92e91256e50a4a3fb401e7686be734acbb2",
-      "subject": "feat: change 16800",
-      "date": "2023-07-24T00:00:00Z",
-      "linesChanged": 64,
-      "added": 32,
-      "deleted": 32,
-      "files": 2
-    },
-    "averageCommitSize": 8.8,
-    "medianCommitSize": 6,
-    "totalAdded": 88552,
-    "totalDeleted": 87352,
-    "oldestUntouchedFile": {
-      "path": "pkg7/file7.go",
-      "lastModified": "2025-09-20T23:00:00-07:00"
-    },
-    "fileTypeDistribution": [
-      {
-        "extension": "go",
-        "changes": 22000,
-        "added": 88552,
-        "deleted": 87352
-      }
-    ],
-    "codeAge": [
-      {
-        "year": 2025,
-        "lines": 1200
-      }
-    ],
-    "survivingFromFirstYear": 0,
-    "codeAgeSampledFiles": 40,
-    "codeAgeTotalFiles": 40,
-    "trackedFiles": 40,
-    "trackedLines": 1200
-  },
-  "messages": {
-    "typeDistribution": {
-      "chore": 3333,
-      "docs": 3333,
-      "feat": 3333,
-      "fix": 3334,
-      "refactor": 3334,
-      "test": 3333
-    },
-    "conventionalRatio": 1,
-    "lowConfidence": false,
-    "shortMessages": 0,
-    "longestSubject": {
-      "hash": "3de6c8809832b71322fd7792930053d6d46b381a",
-      "length": 22,
-      "subject": "refactor: change 20000"
-    },
-    "averageSubjectLength": 18.1,
-    "emojiCommits": 0,
-    "topEmoji": [],
-    "revertCount": 0,
-    "typoFixCount": 0,
-    "topWords": [
-      {
-        "word": "refactor",
-        "count": 3334
-      },
-      {
-        "word": "chore",
-        "count": 3333
-      },
-      {
-        "word": "docs",
-        "count": 3333
-      },
-      {
-        "word": "feat",
-        "count": 3333
-      },
-      {
-        "word": "100",
-        "count": 1
-      },
-      {
-        "word": "1000",
-        "count": 1
-      },
-      {
-        "word": "10000",
-        "count": 1
-      },
-      {
-        "word": "10001",
-        "count": 1
-      },
-      {
-        "word": "10002",
-        "count": 1
-      },
-      {
-        "word": "10003",
-        "count": 1
-      },
-      {
-        "word": "10004",
-        "count": 1
-      },
-      {
-        "word": "10005",
-        "count": 1
-      },
-      {
-        "word": "10006",
-        "count": 1
-      },
-      {
-        "word": "10007",
-        "count": 1
-      },
-      {
-        "word": "10008",
-        "count": 1
-      },
-      {
-        "word": "10009",
-        "count": 1
-      },
-      {
-        "word": "1001",
-        "count": 1
-      },
-      {
-        "word": "10010",
-        "count": 1
-      },
-      {
-        "word": "10011",
-        "count": 1
-      },
-      {
-        "word": "10012",
-        "count": 1
-      },
-      {
-        "word": "10013",
-        "count": 1
-      },
-      {
-        "word": "10014",
-        "count": 1
-      },
-      {
-        "word": "10015",
-        "count": 1
-      },
-      {
-        "word": "10016",
-        "count": 1
-      },
-      {
-        "word": "10017",
-        "count": 1
-      },
-      {
-        "word": "10018",
-        "count": 1
-      },
-      {
-        "word": "10019",
-        "count": 1
-      },
-      {
-        "word": "1002",
-        "count": 1
-      },
-      {
-        "word": "10020",
-        "count": 1
-      },
-      {
-        "word": "10021",
-        "count": 1
-      },
-      {
-        "word": "10022",
-        "count": 1
-      },
-      {
-        "word": "10023",
-        "count": 1
-      },
-      {
-        "word": "10024",
-        "count": 1
-      },
-      {
-        "word": "10025",
-        "count": 1
-      },
-      {
-        "word": "10026",
-        "count": 1
-      },
-      {
-        "word": "10027",
-        "count": 1
-      },
-      {
-        "word": "10028",
-        "count": 1
-      },
-      {
-        "word": "10029",
-        "count": 1
-      },
-      {
-        "word": "1003",
-        "count": 1
-      },
-      {
-        "word": "10030",
-        "count": 1
-      }
-    ]
-  },
-  "social": {
-    "busFactor": 6,
-    "directoryBusFactor": [
-      {
-        "path": "pkg1",
-        "busFactor": 2,
-        "contributors": 6,
-        "commits": 3000
-      },
-      {
-        "path": "pkg3",
-        "busFactor": 2,
-        "contributors": 6,
-        "commits": 3000
-      },
-      {
-        "path": "pkg5",
-        "busFactor": 2,
-        "contributors": 6,
-        "commits": 3000
-      },
-      {
-        "path": "pkg7",
-        "busFactor": 2,
-        "contributors": 6,
-        "commits": 3000
-      },
-      {
-        "path": "pkg0",
-        "busFactor": 2,
-        "contributors": 3,
-        "commits": 2500
-      },
-      {
-        "path": "pkg2",
-        "busFactor": 2,
-        "contributors": 3,
-        "commits": 2500
-      },
-      {
-        "path": "pkg4",
-        "busFactor": 2,
-        "contributors": 3,
-        "commits": 2500
-      },
-      {
-        "path": "pkg6",
-        "busFactor": 2,
-        "contributors": 3,
-        "commits": 2500
-      }
-    ],
-    "coupling": [
-      {
-        "a": "pkg0/file0.go",
-        "b": "pkg1/file1.go",
-        "support": 500,
-        "confidence": 1,
-        "expected": false
-      },
-      {
-        "a": "pkg2/file10.go",
-        "b": "pkg3/file11.go",
-        "support": 500,
-        "confidence": 1,
-        "expected": false
-      },
-      {
-        "a": "pkg4/file20.go",
-        "b": "pkg5/file21.go",
-        "support": 500,
-        "confidence": 1,
-        "expected": false
-      },
-      {
-        "a": "pkg6/file30.go",
-        "b": "pkg7/file31.go",
-        "support": 500,
-        "confidence": 1,
-        "expected": false
-      }
-    ],
-    "churn": [
-      {
-        "path": "pkg1/file1.go",
-        "maxCommitsInWindow": 7,
-        "windowStart": "2012-01-28T11:00:00-07:00",
-        "totalCommits": 1000,
-        "added": 4012,
-        "deleted": 3982
-      },
-      {
-        "path": "pkg3/file11.go",
-        "maxCommitsInWindow": 7,
-        "windowStart": "2012-01-26T11:30:00+05:30",
-        "totalCommits": 1000,
-        "added": 4012,
-        "deleted": 3982
-      },
-      {
-        "path": "pkg5/file21.go",
-        "maxCommitsInWindow": 7,
-        "windowStart": "2012-01-23T18:00:00Z",
-        "totalCommits": 1000,
-        "added": 4012,
-        "deleted": 3982
-      },
-      {
-        "path": "pkg7/file31.go",
-        "maxCommitsInWindow": 7,
-        "windowStart": "2012-01-25T17:30:00+05:30",
-        "totalCommits": 1000,
-        "added": 4012,
-        "deleted": 3982
-      }
-    ],
-    "knowledgeConcentration": [
-      {
-        "path": "pkg0",
-        "largestShare": 0.3336,
-        "contributors": 3,
-        "commits": 2500
-      },
-      {
-        "path": "pkg2",
-        "largestShare": 0.3336,
-        "contributors": 3,
-        "commits": 2500
-      },
-      {
-        "path": "pkg4",
-        "largestShare": 0.3336,
-        "contributors": 3,
-        "commits": 2500
-      },
-      {
-        "path": "pkg6",
-        "largestShare": 0.3336,
-        "contributors": 3,
-        "commits": 2500
-      },
-      {
-        "path": "pkg1",
-        "largestShare": 0.278,
-        "contributors": 6,
-        "commits": 3000
-      },
-      {
-        "path": "pkg3",
-        "largestShare": 0.278,
-        "contributors": 6,
-        "commits": 3000
-      },
-      {
-        "path": "pkg5",
-        "largestShare": 0.278,
-        "contributors": 6,
-        "commits": 3000
-      },
-      {
-        "path": "pkg7",
-        "largestShare": 0.278,
-        "contributors": 6,
-        "commits": 3000
-      }
-    ]
-  },
-  "notables": {
-    "bulkCommits": [],
-    "latestNightCommit": {
-      "hash": "a2b7542e98b6efb66986a673f6b9b70f3b28b678",
-      "subject": "refactor: change 19994",
-      "date": "2025-09-29T05:00:00-07:00",
-      "linesChanged": 14,
-      "added": 7,
-      "deleted": 7,
-      "files": 1
-    },
-    "earliestMorningCommit": {
-      "hash": "a2b7542e98b6efb66986a673f6b9b70f3b28b678",
-      "subject": "refactor: change 19994",
-      "date": "2025-09-29T05:00:00-07:00",
-      "linesChanged": 14,
-      "added": 7,
-      "deleted": 7,
-      "files": 1
-    },
-    "weekendRatio": 0.2856,
-    "holidayCommits": 100,
-    "firstCommitSubject": "fix: change 1",
-    "mergeCount": 0,
-    "timezoneSpread": [
-      {
-        "offsetMinutes": -420,
-        "commits": 6667
-      },
-      {
-        "offsetMinutes": 0,
-        "commits": 6666
-      },
-      {
-        "offsetMinutes": 330,
-        "commits": 6667
-      }
-    ]
-  },
-  "warnings": []
+      "metrics": {}
+    }
+  }
 }

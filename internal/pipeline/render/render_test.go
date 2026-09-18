@@ -13,33 +13,22 @@ import (
 
 func sampleReport() *core.Report {
 	now := time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)
-	subject := "fix: strip </script> tags from user input"
+	// A path is repository content, so it can carry a closing script tag.
+	path := "web/</script>.html"
+	commits := 12
 	return &core.Report{
-		SchemaVersion: core.SchemaVersion,
-		GeneratedAt:   now,
-		ToolVersion:   "test",
-		Repository: core.RepositorySummary{
-			Name:            "sample",
-			DefaultBranch:   "main",
-			HeadCommit:      "0123456789abcdef",
-			CommitsTotal:    12,
-			CommitsAnalyzed: 12,
-			Contributors:    3,
+		DocumentVersion: core.DocumentVersion(),
+		Metadata:        core.Metadata{GeneratedAt: now, ToolVersion: "test"},
+		Repository:      core.Repository{Name: "sample", Commit: "0123456789abcdef"},
+		Families: core.Families{
+			Temporal: core.Computed(core.Version{Major: 1}, core.TemporalMetrics{
+				HourHistogram:      make([]int, 24),
+				FridayEveningCount: &commits,
+			}),
+			Files: core.Computed(core.Version{Major: 1}, core.FilesMetrics{
+				MostModified: []core.ModifiedPath{{Path: path, Commits: commits}},
+			}),
 		},
-		Temporal: core.TemporalMetrics{
-			HourHistogram:    make([]int, 24),
-			WeekdayHistogram: make([]int, 7),
-			HourWeekdayGrid:  [][]int{},
-			CommitsPerMonth:  []core.MonthCount{{Month: "2026-01", Count: 12}},
-		},
-		Messages: core.MessageMetrics{
-			TypeDistribution: map[string]int{"fix": 12},
-			LongestSubject: &core.LongestSubject{
-				Hash: "abc", Length: len(subject), Subject: subject,
-			},
-		},
-		Notables: core.Notables{FirstCommitSubject: &subject},
-		Warnings: []string{},
 	}
 }
 
@@ -104,7 +93,7 @@ func TestRenderedPageIsSelfContained(t *testing.T) {
 	}
 }
 
-func TestScriptClosingTagInSubjectCannotBreakOut(t *testing.T) {
+func TestScriptClosingTagInPathCannotBreakOut(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	if err := Render(sampleReport(), dir); err != nil {
@@ -117,12 +106,12 @@ func TestScriptClosingTagInSubjectCannotBreakOut(t *testing.T) {
 	if strings.Contains(payload, "<") {
 		t.Error("payload contains a raw '<', which could close the surrounding element")
 	}
-	// The subject survives as a JSON unicode escape rather than as literal
+	// The path survives as a JSON unicode escape rather than as literal
 	// angle brackets. Built by concatenation so the expectation cannot itself
 	// be mangled by source-level escaping.
 	escapedTag := "\\u003c" + "/script" + "\\u003e"
 	if !strings.Contains(payload, escapedTag) {
-		t.Errorf("the subject's closing tag is not present in its escaped form; payload was %.200s", payload)
+		t.Errorf("the path's closing tag is not present in its escaped form; payload was %.200s", payload)
 	}
 
 	// And it must still be valid JSON that round-trips to the original text.
@@ -130,9 +119,9 @@ func TestScriptClosingTagInSubjectCannotBreakOut(t *testing.T) {
 	if err := json.Unmarshal([]byte(payload), &parsed); err != nil {
 		t.Fatalf("embedded payload is not valid JSON: %v", err)
 	}
-	if parsed.Notables.FirstCommitSubject == nil ||
-		!strings.Contains(*parsed.Notables.FirstCommitSubject, "</script>") {
-		t.Error("escaping lost the original subject text")
+	if modified := parsed.Families.Files.Metrics.MostModified; len(modified) != 1 ||
+		!strings.Contains(modified[0].Path, "</script>") {
+		t.Error("escaping lost the original path")
 	}
 }
 
@@ -234,7 +223,7 @@ func TestWriteReportJSONIsValidAndIndented(t *testing.T) {
 	if err := json.Unmarshal(data, &parsed); err != nil {
 		t.Fatalf("report.json is not valid JSON: %v", err)
 	}
-	if !strings.Contains(string(data), "\n  \"schemaVersion\"") {
+	if !strings.Contains(string(data), "\n  \"document_version\"") {
 		t.Error("report.json should be indented for humans reading it directly")
 	}
 }

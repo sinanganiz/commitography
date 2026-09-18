@@ -281,7 +281,7 @@ func TestResponsesCarryOnlyDocumentedData(t *testing.T) {
 		t.Errorf("job summary fields = %v, want exactly %v (no repository path)", keys, wantSummary)
 	}
 
-	schemaData, err := os.ReadFile(filepath.Join(testRepoPath(t), "docs", "legacy", "report-schema-v0.json"))
+	schemaData, err := os.ReadFile(filepath.Join(testRepoPath(t), "docs", "report-schema.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

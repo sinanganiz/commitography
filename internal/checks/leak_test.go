@@ -166,9 +166,8 @@ func TestLeakScanReport(t *testing.T) {
 // raises.
 //
 // A warning is prose written by whichever stage raised it, and it travels
-// further than the terminal it was written for: the collect stage's warnings
-// enter the report, and in server mode every warning enters the job status
-// response. That makes a warning an artifact whatever raised it, and the
+// further than the terminal it was written for: in server mode every warning
+// enters the job status response. That makes a warning an artifact whatever raised it, and the
 // likeliest place for a resolved path to reach one. The configuration warning
 // did exactly that until this package, naming the file it had resolved.
 func TestLeakScanWarnings(t *testing.T) {
@@ -197,7 +196,7 @@ func TestLeakScanWarnings(t *testing.T) {
 		fatal(t, 64, "the unknown configuration key raised no warning, so there is nothing to scan")
 	}
 	forbidden = append(forbidden, config, filepath.ToSlash(config))
-	for _, warning := range append(raised, result.Report.Warnings...) {
+	for _, warning := range append(raised, result.Warnings...) {
 		scanArtifact(t, "the warning "+warning, warning, forbidden)
 	}
 }

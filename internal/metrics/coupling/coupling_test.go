@@ -51,18 +51,17 @@ func TestCouplingFindsDeliberatePairAndRejectsWeakOne(t *testing.T) {
 		commits = append(commits, commitBy("ada@x", i, paths...))
 	}
 
-	var m core.SocialMetrics
-	var warnings []string
-	m.Coupling, warnings = BuildCoupling(core.ScopedCommits(in, commits))
+	family, warnings := Build(core.ScopedCommits(in, commits))
+	pairs := family.Metrics.Pairs
 	if len(warnings) != 0 {
 		t.Errorf("unexpected warnings: %v", warnings)
 	}
 
 	var found *core.CoupledPair
-	for i := range m.Coupling {
-		p := m.Coupling[i]
+	for i := range pairs {
+		p := pairs[i]
 		if p.A == "alpha.go" && p.B == "beta.go" {
-			found = &m.Coupling[i]
+			found = &pairs[i]
 		}
 		if p.A == "gamma.go" || p.B == "gamma.go" {
 			t.Errorf("gamma.go appears in %d commits, below the support threshold of %d, but was reported",
@@ -70,7 +69,7 @@ func TestCouplingFindsDeliberatePairAndRejectsWeakOne(t *testing.T) {
 		}
 	}
 	if found == nil {
-		t.Fatalf("the deliberately coupled pair was not reported; got %+v", m.Coupling)
+		t.Fatalf("the deliberately coupled pair was not reported; got %+v", pairs)
 	}
 	if found.Support != 12 {
 		t.Errorf("support = %d, want 12", found.Support)
@@ -90,12 +89,12 @@ func TestCouplingFlagsSameStemPairsAsExpected(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		commits = append(commits, commitBy("ada@x", i, "Foo.ts", "Foo.test.ts"))
 	}
-	var m core.SocialMetrics
-	m.Coupling, _ = BuildCoupling(core.ScopedCommits(in, commits))
-	if len(m.Coupling) == 0 {
+	family, _ := Build(core.ScopedCommits(in, commits))
+	pairs := family.Metrics.Pairs
+	if len(pairs) == 0 {
 		t.Fatal("expected the pair to be reported, not hidden")
 	}
-	if !m.Coupling[0].Expected {
+	if !pairs[0].Expected {
 		t.Error("Foo.ts and Foo.test.ts share a basename and must be flagged expected")
 	}
 }
@@ -112,11 +111,11 @@ func TestCouplingSkipsVeryWideCommits(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		commits = append(commits, commitBy("ada@x", i, wide...))
 	}
-	var m core.SocialMetrics
-	m.Coupling, _ = BuildCoupling(core.ScopedCommits(in, commits))
-	if len(m.Coupling) != 0 {
+	family, _ := Build(core.ScopedCommits(in, commits))
+	pairs := family.Metrics.Pairs
+	if len(pairs) != 0 {
 		t.Errorf("a commit touching %d files must be skipped by coupling, got %d pairs",
-			len(wide), len(m.Coupling))
+			len(wide), len(pairs))
 	}
 }
 
@@ -132,5 +131,27 @@ func TestStemOf(t *testing.T) {
 		if got := stemOf(in); got != want {
 			t.Errorf("stemOf(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// TestCouplingDegradesPastThePairLimit is docs/metrics.md section 12: the
+// pairs are cut at the catalogue's limit, and the cut is stated.
+func TestCouplingDegradesPastThePairLimit(t *testing.T) {
+	t.Parallel()
+	in := socialInput(t)
+	var commits []model.Commit
+	// One more disjoint pair than the limit, each changing together exactly
+	// the minimum support number of times, so every pair qualifies.
+	for p := 0; p <= core.LimitCouplingPairs; p++ {
+		for i := 0; i < couplingMinSupport; i++ {
+			commits = append(commits, commitBy("ada@x", i, fmt.Sprintf("a%03d.go", p), fmt.Sprintf("b%03d.go", p)))
+		}
+	}
+	family, _ := Build(core.ScopedCommits(in, commits))
+	if len(family.Metrics.Pairs) != core.LimitCouplingPairs {
+		t.Errorf("pairs = %d, want the limit %d", len(family.Metrics.Pairs), core.LimitCouplingPairs)
+	}
+	if family.Status != core.StatusDegraded || family.Reasons[0] != core.ReasonCardinalityLimit {
+		t.Errorf("family = %s %v, want degraded with cardinality_limit", family.Status, family.Reasons)
 	}
 }

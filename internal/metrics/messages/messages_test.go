@@ -1,9 +1,9 @@
 package messages
 
 import (
-	"strings"
 	"testing"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
@@ -128,125 +128,58 @@ func subjects(list ...string) []model.Commit {
 	return out
 }
 
-func TestConventionalRatioAndConfidenceLabel(t *testing.T) {
+func TestConventionalRatioAndConfidence(t *testing.T) {
 	t.Parallel()
-	m := BuildMessages(subjects("feat: a", "fix: b", "random thing", "another one"))
-	if m.ConventionalRatio != 0.5 {
-		t.Errorf("conventionalRatio = %v, want 0.5", m.ConventionalRatio)
+	f := Build(subjects("feat: a", "fix: b", "random thing", "another one"))
+	if *f.Metrics.ConventionalRatio != 0.5 {
+		t.Errorf("conventional_ratio = %v, want 0.5", *f.Metrics.ConventionalRatio)
 	}
-	if m.LowConfidence {
-		t.Error("0.5 is above the 0.30 threshold and must not be flagged low confidence")
+	if f.Status != core.StatusOK {
+		t.Errorf("0.5 is above the 0.30 threshold, yet the family is %s %v", f.Status, f.Reasons)
 	}
 
-	m = BuildMessages(subjects("feat: a", "random", "random", "random", "random"))
-	if m.ConventionalRatio != 0.2 {
-		t.Errorf("conventionalRatio = %v, want 0.2", m.ConventionalRatio)
+	f = Build(subjects("feat: a", "random", "random", "random", "random"))
+	if *f.Metrics.ConventionalRatio != 0.2 {
+		t.Errorf("conventional_ratio = %v, want 0.2", *f.Metrics.ConventionalRatio)
 	}
-	if !m.LowConfidence {
-		t.Error("0.2 is below the 0.30 threshold and must be flagged low confidence")
-	}
-}
-
-func TestShortMessageCounter(t *testing.T) {
-	t.Parallel()
-	m := BuildMessages(subjects(
-		"wip",                        // low-effort word
-		"WIP",                        // case-insensitive
-		"...",                        // punctuation placeholder
-		"fixed",                      // 5 characters, at the limit
-		"a much longer subject line", // not short
-	))
-	if m.ShortMessages != 4 {
-		t.Errorf("shortMessages = %d, want 4", m.ShortMessages)
+	if f.Status != core.StatusDegraded || f.Reasons[0] != core.ReasonLowClassificationConfidence ||
+		f.Confidence != core.ConfidenceLow {
+		t.Errorf("0.2 is below the 0.30 threshold, yet the family is %s %v %s", f.Status, f.Reasons, f.Confidence)
 	}
 }
 
 func TestRevertAndTypoCounters(t *testing.T) {
 	t.Parallel()
-	m := BuildMessages(subjects(
+	m := Build(subjects(
 		`Revert "feat: x"`,
 		"revert the thing",
 		"fix typo in readme",
 		"Fix typos across docs",
 		"not a revertible statement",
-	))
-	if m.RevertCount != 2 {
-		t.Errorf("revertCount = %d, want 2", m.RevertCount)
+	)).Metrics
+	if *m.RevertCount != 2 {
+		t.Errorf("revert_count = %d, want 2", *m.RevertCount)
 	}
-	if m.TypoFixCount != 2 {
-		t.Errorf("typoFixCount = %d, want 2", m.TypoFixCount)
-	}
-}
-
-func TestEmojiDetection(t *testing.T) {
-	t.Parallel()
-	m := BuildMessages(subjects(
-		"🎉 launch day",
-		"🎉 another party",
-		"✨ sparkle",
-		"plain text",
-		"arrows -> are not emoji",
-	))
-	if m.EmojiCommits != 3 {
-		t.Errorf("emojiCommits = %d, want 3", m.EmojiCommits)
-	}
-	if len(m.TopEmoji) == 0 || m.TopEmoji[0].Emoji != "🎉" || m.TopEmoji[0].Count != 2 {
-		t.Errorf("topEmoji = %+v, want 🎉 leading with 2", m.TopEmoji)
+	if *m.FixTypoCount != 2 {
+		t.Errorf("fix_typo_count = %d, want 2", *m.FixTypoCount)
 	}
 }
 
-func TestLongestSubjectIsTruncatedForDisplay(t *testing.T) {
+func TestMeanSubjectLength(t *testing.T) {
 	t.Parallel()
-	long := strings.Repeat("x", 500)
-	m := BuildMessages(subjects("short", long))
-	if m.LongestSubject == nil {
-		t.Fatal("longestSubject is nil")
-	}
-	if m.LongestSubject.Length != 500 {
-		t.Errorf("length = %d, want the true length 500", m.LongestSubject.Length)
-	}
-	if len([]rune(m.LongestSubject.Subject)) > subjectDisplayLimit+1 {
-		t.Errorf("display subject is %d runes, want at most %d plus an ellipsis",
-			len([]rune(m.LongestSubject.Subject)), subjectDisplayLimit)
-	}
-}
-
-func TestWordCloudDropsStopwordsAndShortWords(t *testing.T) {
-	t.Parallel()
-	m := BuildMessages(subjects(
-		"add caching to the resolver",
-		"caching for the resolver again",
-		"resolver caching improvements",
-	))
-	words := map[string]int{}
-	for _, w := range m.TopWords {
-		words[w.Word] = w.Count
-	}
-	if words["caching"] != 3 || words["resolver"] != 3 {
-		t.Errorf("topWords = %+v, want caching and resolver at 3 each", m.TopWords)
-	}
-	for _, dropped := range []string{"the", "for", "add", "to"} {
-		if _, present := words[dropped]; present {
-			t.Errorf("%q should have been dropped as a stopword or too short", dropped)
-		}
-	}
-}
-
-func TestAverageSubjectLength(t *testing.T) {
-	t.Parallel()
-	m := BuildMessages(subjects("abc", "abcdefg")) // 3 and 7
-	if m.AverageSubjectLength != 5.0 {
-		t.Errorf("averageSubjectLength = %v, want 5.0", m.AverageSubjectLength)
+	m := Build(subjects("abc", "abcdefg")).Metrics // 3 and 7
+	if *m.MeanSubjectLength != 5.0 {
+		t.Errorf("mean_subject_length = %v, want 5.0", *m.MeanSubjectLength)
 	}
 }
 
 func TestMessagesOnEmptyInput(t *testing.T) {
 	t.Parallel()
-	m := BuildMessages(nil)
-	if m.TypeDistribution == nil || m.TopWords == nil || m.TopEmoji == nil {
-		t.Error("collections must serialize as empty, not null")
+	f := Build(nil)
+	if f.Status != core.StatusDegraded || f.Reasons[0] != core.ReasonEmptyPopulation {
+		t.Errorf("family = %s %v, want degraded with empty_population", f.Status, f.Reasons)
 	}
-	if m.LongestSubject != nil {
-		t.Error("longestSubject must be null with no commits")
+	if f.Metrics != (core.MessagesMetrics{}) {
+		t.Errorf("metrics over no commits = %+v, want every metric absent", f.Metrics)
 	}
 }

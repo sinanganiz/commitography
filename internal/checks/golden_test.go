@@ -170,11 +170,12 @@ func produce(t *testing.T, repo repository, fixture string) (string, bool) {
 }
 
 // normalise removes what legitimately differs between runs of one analysis:
-// the generation time, the build's version (ADR-0061 clause 6 keeps build
-// metadata out of golden comparison), and the location of the fixture root.
+// the two values of the metadata section, the generation time and the build's
+// version (ADR-0021 clause 6; ADR-0061 clause 6 keeps build metadata out of
+// golden comparison), and the location of the fixture root.
 func normalise(s, root string) string {
-	generatedAt := regexp.MustCompile(`(?m)^(\s*"generatedAt": )"[^"]*"`)
-	toolVersion := regexp.MustCompile(`(?m)^(\s*"toolVersion": )"[^"]*"`)
+	generatedAt := regexp.MustCompile(`(?m)^(\s*"generated_at": )"[^"]*"`)
+	toolVersion := regexp.MustCompile(`(?m)^(\s*"tool_version": )"[^"]*"`)
 	s = strings.ReplaceAll(s, "\r\n", "\n")
 	s = generatedAt.ReplaceAllString(s, `${1}"<generated-at>"`)
 	s = toolVersion.ReplaceAllString(s, `${1}"<tool-version>"`)

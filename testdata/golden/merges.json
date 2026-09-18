@@ -1,453 +1,238 @@
 {
-  "schemaVersion": 1,
-  "generatedAt": "<generated-at>",
-  "toolVersion": "<tool-version>",
+  "document_version": {
+    "major": 1,
+    "minor": 0
+  },
+  "metadata": {
+    "generated_at": "<generated-at>",
+    "tool_version": "<tool-version>"
+  },
   "repository": {
     "name": "merges",
-    "defaultBranch": "main",
-    "headCommit": "b9d6682377878c66aa66012dbfbe5f99347e2baf",
-    "firstCommit": "2025-10-01T00:00:00Z",
-    "lastCommit": "2025-10-31T00:00:00Z",
-    "ageDays": 31,
-    "commitsTotal": 16,
-    "commitsAnalyzed": 11,
-    "commitsExcluded": {
-      "merges": 5,
-      "bots": 0,
-      "total": 5
-    },
-    "contributors": 3,
-    "trackedFiles": 11,
-    "trackedLines": 11,
-    "isShallow": false
+    "commit": "b9d6682377878c66aa66012dbfbe5f99347e2baf"
   },
-  "temporal": {
-    "hourHistogram": [
-      11,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "weekdayHistogram": [
-      1,
-      1,
-      2,
-      2,
-      2,
-      2,
-      1
-    ],
-    "hourWeekdayGrid": [
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ]
-    ],
-    "braveDeploys": 0,
-    "nightOwlRatio": 1,
-    "busiestDay": {
-      "date": "2025-10-01",
-      "count": 1
-    },
-    "longestStreak": {
-      "days": 1,
-      "startDate": "2025-10-01",
-      "endDate": "2025-10-01"
-    },
-    "longestSilence": {
-      "days": 12,
-      "startDate": "2025-10-11",
-      "endDate": "2025-10-23"
-    },
-    "commitsPerMonth": [
-      {
-        "month": "2025-10",
-        "count": 11
+  "configuration": {},
+  "families": {
+    "temporal": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "hour_histogram": [
+          11,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "weekday_histogram": [
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          1
+        ],
+        "night_ratio": 1,
+        "weekend_ratio": 0.2727,
+        "friday_evening_count": 0,
+        "busiest_day": {
+          "date": "2025-10-01",
+          "count": 1
+        },
+        "longest_streak_days": 1,
+        "longest_silence_days": 12,
+        "first_commit_date": "2025-10-01",
+        "last_commit_date": "2025-10-31"
       }
-    ],
-    "firstCommit": "2025-10-01T00:00:00Z",
-    "lastCommit": "2025-10-31T00:00:00Z"
-  },
-  "code": {
-    "mostTouchedFiles": [
-      {
-        "path": "base.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "squash-1.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "squash-2.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "squash-3.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "squash-4.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "squash-5.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "topic-1.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "topic-2.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "topic-3.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "topic-4.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "topic-5.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      }
-    ],
-    "largestCommit": {
-      "hash": "b9d6682377878c66aa66012dbfbe5f99347e2baf",
-      "subject": "feat: squashed change 5 (#5)",
-      "date": "2025-10-31T00:00:00Z",
-      "linesChanged": 1,
-      "added": 1,
-      "deleted": 0,
-      "files": 1
     },
-    "averageCommitSize": 1,
-    "medianCommitSize": 1,
-    "totalAdded": 11,
-    "totalDeleted": 0,
-    "oldestUntouchedFile": {
-      "path": "base.txt",
-      "lastModified": "2025-10-01T00:00:00Z"
-    },
-    "fileTypeDistribution": [
-      {
-        "extension": "txt",
-        "changes": 11,
-        "added": 11,
-        "deleted": 0
-      }
-    ],
-    "codeAge": [
-      {
-        "year": 2025,
-        "lines": 11
-      }
-    ],
-    "survivingFromFirstYear": 1,
-    "codeAgeSampledFiles": 11,
-    "codeAgeTotalFiles": 11,
-    "trackedFiles": 11,
-    "trackedLines": 11
-  },
-  "messages": {
-    "typeDistribution": {
-      "feat": 11
-    },
-    "conventionalRatio": 1,
-    "lowConfidence": false,
-    "shortMessages": 0,
-    "longestSubject": {
-      "hash": "b9d6682377878c66aa66012dbfbe5f99347e2baf",
-      "length": 28,
-      "subject": "feat: squashed change 5 (#5)"
-    },
-    "averageSubjectLength": 24.1,
-    "emojiCommits": 0,
-    "topEmoji": [],
-    "revertCount": 0,
-    "typoFixCount": 0,
-    "topWords": [
-      {
-        "word": "feat",
-        "count": 11
+    "commit-size": {
+      "version": {
+        "major": 1,
+        "minor": 0
       },
-      {
-        "word": "squashed",
-        "count": 5
-      },
-      {
-        "word": "topic",
-        "count": 5
-      },
-      {
-        "word": "work",
-        "count": 5
+      "status": "ok",
+      "metrics": {
+        "mean_lines": 1,
+        "median_lines": 1,
+        "largest_commit": {
+          "hash": "b9d6682377878c66aa66012dbfbe5f99347e2baf",
+          "date": "2025-10-31",
+          "lines": 1,
+          "files": 1
+        }
       }
-    ]
-  },
-  "social": {
-    "busFactor": 2,
-    "directoryBusFactor": [],
-    "coupling": [],
-    "churn": [],
-    "knowledgeConcentration": []
-  },
-  "notables": {
-    "bulkCommits": [],
-    "latestNightCommit": {
-      "hash": "b9d6682377878c66aa66012dbfbe5f99347e2baf",
-      "subject": "feat: squashed change 5 (#5)",
-      "date": "2025-10-31T00:00:00Z",
-      "linesChanged": 1,
-      "added": 1,
-      "deleted": 0,
-      "files": 1
     },
-    "earliestMorningCommit": null,
-    "weekendRatio": 0.2727,
-    "holidayCommits": 0,
-    "firstCommitSubject": "feat: initial commit",
-    "mergeCount": 5,
-    "timezoneSpread": [
-      {
-        "offsetMinutes": 0,
-        "commits": 11
+    "messages": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "conventional_ratio": 1,
+        "mean_subject_length": 24.1,
+        "revert_count": 0,
+        "fix_typo_count": 0
       }
-    ]
-  },
-  "warnings": []
+    },
+    "files": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "most_modified": [
+          {
+            "path": "base.txt",
+            "commits": 1,
+            "removed": false
+          },
+          {
+            "path": "squash-1.txt",
+            "commits": 1,
+            "removed": false
+          },
+          {
+            "path": "squash-2.txt",
+            "commits": 1,
+            "removed": false
+          },
+          {
+            "path": "squash-3.txt",
+            "commits": 1,
+            "removed": false
+          },
+          {
+            "path": "squash-4.txt",
+            "commits": 1,
+            "removed": false
+          },
+          {
+            "path": "squash-5.txt",
+            "commits": 1,
+            "removed": false
+          },
+          {
+            "path": "topic-1.txt",
+            "commits": 1,
+            "removed": false
+          },
+          {
+            "path": "topic-2.txt",
+            "commits": 1,
+            "removed": false
+          },
+          {
+            "path": "topic-3.txt",
+            "commits": 1,
+            "removed": false
+          },
+          {
+            "path": "topic-4.txt",
+            "commits": 1,
+            "removed": false
+          },
+          {
+            "path": "topic-5.txt",
+            "commits": 1,
+            "removed": false
+          }
+        ],
+        "oldest_untouched": {
+          "path": "base.txt",
+          "date": "2025-10-01"
+        },
+        "head_file_count": 11,
+        "tracked_text_file_count": 11
+      }
+    },
+    "coupling": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "pairs": []
+      }
+    },
+    "ownership": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "worktype": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "ai-archaeology": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "hotspot": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "churn_files": []
+      }
+    },
+    "static-analysis": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    }
+  }
 }

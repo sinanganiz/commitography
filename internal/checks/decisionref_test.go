@@ -35,12 +35,9 @@ func bindingSubjects() []string {
 		"internal/git/git.go",
 		// The report type definitions.
 		"internal/core/report.go",
-		"internal/core/code.go",
-		"internal/core/temporal.go",
-		"internal/core/messages.go",
-		"internal/core/social.go",
-		"internal/core/notables.go",
-		"internal/core/perauthor.go",
+		"internal/core/family.go",
+		"internal/core/metrics.go",
+		"internal/core/limits.go",
 		// The archetype taxonomy definition file.
 		"internal/pipeline/interpret/taxonomy/taxonomy.yml",
 	}

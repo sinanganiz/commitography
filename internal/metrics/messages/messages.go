@@ -1,29 +1,25 @@
-// Package messages is the messages metric family (ADR-0024, ADR-0040):
-// commit subject classification and message statistics.
+// Package messages is the messages metric family (ADR-0024, ADR-0040): what
+// commit subjects reveal. Its metrics are those of docs/metrics.md section 4
+// (ADR-0062); a metric that section does not define is not computed here,
+// which is why the word-frequency metric and its stopword list are gone
+// (ADR-0062 clause 5).
 package messages
 
 import (
 	"regexp"
-	"sort"
 	"strings"
-	"unicode"
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
-const (
-	// lowConfidenceThreshold is the conventional-commit ratio below which the
-	// classification section is labelled unreliable rather than presented as
-	// fact. Heuristics on free-form messages are guesses, and the dashboard
-	// says so.
-	lowConfidenceThreshold = 0.30
+// lowConfidenceThreshold is the conventional-commit ratio below which the
+// family is degraded with low_classification_confidence (docs/metrics.md
+// section 4).
+const lowConfidenceThreshold = 0.30
 
-	subjectDisplayLimit = 200
-	topWordsLimit       = 40
-	topEmojiLimit       = 10
-	shortSubjectLength  = 5
-)
+// version is the family version (ADR-0031 clause 2).
+func version() core.Version { return core.Version{Major: 1, Minor: 0} }
 
 // heuristicRule is one fallback classifier. Order matters: the first match
 // wins, so a subject mentioning both a fix and an addition is a fix.
@@ -62,17 +58,6 @@ func NewClassifier() *Classifier {
 	}
 }
 
-// isLowEffort reports whether a lower-cased, trimmed subject is one of the
-// placeholder messages that mean "I did not want to write a message".
-func isLowEffort(subject string) bool {
-	switch subject {
-	case "wip", "fix", "fixes", "update", "updates", "changes", "stuff", "oops", "asdf",
-		".", "..", "...":
-		return true
-	}
-	return false
-}
-
 // Classify returns the category of a commit subject and whether it matched the
 // strict Conventional Commits form. It compiles the patterns on every call; a
 // caller classifying many subjects constructs one Classifier instead.
@@ -94,156 +79,44 @@ func (c *Classifier) Classify(subject string) (category string, conventional boo
 	return "other", false
 }
 
-// BuildMessages computes the message metrics over the analyzed commits.
-func BuildMessages(commits []model.Commit) core.MessageMetrics {
-	m := core.MessageMetrics{
-		TypeDistribution: map[string]int{},
-		TopEmoji:         []core.EmojiCount{},
-		TopWords:         []core.WordCount{},
-	}
+// Build computes the messages family over the analysed commits. With none,
+// every metric is absent and the family is degraded with empty_population.
+func Build(commits []model.Commit) core.Family[core.MessagesMetrics] {
 	if len(commits) == 0 {
-		return m
+		f := core.Computed(version(), core.MessagesMetrics{})
+		f.Degrade(core.ReasonEmptyPopulation, core.ConfidencePartial)
+		return f
 	}
 
 	classifier := NewClassifier()
 	revertRe := regexp.MustCompile(`(?i)^revert\b`)
 	typoFixRe := regexp.MustCompile(`(?i)\btypos?\b`)
-	wordRe := regexp.MustCompile(`[\p{L}\p{N}][\p{L}\p{N}'_-]*`)
-	ignored := stopwords()
 
-	conventional := 0
-	totalLength := 0
-	words := map[string]int{}
-	emoji := map[string]int{}
-
+	conventional, totalLength, reverts, typoFixes := 0, 0, 0, 0
 	for _, c := range commits {
-		subject := c.Subject
-		trimmed := strings.TrimSpace(subject)
-
-		category, isConventional := classifier.Classify(subject)
-		m.TypeDistribution[category]++
-		if isConventional {
+		trimmed := strings.TrimSpace(c.Subject)
+		if _, isConventional := classifier.Classify(c.Subject); isConventional {
 			conventional++
 		}
-
-		totalLength += len([]rune(subject))
-
-		if len([]rune(trimmed)) <= shortSubjectLength || isLowEffort(strings.ToLower(trimmed)) {
-			m.ShortMessages++
-		}
+		totalLength += len([]rune(c.Subject))
 		if revertRe.MatchString(trimmed) {
-			m.RevertCount++
+			reverts++
 		}
 		if typoFixRe.MatchString(trimmed) {
-			m.TypoFixCount++
-		}
-
-		if found := emojiIn(subject); len(found) > 0 {
-			m.EmojiCommits++
-			for _, e := range found {
-				emoji[e]++
-			}
-		}
-
-		if m.LongestSubject == nil || len([]rune(subject)) > m.LongestSubject.Length {
-			m.LongestSubject = &core.LongestSubject{
-				Hash:    c.Hash,
-				Length:  len([]rune(subject)),
-				Subject: truncateRunes(subject, subjectDisplayLimit),
-			}
-		}
-
-		for _, w := range wordRe.FindAllString(strings.ToLower(subject), -1) {
-			if len([]rune(w)) < 3 || ignored[w] {
-				continue
-			}
-			words[w]++
+			typoFixes++
 		}
 	}
 
-	m.ConventionalRatio = core.Round(float64(conventional)/float64(len(commits)), 4)
-	m.LowConfidence = m.ConventionalRatio < lowConfidenceThreshold
-	m.AverageSubjectLength = core.Round(float64(totalLength)/float64(len(commits)), 1)
-	m.TopWords = topWords(words, topWordsLimit)
-	m.TopEmoji = topEmoji(emoji, topEmojiLimit)
-
-	return m
-}
-
-// isEmojiRune covers the pictographic blocks plus the dingbats and the
-// variation selector that turns older symbols into emoji.
-func isEmojiRune(r rune) bool {
-	switch {
-	case r >= 0x1F300 && r <= 0x1FAFF:
-		return true
-	case r >= 0x2600 && r <= 0x27BF:
-		return true
-	case r == 0xFE0F:
-		return true
-	default:
-		return false
-	}
-}
-
-// emojiIn returns the emoji present in a subject. An arrow in U+2190–U+21FF
-// counts only when followed by the variation selector, since those code points
-// are ordinary typographic arrows otherwise.
-func emojiIn(subject string) []string {
-	var found []string
-	runes := []rune(subject)
-	for i, r := range runes {
-		switch {
-		case r == 0xFE0F:
-			continue
-		case r >= 0x2190 && r <= 0x21FF:
-			if i+1 < len(runes) && runes[i+1] == 0xFE0F {
-				found = append(found, string(r))
-			}
-		case isEmojiRune(r):
-			found = append(found, string(r))
-		}
-	}
-	return found
-}
-
-func topWords(counts map[string]int, limit int) []core.WordCount {
-	out := make([]core.WordCount, 0, len(counts))
-	for w, n := range counts {
-		out = append(out, core.WordCount{Word: w, Count: n})
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Count != out[j].Count {
-			return out[i].Count > out[j].Count
-		}
-		return out[i].Word < out[j].Word
+	ratio := core.Round(float64(conventional)/float64(len(commits)), 4)
+	meanLength := core.Round(float64(totalLength)/float64(len(commits)), 1)
+	f := core.Computed(version(), core.MessagesMetrics{
+		ConventionalRatio: &ratio,
+		MeanSubjectLength: &meanLength,
+		RevertCount:       &reverts,
+		FixTypoCount:      &typoFixes,
 	})
-	if len(out) > limit {
-		out = out[:limit]
+	if ratio < lowConfidenceThreshold {
+		f.Degrade(core.ReasonLowClassificationConfidence, core.ConfidenceLow)
 	}
-	return out
-}
-
-func topEmoji(counts map[string]int, limit int) []core.EmojiCount {
-	out := make([]core.EmojiCount, 0, len(counts))
-	for e, n := range counts {
-		out = append(out, core.EmojiCount{Emoji: e, Count: n})
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Count != out[j].Count {
-			return out[i].Count > out[j].Count
-		}
-		return out[i].Emoji < out[j].Emoji
-	})
-	if len(out) > limit {
-		out = out[:limit]
-	}
-	return out
-}
-
-func truncateRunes(s string, limit int) string {
-	runes := []rune(s)
-	if len(runes) <= limit {
-		return s
-	}
-	return strings.TrimRightFunc(string(runes[:limit]), unicode.IsSpace) + "…"
+	return f
 }

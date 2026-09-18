@@ -1,440 +1,193 @@
 {
-  "schemaVersion": 1,
-  "generatedAt": "<generated-at>",
-  "toolVersion": "<tool-version>",
+  "document_version": {
+    "major": 1,
+    "minor": 0
+  },
+  "metadata": {
+    "generated_at": "<generated-at>",
+    "tool_version": "<tool-version>"
+  },
   "repository": {
     "name": "noise",
-    "defaultBranch": "main",
-    "headCommit": "58e68513d8354836ab59a1de123f7546e0127ff2",
-    "firstCommit": "2025-10-01T00:00:00Z",
-    "lastCommit": "2025-10-05T00:00:00Z",
-    "ageDays": 5,
-    "commitsTotal": 5,
-    "commitsAnalyzed": 5,
-    "commitsExcluded": {
-      "merges": 0,
-      "bots": 0,
-      "total": 0
-    },
-    "contributors": 2,
-    "trackedFiles": 8,
-    "trackedLines": 12003,
-    "isShallow": false
+    "commit": "58e68513d8354836ab59a1de123f7546e0127ff2"
   },
-  "temporal": {
-    "hourHistogram": [
-      5,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "weekdayHistogram": [
-      0,
-      0,
-      1,
-      1,
-      1,
-      1,
-      1
-    ],
-    "hourWeekdayGrid": [
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
+  "configuration": {},
+  "families": {
+    "temporal": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "hour_histogram": [
+          5,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "weekday_histogram": [
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "night_ratio": 1,
+        "weekend_ratio": 0.4,
+        "friday_evening_count": 0,
+        "busiest_day": {
+          "date": "2025-10-01",
+          "count": 1
+        },
+        "longest_streak_days": 5,
+        "longest_silence_days": 1,
+        "first_commit_date": "2025-10-01",
+        "last_commit_date": "2025-10-05"
+      }
+    },
+    "commit-size": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "mean_lines": 0.8,
+        "median_lines": 1,
+        "largest_commit": {
+          "hash": "58e68513d8354836ab59a1de123f7546e0127ff2",
+          "date": "2025-10-05",
+          "lines": 1,
+          "files": 1
+        }
+      }
+    },
+    "messages": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "conventional_ratio": 1,
+        "mean_subject_length": 31,
+        "revert_count": 0,
+        "fix_typo_count": 0
+      }
+    },
+    "files": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "most_modified": [
+          {
+            "path": "main.go",
+            "commits": 2,
+            "removed": false
+          },
+          {
+            "path": ".gitattributes",
+            "commits": 1,
+            "removed": false
+          }
+        ],
+        "oldest_untouched": {
+          "path": "main.go",
+          "date": "2025-10-04"
+        },
+        "head_file_count": 8,
+        "tracked_text_file_count": 3
+      }
+    },
+    "coupling": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "pairs": []
+      }
+    },
+    "ownership": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
+      "metrics": {}
+    },
+    "worktype": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
+      "metrics": {}
+    },
+    "ai-archaeology": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
+      "metrics": {}
+    },
+    "hotspot": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "churn_files": []
+      }
+    },
+    "static-analysis": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ]
-    ],
-    "braveDeploys": 0,
-    "nightOwlRatio": 1,
-    "busiestDay": {
-      "date": "2025-10-01",
-      "count": 1
-    },
-    "longestStreak": {
-      "days": 5,
-      "startDate": "2025-10-01",
-      "endDate": "2025-10-05"
-    },
-    "longestSilence": {
-      "days": 1,
-      "startDate": "2025-10-01",
-      "endDate": "2025-10-02"
-    },
-    "commitsPerMonth": [
-      {
-        "month": "2025-10",
-        "count": 5
-      }
-    ],
-    "firstCommit": "2025-10-01T00:00:00Z",
-    "lastCommit": "2025-10-05T00:00:00Z"
-  },
-  "code": {
-    "mostTouchedFiles": [
-      {
-        "path": "main.go",
-        "commits": 2,
-        "added": 2,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": ".gitattributes",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      }
-    ],
-    "largestCommit": {
-      "hash": "58e68513d8354836ab59a1de123f7546e0127ff2",
-      "subject": "chore: regenerate api client",
-      "date": "2025-10-05T00:00:00Z",
-      "linesChanged": 1,
-      "added": 1,
-      "deleted": 0,
-      "files": 1
-    },
-    "averageCommitSize": 0.8,
-    "medianCommitSize": 1,
-    "totalAdded": 3,
-    "totalDeleted": 0,
-    "oldestUntouchedFile": {
-      "path": "main.go",
-      "lastModified": "2025-10-04T00:00:00Z"
-    },
-    "fileTypeDistribution": [
-      {
-        "extension": "go",
-        "changes": 2,
-        "added": 2,
-        "deleted": 0
-      },
-      {
-        "extension": "gitattributes",
-        "changes": 1,
-        "added": 1,
-        "deleted": 0
-      }
-    ],
-    "codeAge": [
-      {
-        "year": 2025,
-        "lines": 12003
-      }
-    ],
-    "survivingFromFirstYear": 1,
-    "codeAgeSampledFiles": 3,
-    "codeAgeTotalFiles": 3,
-    "trackedFiles": 8,
-    "trackedLines": 12003
-  },
-  "messages": {
-    "typeDistribution": {
-      "chore": 3,
-      "feat": 2
-    },
-    "conventionalRatio": 1,
-    "lowConfidence": false,
-    "shortMessages": 0,
-    "longestSubject": {
-      "hash": "d316e82e213242d2c734d9247d2e1e35e05e67ce",
-      "length": 45,
-      "subject": "chore: vendor dependencies and rebuild bundle"
-    },
-    "averageSubjectLength": 31,
-    "emojiCommits": 0,
-    "topEmoji": [],
-    "revertCount": 0,
-    "typoFixCount": 0,
-    "topWords": [
-      {
-        "word": "chore",
-        "count": 3
-      },
-      {
-        "word": "feat",
-        "count": 2
-      },
-      {
-        "word": "regenerate",
-        "count": 2
-      },
-      {
-        "word": "api",
-        "count": 1
-      },
-      {
-        "word": "bundle",
-        "count": 1
-      },
-      {
-        "word": "client",
-        "count": 1
-      },
-      {
-        "word": "data",
-        "count": 1
-      },
-      {
-        "word": "dependencies",
-        "count": 1
-      },
-      {
-        "word": "entrypoint",
-        "count": 1
-      },
-      {
-        "word": "lockfile",
-        "count": 1
-      },
-      {
-        "word": "rebuild",
-        "count": 1
-      },
-      {
-        "word": "tables",
-        "count": 1
-      },
-      {
-        "word": "vendor",
-        "count": 1
-      }
-    ]
-  },
-  "social": {
-    "busFactor": 1,
-    "directoryBusFactor": [],
-    "coupling": [],
-    "churn": [],
-    "knowledgeConcentration": []
-  },
-  "notables": {
-    "bulkCommits": [
-      {
-        "hash": "e7359ce0af023a60052ee688a20275640fc303a0",
-        "subject": "chore: regenerate lockfile and data tables",
-        "date": "2025-10-02T00:00:00Z",
-        "linesChanged": 12000
-      }
-    ],
-    "latestNightCommit": {
-      "hash": "58e68513d8354836ab59a1de123f7546e0127ff2",
-      "subject": "chore: regenerate api client",
-      "date": "2025-10-05T00:00:00Z",
-      "linesChanged": 1,
-      "added": 1,
-      "deleted": 0,
-      "files": 1
-    },
-    "earliestMorningCommit": null,
-    "weekendRatio": 0.4,
-    "holidayCommits": 0,
-    "firstCommitSubject": "feat: initial commit",
-    "mergeCount": 0,
-    "timezoneSpread": [
-      {
-        "offsetMinutes": 0,
-        "commits": 5
-      }
-    ]
-  },
-  "warnings": []
+      "metrics": {}
+    }
+  }
 }

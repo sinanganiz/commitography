@@ -1,371 +1,188 @@
 {
-  "schemaVersion": 1,
-  "generatedAt": "<generated-at>",
-  "toolVersion": "<tool-version>",
+  "document_version": {
+    "major": 1,
+    "minor": 0
+  },
+  "metadata": {
+    "generated_at": "<generated-at>",
+    "tool_version": "<tool-version>"
+  },
   "repository": {
     "name": "single",
-    "defaultBranch": "main",
-    "headCommit": "b947e202f9ef14904893b55794fae0331c49d592",
-    "firstCommit": "2025-10-01T00:00:00Z",
-    "lastCommit": "2025-10-01T00:00:00Z",
-    "ageDays": 1,
-    "commitsTotal": 1,
-    "commitsAnalyzed": 1,
-    "commitsExcluded": {
-      "merges": 0,
-      "bots": 0,
-      "total": 0
-    },
-    "contributors": 1,
-    "trackedFiles": 1,
-    "trackedLines": 1,
-    "isShallow": false
+    "commit": "b947e202f9ef14904893b55794fae0331c49d592"
   },
-  "temporal": {
-    "hourHistogram": [
-      1,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "weekdayHistogram": [
-      0,
-      0,
-      1,
-      0,
-      0,
-      0,
-      0
-    ],
-    "hourWeekdayGrid": [
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ]
-    ],
-    "braveDeploys": 0,
-    "nightOwlRatio": 1,
-    "busiestDay": {
-      "date": "2025-10-01",
-      "count": 1
-    },
-    "longestStreak": {
-      "days": 1,
-      "startDate": "2025-10-01",
-      "endDate": "2025-10-01"
-    },
-    "longestSilence": {
-      "days": 0,
-      "startDate": "2025-10-01",
-      "endDate": "2025-10-01"
-    },
-    "commitsPerMonth": [
-      {
-        "month": "2025-10",
-        "count": 1
+  "configuration": {},
+  "families": {
+    "temporal": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "hour_histogram": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "weekday_histogram": [
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "night_ratio": 1,
+        "weekend_ratio": 0,
+        "friday_evening_count": 0,
+        "busiest_day": {
+          "date": "2025-10-01",
+          "count": 1
+        },
+        "longest_streak_days": 1,
+        "longest_silence_days": 0,
+        "first_commit_date": "2025-10-01",
+        "last_commit_date": "2025-10-01"
       }
-    ],
-    "firstCommit": "2025-10-01T00:00:00Z",
-    "lastCommit": "2025-10-01T00:00:00Z"
-  },
-  "code": {
-    "mostTouchedFiles": [
-      {
-        "path": "only.txt",
-        "commits": 1,
-        "added": 1,
-        "deleted": 0,
-        "deletedFromHead": false
-      }
-    ],
-    "largestCommit": {
-      "hash": "b947e202f9ef14904893b55794fae0331c49d592",
-      "subject": "feat: the one and only commit",
-      "date": "2025-10-01T00:00:00Z",
-      "linesChanged": 1,
-      "added": 1,
-      "deleted": 0,
-      "files": 1
     },
-    "averageCommitSize": 1,
-    "medianCommitSize": 1,
-    "totalAdded": 1,
-    "totalDeleted": 0,
-    "oldestUntouchedFile": {
-      "path": "only.txt",
-      "lastModified": "2025-10-01T00:00:00Z"
-    },
-    "fileTypeDistribution": [
-      {
-        "extension": "txt",
-        "changes": 1,
-        "added": 1,
-        "deleted": 0
+    "commit-size": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "mean_lines": 1,
+        "median_lines": 1,
+        "largest_commit": {
+          "hash": "b947e202f9ef14904893b55794fae0331c49d592",
+          "date": "2025-10-01",
+          "lines": 1,
+          "files": 1
+        }
       }
-    ],
-    "codeAge": [
-      {
-        "year": 2025,
-        "lines": 1
-      }
-    ],
-    "survivingFromFirstYear": 1,
-    "codeAgeSampledFiles": 1,
-    "codeAgeTotalFiles": 1,
-    "trackedFiles": 1,
-    "trackedLines": 1
-  },
-  "messages": {
-    "typeDistribution": {
-      "feat": 1
     },
-    "conventionalRatio": 1,
-    "lowConfidence": false,
-    "shortMessages": 0,
-    "longestSubject": {
-      "hash": "b947e202f9ef14904893b55794fae0331c49d592",
-      "length": 29,
-      "subject": "feat: the one and only commit"
-    },
-    "averageSubjectLength": 29,
-    "emojiCommits": 0,
-    "topEmoji": [],
-    "revertCount": 0,
-    "typoFixCount": 0,
-    "topWords": [
-      {
-        "word": "feat",
-        "count": 1
+    "messages": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "conventional_ratio": 1,
+        "mean_subject_length": 29,
+        "revert_count": 0,
+        "fix_typo_count": 0
       }
-    ]
-  },
-  "social": {
-    "busFactor": 1,
-    "directoryBusFactor": [],
-    "coupling": [],
-    "churn": [],
-    "knowledgeConcentration": []
-  },
-  "notables": {
-    "bulkCommits": [],
-    "latestNightCommit": {
-      "hash": "b947e202f9ef14904893b55794fae0331c49d592",
-      "subject": "feat: the one and only commit",
-      "date": "2025-10-01T00:00:00Z",
-      "linesChanged": 1,
-      "added": 1,
-      "deleted": 0,
-      "files": 1
     },
-    "earliestMorningCommit": null,
-    "weekendRatio": 0,
-    "holidayCommits": 0,
-    "firstCommitSubject": "feat: the one and only commit",
-    "mergeCount": 0,
-    "timezoneSpread": [
-      {
-        "offsetMinutes": 0,
-        "commits": 1
+    "files": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "most_modified": [
+          {
+            "path": "only.txt",
+            "commits": 1,
+            "removed": false
+          }
+        ],
+        "oldest_untouched": {
+          "path": "only.txt",
+          "date": "2025-10-01"
+        },
+        "head_file_count": 1,
+        "tracked_text_file_count": 1
       }
-    ]
-  },
-  "warnings": []
+    },
+    "coupling": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "pairs": []
+      }
+    },
+    "ownership": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "worktype": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "ai-archaeology": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "hotspot": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "churn_files": []
+      }
+    },
+    "static-analysis": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    }
+  }
 }

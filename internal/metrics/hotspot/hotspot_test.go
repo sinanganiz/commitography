@@ -51,18 +51,14 @@ func TestChurnHotspotDetection(t *testing.T) {
 		commits = append(commits, commitBy("grace@x", i*60, "cold.go"))
 	}
 
-	var m core.SocialMetrics
-	m.Churn = BuildChurn(core.ScopedCommits(in, commits))
-	if len(m.Churn) != 1 {
-		t.Fatalf("churn = %+v, want exactly one hotspot", m.Churn)
+	churn := Build(core.ScopedCommits(in, commits)).Metrics.ChurnFiles
+	if len(churn) != 1 {
+		t.Fatalf("churn = %+v, want exactly one hotspot", churn)
 	}
-	if m.Churn[0].Path != "hot.go" {
-		t.Errorf("hotspot = %q, want hot.go", m.Churn[0].Path)
+	if churn[0].Path != "hot.go" {
+		t.Errorf("hotspot = %q, want hot.go", churn[0].Path)
 	}
-	if m.Churn[0].MaxCommitsInWindow != 6 {
-		t.Errorf("maxCommitsInWindow = %d, want 6", m.Churn[0].MaxCommitsInWindow)
-	}
-	if m.Churn[0].TotalCommits != 6 {
-		t.Errorf("totalCommits = %d, want 6", m.Churn[0].TotalCommits)
+	if churn[0].CommitsInWindow != 6 {
+		t.Errorf("commits_in_window = %d, want 6", churn[0].CommitsInWindow)
 	}
 }

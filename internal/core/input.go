@@ -23,17 +23,10 @@ type Input struct {
 	Resolver   *identity.Resolver
 	PathFilter *filter.PathFilter
 
-	// NoBlame skips the sampled-blame metrics, which dominate runtime on large
-	// repositories.
-	NoBlame bool
-	// PerAuthor populates the opt-in per-contributor section.
-	PerAuthor bool
 	// Year, when non-zero, restricts the analysis to one calendar year of
 	// author-local activity.
 	Year int
 
-	// Warnings carries diagnostics raised by earlier stages.
-	Warnings []string
 	// Progress, when set, is called as each stage begins.
 	Progress func(stage, detail string, current, total int)
 

@@ -256,7 +256,7 @@ func TestCancelAllRequestsWorkerCancellation(t *testing.T) {
 	}
 }
 
-func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
+func TestWarningsAreVisibleDuringRunAndMergedWithResult(t *testing.T) {
 	t.Parallel()
 	release := make(chan struct{})
 	warned := make(chan struct{})
@@ -267,8 +267,10 @@ func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
 			opts.OnWarning("history: skipped commit")
 			close(warned)
 			<-release
-			report := &core.Report{Warnings: []string{"history: skipped commit", "blame: sampled"}}
-			return &pipeline.Result{Report: report}, nil
+			return &pipeline.Result{
+				Report:   &core.Report{},
+				Warnings: []string{"history: skipped commit", "coupling: pairs discarded"},
+			}, nil
 		},
 	})
 	job, err := manager.Start("/repos/project", pipeline.Options{})
@@ -296,7 +298,7 @@ func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	want := []string{"config: unknown key", "history: skipped commit", "blame: sampled"}
+	want := []string{"config: unknown key", "history: skipped commit", "coupling: pairs discarded"}
 	if done.Status != StatusSucceeded || done.WarningCount != len(want) {
 		t.Fatalf("done = %s with %d warnings %q", done.Status, done.WarningCount, done.Warnings)
 	}

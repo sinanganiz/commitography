@@ -1,5 +1,8 @@
-// Package hotspot is the hotspot metric family (ADR-0024, ADR-0040): files
-// rewritten repeatedly inside a short window.
+// Package hotspot is the hotspot metric family (ADR-0024, ADR-0040): the files
+// that attract change. Its metrics are those of docs/metrics.md section 10
+// (ADR-0062), and its churn limit is the catalogue's, taken from core
+// (ADR-0053 clause 3). Of that section it computes the churn files; the
+// complexity proxy and the hotspot score arrive with WP-0026.
 package hotspot
 
 import (
@@ -10,77 +13,77 @@ import (
 )
 
 const (
-	// churnWindowDays and churnMinCommits define a hotspot: a file rewritten
-	// repeatedly inside one month.
+	// churnWindowDays and churnMinCommits define a churn file: one receiving
+	// at least churnMinCommits commits inside any rolling churnWindowDays.
 	churnWindowDays = 30
 	churnMinCommits = 5
-	churnLimit      = 25
 )
 
-// BuildChurn finds files touched at least churnMinCommits times inside any
-// rolling 30-day window. A file being rewritten that often is either the heart
-// of the system or a place nobody has got right yet.
-func BuildChurn(scoped []core.ScopedCommit) []core.ChurnHotspot {
-	type touch struct {
-		when    time.Time
-		added   int
-		deleted int
-	}
-	byPath := map[string][]touch{}
+// version is the family version (ADR-0031 clause 2).
+func version() core.Version { return core.Version{Major: 1, Minor: 0} }
+
+// Build finds the churn files: files touched at least churnMinCommits times
+// inside any rolling 30-day window. A file being rewritten that often is
+// either the heart of the system or a place nobody has got right yet.
+// Exceeding the churn limit degrades the family with cardinality_limit.
+func Build(scoped []core.ScopedCommit) core.Family[core.HotspotMetrics] {
+	byPath := map[string][]time.Time{}
 	for _, sc := range scoped {
 		for _, f := range sc.Files {
-			byPath[f.Path] = append(byPath[f.Path], touch{sc.When, f.Added, f.Deleted})
+			byPath[f.Path] = append(byPath[f.Path], sc.When)
 		}
 	}
 
-	out := []core.ChurnHotspot{}
+	type churn struct {
+		file  core.ChurnFile
+		total int
+	}
+	var found []churn
 	window := time.Duration(churnWindowDays) * 24 * time.Hour
 
 	for p, touches := range byPath {
 		if len(touches) < churnMinCommits {
 			continue
 		}
-		sort.Slice(touches, func(i, j int) bool { return touches[i].when.Before(touches[j].when) })
+		sort.Slice(touches, func(i, j int) bool { return touches[i].Before(touches[j]) })
 
-		best, bestStart := 0, time.Time{}
-		left := 0
+		best, left := 0, 0
 		for right := range touches {
-			for touches[right].when.Sub(touches[left].when) > window {
+			for touches[right].Sub(touches[left]) > window {
 				left++
 			}
 			if n := right - left + 1; n > best {
-				best, bestStart = n, touches[left].when
+				best = n
 			}
 		}
 		if best < churnMinCommits {
 			continue
 		}
-
-		hotspot := core.ChurnHotspot{
-			Path:               p,
-			MaxCommitsInWindow: best,
-			WindowStart:        bestStart,
-			TotalCommits:       len(touches),
-		}
-		for _, t := range touches {
-			hotspot.Added += t.added
-			hotspot.Deleted += t.deleted
-		}
-		out = append(out, hotspot)
+		found = append(found, churn{core.ChurnFile{Path: p, CommitsInWindow: best}, len(touches)})
 	}
 
-	sort.Slice(out, func(i, j int) bool {
-		a, b := out[i], out[j]
-		if a.MaxCommitsInWindow != b.MaxCommitsInWindow {
-			return a.MaxCommitsInWindow > b.MaxCommitsInWindow
+	sort.Slice(found, func(i, j int) bool {
+		a, b := found[i], found[j]
+		if a.file.CommitsInWindow != b.file.CommitsInWindow {
+			return a.file.CommitsInWindow > b.file.CommitsInWindow
 		}
-		if a.TotalCommits != b.TotalCommits {
-			return a.TotalCommits > b.TotalCommits
+		if a.total != b.total {
+			return a.total > b.total
 		}
-		return a.Path < b.Path
+		return a.file.Path < b.file.Path
 	})
-	if len(out) > churnLimit {
-		out = out[:churnLimit]
+
+	truncated := len(found) > core.LimitChurnFiles
+	if truncated {
+		found = found[:core.LimitChurnFiles]
 	}
-	return out
+	files := make([]core.ChurnFile, 0, len(found))
+	for _, c := range found {
+		files = append(files, c.file)
+	}
+	f := core.Computed(version(), core.HotspotMetrics{ChurnFiles: files})
+	if truncated {
+		f.Degrade(core.ReasonCardinalityLimit, core.ConfidencePartial)
+	}
+	return f
 }

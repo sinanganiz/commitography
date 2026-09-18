@@ -176,7 +176,7 @@ func TestAPIEndpointMatrix(t *testing.T) {
 	// A succeeded job has a report and can no longer be cancelled.
 	second := createdID(t, expect(t, "create second", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: valid}), http.StatusAccepted, ""))
 	waitForStatus(t, app, second, StatusRunning)
-	outcomes <- outcome{result: &pipeline.Result{Report: &core.Report{SchemaVersion: core.SchemaVersion}}}
+	outcomes <- outcome{result: &pipeline.Result{Report: &core.Report{DocumentVersion: core.DocumentVersion()}}}
 	waitForStatus(t, app, second, StatusSucceeded)
 	secondPath := "/api/v1/jobs/" + second
 	expect(t, "report", call(t, app, apiCall{method: http.MethodGet, path: secondPath + "/report"}), http.StatusOK, "")

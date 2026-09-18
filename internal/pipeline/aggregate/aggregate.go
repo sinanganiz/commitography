@@ -1,14 +1,20 @@
-// Package aggregate is the aggregate stage (ADR-0020): it builds the report by
-// running the metric families over the filtered commits (ADR-0024, ADR-0040).
+// Package aggregate is the aggregate stage (ADR-0020): it builds the report
+// document by running the metric families over the filtered commits
+// (ADR-0024, ADR-0040). Every family of ADR-0024 clause 5 is placed in the
+// document with a status (ADR-0032 clause 1); a family with no implementation
+// yet is skipped with reason not_implemented. Generation values go to the
+// metadata section alone (ADR-0021 clause 6).
 package aggregate
 
 import (
 	"context"
 
 	"github.com/sinanganiz/commitography/internal/core"
-	"github.com/sinanganiz/commitography/internal/core/model"
 	"github.com/sinanganiz/commitography/internal/metrics/commitsize"
+	"github.com/sinanganiz/commitography/internal/metrics/coupling"
+	"github.com/sinanganiz/commitography/internal/metrics/hotspot"
 	"github.com/sinanganiz/commitography/internal/metrics/messages"
+	"github.com/sinanganiz/commitography/internal/metrics/ownership"
 	"github.com/sinanganiz/commitography/internal/metrics/temporal"
 )
 
@@ -25,97 +31,64 @@ func New(clock core.Clock, files core.Filesystem) *Builder {
 	return &Builder{clock: clock, files: files}
 }
 
-// Build computes the complete report.
-func (b *Builder) Build(in core.Input) (*core.Report, error) {
+// Build computes the complete report, and returns with it the diagnostics
+// aggregation raised. Diagnostics are not report content: the caller shows
+// them where it shows its other warnings.
+func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 	analyzed := in.Analyzed()
 	lineScoped := in.LineScoped()
+	var warnings []string
 
 	r := &core.Report{
-		SchemaVersion: core.SchemaVersion,
-		GeneratedAt:   b.clock.Now().UTC(),
-		ToolVersion:   in.ToolVersion,
-		Warnings:      append([]string(nil), in.Warnings...),
+		DocumentVersion: core.DocumentVersion(),
+		Metadata: core.Metadata{
+			GeneratedAt: b.clock.Now().UTC(),
+			ToolVersion: in.ToolVersion,
+		},
+		Repository: core.Repository{
+			Name:   in.Repository.Name,
+			Commit: in.Repository.HeadCommit,
+		},
 	}
-	if r.Warnings == nil {
-		r.Warnings = []string{}
-	}
+	f := &r.Families
 
 	progress(in, "metrics", "temporal", 0, 0)
-	r.Temporal = temporal.BuildTemporal(in, analyzed)
+	f.Temporal = temporal.Build(in, analyzed)
 
 	progress(in, "metrics", "code", 0, 0)
-	code, codeWarnings, err := b.buildCode(in, analyzed, lineScoped)
+	f.CommitSize = commitsize.Build(in, lineScoped)
+	files, fileWarnings, err := b.buildFiles(in, lineScoped)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	r.Code = code
-	r.Warnings = append(r.Warnings, codeWarnings...)
+	f.Files = files
+	warnings = append(warnings, fileWarnings...)
 
 	progress(in, "metrics", "messages", 0, 0)
-	r.Messages = messages.BuildMessages(analyzed)
+	f.Messages = messages.Build(analyzed)
 
 	progress(in, "metrics", "social", 0, 0)
-	social, socialWarnings := buildSocial(in, lineScoped)
-	r.Social = social
-	r.Warnings = append(r.Warnings, socialWarnings...)
+	scoped := core.ScopedCommits(in, lineScoped)
+	var couplingWarnings []string
+	f.Coupling, couplingWarnings = coupling.Build(scoped)
+	warnings = append(warnings, couplingWarnings...)
+	f.Hotspot = hotspot.Build(scoped)
+	f.Ownership = ownership.Build()
 
-	progress(in, "metrics", "notables", 0, 0)
-	r.Notables = buildNotables(in, analyzed)
+	// The families below have no implementation yet. Each is present, as
+	// skipped, so the document's shape is final and the package that
+	// implements a family replaces one line here (ADR-0032 clause 1).
+	f.Worktype = core.Skipped[core.WorktypeMetrics](core.Version{}, core.ReasonNotImplemented)
+	f.AIArchaeology = core.Skipped[core.AIArchaeologyMetrics](core.Version{}, core.ReasonNotImplemented)
+	f.StaticAnalysis = core.Skipped[core.StaticAnalysisMetrics](core.Version{}, core.ReasonNotImplemented)
 
-	if in.PerAuthor {
-		r.PerAuthor = temporal.BuildPerAuthor(in, analyzed)
-	}
-
-	r.Repository = buildSummary(in, analyzed, r)
-
+	// An analysis the operator let proceed on a shallow clone has computed
+	// every family over an incomplete history (docs/metrics.md section 13).
 	if in.Repository.IsShallow {
-		r.Warnings = append([]string{
-			"This repository is a shallow clone. Its history is incomplete, so every number below is wrong.",
-		}, r.Warnings...)
+		f.Degrade(core.ReasonShallowClone, core.ConfidenceLow)
 	}
 
-	core.ApplyPrivacy(r, in.Config)
-	return r, nil
-}
-
-// buildNotables assembles the notable events from the temporal family and the
-// commit-size family's bulk commit list.
-func buildNotables(in core.Input, analyzed []model.Commit) core.Notables {
-	n := temporal.BuildNotables(in, analyzed)
-	n.BulkCommits = commitsize.BulkCommits(in)
-	return n
-}
-
-func buildSummary(in core.Input, analyzed []model.Commit, r *core.Report) core.RepositorySummary {
-	s := core.RepositorySummary{
-		Name:            in.Repository.Name,
-		DefaultBranch:   in.Repository.DefaultBranch,
-		HeadCommit:      in.Repository.HeadCommit,
-		CommitsTotal:    in.Filtered.TotalCommits,
-		CommitsAnalyzed: len(analyzed),
-		CommitsExcluded: core.ExclusionBreakdown{
-			Merges: in.Filtered.ExcludedMerges,
-			Bots:   in.Filtered.ExcludedBots,
-			Total:  in.Filtered.TotalCommits - in.Filtered.AnalyzedCommits,
-		},
-		IsShallow:    in.Repository.IsShallow,
-		TrackedFiles: r.Code.TrackedFiles,
-		TrackedLines: r.Code.TrackedLines,
-	}
-
-	s.FirstCommit = r.Temporal.FirstCommit
-	s.LastCommit = r.Temporal.LastCommit
-	if s.FirstCommit != nil && s.LastCommit != nil {
-		s.AgeDays = int(s.LastCommit.Sub(*s.FirstCommit).Hours()/24) + 1
-	}
-
-	contributors := map[string]bool{}
-	for _, c := range analyzed {
-		contributors[c.IdentityID] = true
-	}
-	s.Contributors = len(contributors)
-
-	return s
+	return r, warnings, nil
 }
 
 // progress reports that a stage has begun, when the caller asked to hear.

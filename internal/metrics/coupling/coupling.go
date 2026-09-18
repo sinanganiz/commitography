@@ -1,5 +1,7 @@
 // Package coupling is the coupling metric family (ADR-0024, ADR-0040): which
-// files keep changing together.
+// files keep changing together. Its metrics are those of docs/metrics.md
+// section 6 (ADR-0062), and its pair limit is the catalogue's, taken from
+// core (ADR-0053 clause 3).
 package coupling
 
 import (
@@ -19,7 +21,6 @@ const (
 	// once or twice.
 	couplingMinSupport    = 5
 	couplingMinConfidence = 0.5
-	couplingLimit         = 50
 
 	// couplingMaxPairs bounds memory on repositories with very wide commits.
 	// Past it, single-support pairs are dropped: they can never reach the
@@ -27,10 +28,15 @@ const (
 	couplingMaxPairs = 5_000_000
 )
 
-// BuildCoupling finds file pairs that keep changing together. Confidence is
+// version is the family version (ADR-0031 clause 2).
+func version() core.Version { return core.Version{Major: 1, Minor: 0} }
+
+// Build finds file pairs that keep changing together. Confidence is
 // measured against the rarer of the two files, so a pair is only reported when
-// the smaller partner nearly always brings the larger one along.
-func BuildCoupling(scoped []core.ScopedCommit) ([]core.CoupledPair, []string) {
+// the smaller partner nearly always brings the larger one along. Exceeding the
+// pair limit degrades the family with cardinality_limit. The warnings are
+// diagnostics, not report content.
+func Build(scoped []core.ScopedCommit) (core.Family[core.CouplingMetrics], []string) {
 	var warnings []string
 
 	changes := map[string]int{}
@@ -110,10 +116,15 @@ func BuildCoupling(scoped []core.ScopedCommit) ([]core.CoupledPair, []string) {
 		}
 		return a.B < b.B
 	})
-	if len(out) > couplingLimit {
-		out = out[:couplingLimit]
+	truncated := len(out) > core.LimitCouplingPairs
+	if truncated {
+		out = out[:core.LimitCouplingPairs]
 	}
-	return out, warnings
+	f := core.Computed(version(), core.CouplingMetrics{Pairs: out})
+	if truncated {
+		f.Degrade(core.ReasonCardinalityLimit, core.ConfidencePartial)
+	}
+	return f, warnings
 }
 
 // pairKey orders two paths so a pair has exactly one representation.

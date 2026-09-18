@@ -157,10 +157,7 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 		Filtered:    filtered,
 		Resolver:    resolver,
 		PathFilter:  pathFilter,
-		NoBlame:     opts.NoBlame,
-		PerAuthor:   opts.PerAuthor,
 		Year:        opts.Year,
-		Warnings:    warnings,
 		ToolVersion: opts.ToolVersion,
 		Progress: func(stage, detail string, current, total int) {
 			mapped := StageCode
@@ -177,8 +174,6 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 				case "notables":
 					mapped = StageNotables
 				}
-			} else if stage == "blame" {
-				mapped = StageCode
 			}
 			emit.emitProgress(mapped, detail, current, total)
 		},
@@ -187,9 +182,12 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	if err := contextError(ctx); err != nil {
 		return nil, err
 	}
-	report, err := a.builder.Build(input)
+	report, buildWarnings, err := a.builder.Build(input)
 	if err != nil {
 		return nil, err
+	}
+	for _, message := range buildWarnings {
+		collectWarn(message)
 	}
 
 	var previousYearCommits *int
@@ -205,7 +203,7 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 		Report:              report,
 		Repository:          history.Repository,
 		Config:              cfg,
-		Warnings:            append([]string(nil), report.Warnings...),
+		Warnings:            append([]string(nil), warnings...),
 		PreviousYearCommits: previousYearCommits,
 	}
 	if opts.CheckConsistency {

@@ -1,0 +1,871 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/sinanganiz/commitography/docs/report-schema.json",
+  "title": "Commitography report",
+  "description": "report.json: one repository, at one commit, under one analysis configuration (ADR-0021). docs/metrics.md defines every metric, reason code and cardinality limit it carries (ADR-0062). Within a document major version no field is removed and no field's meaning changes (ADR-0031). Consumers ignore unknown fields.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_version",
+    "metadata",
+    "repository",
+    "configuration",
+    "families"
+  ],
+  "properties": {
+    "document_version": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The version of the document's structure (ADR-0031 clause 1).",
+      "required": [
+        "major",
+        "minor"
+      ],
+      "properties": {
+        "major": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        },
+        "minor": {
+          "type": "integer"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The only section whose values differ between two runs over one commit and configuration. Comparison tooling excludes it by path (ADR-0021 clause 6).",
+      "required": [
+        "generated_at",
+        "tool_version"
+      ],
+      "properties": {
+        "generated_at": {
+          "type": "string"
+        },
+        "tool_version": {
+          "type": "string"
+        }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "commit"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "string",
+          "description": "The analysed commit."
+        }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The resolved analysis configuration the report was produced under. Required; filled by WP-0010.",
+      "required": [],
+      "properties": {}
+    },
+    "families": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Every family of ADR-0024 clause 5, each with a version and a status (ADR-0031 clause 2, ADR-0032).",
+      "required": [
+        "temporal",
+        "commit-size",
+        "messages",
+        "files",
+        "coupling",
+        "ownership",
+        "worktype",
+        "ai-archaeology",
+        "hotspot",
+        "static-analysis"
+      ],
+      "properties": {
+        "temporal": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed and reliable.",
+              "required": [
+                "version",
+                "status",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ok"
+                  ]
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/temporalMetrics"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed, with a reason and a confidence indicator.",
+              "required": [
+                "version",
+                "status",
+                "reasons",
+                "confidence",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "degraded"
+                  ]
+                },
+                "reasons": {
+                  "$ref": "#/$defs/reasons"
+                },
+                "confidence": {
+                  "$ref": "#/$defs/confidence"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/temporalMetrics"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/skippedFamily"
+            }
+          ]
+        },
+        "commit-size": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed and reliable.",
+              "required": [
+                "version",
+                "status",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ok"
+                  ]
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/commitSizeMetrics"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed, with a reason and a confidence indicator.",
+              "required": [
+                "version",
+                "status",
+                "reasons",
+                "confidence",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "degraded"
+                  ]
+                },
+                "reasons": {
+                  "$ref": "#/$defs/reasons"
+                },
+                "confidence": {
+                  "$ref": "#/$defs/confidence"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/commitSizeMetrics"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/skippedFamily"
+            }
+          ]
+        },
+        "messages": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed and reliable.",
+              "required": [
+                "version",
+                "status",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ok"
+                  ]
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/messagesMetrics"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed, with a reason and a confidence indicator.",
+              "required": [
+                "version",
+                "status",
+                "reasons",
+                "confidence",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "degraded"
+                  ]
+                },
+                "reasons": {
+                  "$ref": "#/$defs/reasons"
+                },
+                "confidence": {
+                  "$ref": "#/$defs/confidence"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/messagesMetrics"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/skippedFamily"
+            }
+          ]
+        },
+        "files": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed and reliable.",
+              "required": [
+                "version",
+                "status",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ok"
+                  ]
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/filesMetrics"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed, with a reason and a confidence indicator.",
+              "required": [
+                "version",
+                "status",
+                "reasons",
+                "confidence",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "degraded"
+                  ]
+                },
+                "reasons": {
+                  "$ref": "#/$defs/reasons"
+                },
+                "confidence": {
+                  "$ref": "#/$defs/confidence"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/filesMetrics"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/skippedFamily"
+            }
+          ]
+        },
+        "coupling": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed and reliable.",
+              "required": [
+                "version",
+                "status",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ok"
+                  ]
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/couplingMetrics"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed, with a reason and a confidence indicator.",
+              "required": [
+                "version",
+                "status",
+                "reasons",
+                "confidence",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "degraded"
+                  ]
+                },
+                "reasons": {
+                  "$ref": "#/$defs/reasons"
+                },
+                "confidence": {
+                  "$ref": "#/$defs/confidence"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/couplingMetrics"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/skippedFamily"
+            }
+          ]
+        },
+        "ownership": {
+          "$ref": "#/$defs/skippedFamily",
+          "description": "Not implemented yet; present as skipped (ADR-0032 clause 1)."
+        },
+        "worktype": {
+          "$ref": "#/$defs/skippedFamily",
+          "description": "Not implemented yet; present as skipped (ADR-0032 clause 1)."
+        },
+        "ai-archaeology": {
+          "$ref": "#/$defs/skippedFamily",
+          "description": "Not implemented yet; present as skipped (ADR-0032 clause 1)."
+        },
+        "hotspot": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed and reliable.",
+              "required": [
+                "version",
+                "status",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ok"
+                  ]
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/hotspotMetrics"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Computed, with a reason and a confidence indicator.",
+              "required": [
+                "version",
+                "status",
+                "reasons",
+                "confidence",
+                "metrics"
+              ],
+              "properties": {
+                "version": {
+                  "$ref": "#/$defs/version"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "degraded"
+                  ]
+                },
+                "reasons": {
+                  "$ref": "#/$defs/reasons"
+                },
+                "confidence": {
+                  "$ref": "#/$defs/confidence"
+                },
+                "method": {
+                  "type": "string",
+                  "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+                },
+                "metrics": {
+                  "$ref": "#/$defs/hotspotMetrics"
+                }
+              }
+            },
+            {
+              "$ref": "#/$defs/skippedFamily"
+            }
+          ]
+        },
+        "static-analysis": {
+          "$ref": "#/$defs/skippedFamily",
+          "description": "Not implemented yet; present as skipped (ADR-0032 clause 1)."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "major",
+        "minor"
+      ],
+      "properties": {
+        "major": {
+          "type": "integer"
+        },
+        "minor": {
+          "type": "integer"
+        }
+      }
+    },
+    "reasons": {
+      "type": "array",
+      "description": "Every family status code that applies, in enumeration order. docs/metrics.md section 13 is the authoritative list (ADR-0062 clause 6).",
+      "items": {
+        "type": "string",
+        "enum": [
+          "worktree_unavailable",
+          "not_implemented",
+          "empty_population",
+          "cardinality_limit",
+          "low_classification_confidence",
+          "shallow_clone",
+          "limit_reached_commits",
+          "limit_reached_size",
+          "limit_reached_duration",
+          "limit_reached_memory",
+          "symlink_escaped_root",
+          "capability_unavailable_in_mode",
+          "external_service_unavailable",
+          "binary_file_skipped",
+          "history_rewritten"
+        ]
+      }
+    },
+    "confidence": {
+      "type": "string",
+      "description": "low: the values present may themselves be wrong. partial: the values present are correct but incomplete.",
+      "enum": [
+        "low",
+        "partial"
+      ]
+    },
+    "noMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A skipped family's metrics are empty: never null-filled, never zero-filled (ADR-0032 clause 3).",
+      "required": [],
+      "properties": {}
+    },
+    "skippedFamily": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Not computed, with a reason.",
+      "required": [
+        "version",
+        "status",
+        "reasons",
+        "metrics"
+      ],
+      "properties": {
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "skipped"
+          ]
+        },
+        "reasons": {
+          "$ref": "#/$defs/reasons"
+        },
+        "method": {
+          "type": "string",
+          "description": "How the values were derived, where that differs from a measurement or a reference implementation (ADR-0032 clause 8)."
+        },
+        "metrics": {
+          "$ref": "#/$defs/noMetrics"
+        }
+      }
+    },
+    "temporalMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "docs/metrics.md section 2.",
+      "required": [],
+      "properties": {
+        "hour_histogram": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "weekday_histogram": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "night_ratio": {
+          "type": "number",
+          "description": "A ratio from 0 to 1."
+        },
+        "weekend_ratio": {
+          "type": "number",
+          "description": "A ratio from 0 to 1."
+        },
+        "friday_evening_count": {
+          "type": "integer"
+        },
+        "busiest_day": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "date",
+            "count"
+          ],
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "A local calendar date, YYYY-MM-DD."
+            },
+            "count": {
+              "type": "integer"
+            }
+          }
+        },
+        "longest_streak_days": {
+          "type": "integer"
+        },
+        "longest_silence_days": {
+          "type": "integer"
+        },
+        "first_commit_date": {
+          "type": "string",
+          "description": "A local calendar date, YYYY-MM-DD."
+        },
+        "last_commit_date": {
+          "type": "string",
+          "description": "A local calendar date, YYYY-MM-DD."
+        }
+      }
+    },
+    "commitSizeMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "docs/metrics.md section 3.",
+      "required": [],
+      "properties": {
+        "mean_lines": {
+          "type": "number"
+        },
+        "median_lines": {
+          "type": "number"
+        },
+        "largest_commit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "hash",
+            "date",
+            "lines",
+            "files"
+          ],
+          "properties": {
+            "hash": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string",
+              "description": "A local calendar date, YYYY-MM-DD."
+            },
+            "lines": {
+              "type": "integer"
+            },
+            "files": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "messagesMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "docs/metrics.md section 4.",
+      "required": [],
+      "properties": {
+        "conventional_ratio": {
+          "type": "number",
+          "description": "A ratio from 0 to 1."
+        },
+        "mean_subject_length": {
+          "type": "number"
+        },
+        "revert_count": {
+          "type": "integer"
+        },
+        "fix_typo_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "filesMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "docs/metrics.md section 5.",
+      "required": [],
+      "properties": {
+        "most_modified": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "commits",
+              "removed"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "commits": {
+                "type": "integer"
+              },
+              "removed": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "oldest_untouched": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "date"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string",
+              "description": "A local calendar date, YYYY-MM-DD."
+            }
+          }
+        },
+        "head_file_count": {
+          "type": "integer"
+        },
+        "tracked_text_file_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "couplingMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "docs/metrics.md section 6.",
+      "required": [],
+      "properties": {
+        "pairs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "a",
+              "b",
+              "support",
+              "confidence",
+              "expected"
+            ],
+            "properties": {
+              "a": {
+                "type": "string"
+              },
+              "b": {
+                "type": "string"
+              },
+              "support": {
+                "type": "integer"
+              },
+              "confidence": {
+                "type": "number",
+                "description": "A ratio from 0 to 1."
+              },
+              "expected": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "hotspotMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "docs/metrics.md section 10.",
+      "required": [],
+      "properties": {
+        "churn_files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "commits_in_window"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "commits_in_window": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

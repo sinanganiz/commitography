@@ -1,581 +1,218 @@
 {
-  "schemaVersion": 1,
-  "generatedAt": "<generated-at>",
-  "toolVersion": "<tool-version>",
+  "document_version": {
+    "major": 1,
+    "minor": 0
+  },
+  "metadata": {
+    "generated_at": "<generated-at>",
+    "tool_version": "<tool-version>"
+  },
   "repository": {
     "name": "basic",
-    "defaultBranch": "main",
-    "headCommit": "3e75c9c7359e3e5f996743ec8943dffa09411104",
-    "firstCommit": "2025-10-01T09:00:00Z",
-    "lastCommit": "2026-02-25T17:00:00+03:00",
-    "ageDays": 148,
-    "commitsTotal": 50,
-    "commitsAnalyzed": 50,
-    "commitsExcluded": {
-      "merges": 0,
-      "bots": 0,
-      "total": 0
-    },
-    "contributors": 4,
-    "trackedFiles": 3,
-    "trackedLines": 77,
-    "isShallow": false
+    "commit": "3e75c9c7359e3e5f996743ec8943dffa09411104"
   },
-  "temporal": {
-    "hourHistogram": [
-      0,
-      0,
-      4,
-      0,
-      4,
-      2,
-      2,
-      2,
-      0,
-      5,
-      0,
-      2,
-      4,
-      0,
-      4,
-      2,
-      0,
-      5,
-      2,
-      0,
-      4,
-      2,
-      0,
-      6
-    ],
-    "weekdayHistogram": [
-      8,
-      7,
-      8,
-      6,
-      6,
-      8,
-      7
-    ],
-    "hourWeekdayGrid": [
-      [
-        0,
-        0,
-        1,
-        0,
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        1,
-        0,
-        0,
-        3
+  "configuration": {},
+  "families": {
+    "temporal": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "hour_histogram": [
+          0,
+          0,
+          4,
+          0,
+          4,
+          2,
+          2,
+          2,
+          0,
+          5,
+          0,
+          2,
+          4,
+          0,
+          4,
+          2,
+          0,
+          5,
+          2,
+          0,
+          4,
+          2,
+          0,
+          6
+        ],
+        "weekday_histogram": [
+          8,
+          7,
+          8,
+          6,
+          6,
+          8,
+          7
+        ],
+        "night_ratio": 0.32,
+        "weekend_ratio": 0.3,
+        "friday_evening_count": 0,
+        "busiest_day": {
+          "date": "2025-10-01",
+          "count": 1
+        },
+        "longest_streak_days": 2,
+        "longest_silence_days": 3,
+        "first_commit_date": "2025-10-01",
+        "last_commit_date": "2026-02-25"
+      }
+    },
+    "commit-size": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "mean_lines": 1.5,
+        "median_lines": 1,
+        "largest_commit": {
+          "hash": "edac6cea3c3e05982b761a753e47071b73a03821",
+          "date": "2026-02-13",
+          "lines": 3,
+          "files": 3
+        }
+      }
+    },
+    "messages": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "conventional_ratio": 0.7,
+        "mean_subject_length": 25.9,
+        "revert_count": 0,
+        "fix_typo_count": 5
+      }
+    },
+    "files": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "most_modified": [
+          {
+            "path": "src/main.go",
+            "commits": 50,
+            "removed": false
+          },
+          {
+            "path": "docs/notes.md",
+            "commits": 17,
+            "removed": false
+          },
+          {
+            "path": "src/util.go",
+            "commits": 10,
+            "removed": false
+          }
+        ],
+        "oldest_untouched": {
+          "path": "src/util.go",
+          "date": "2026-02-13"
+        },
+        "head_file_count": 3,
+        "tracked_text_file_count": 3
+      }
+    },
+    "coupling": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "pairs": [
+          {
+            "a": "docs/notes.md",
+            "b": "src/main.go",
+            "support": 17,
+            "confidence": 1,
+            "expected": false
+          },
+          {
+            "a": "src/main.go",
+            "b": "src/util.go",
+            "support": 10,
+            "confidence": 1,
+            "expected": false
+          }
+        ]
+      }
+    },
+    "ownership": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        2,
-        0,
-        2,
-        0,
-        0,
-        0,
-        1,
-        0,
-        1,
-        1,
-        0,
-        0
+      "metrics": {}
+    },
+    "worktype": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        1,
-        0,
-        1,
-        0,
-        0,
-        0,
-        1,
-        0,
-        1,
-        0,
-        0,
-        1,
-        0,
-        0,
-        2
+      "metrics": {}
+    },
+    "ai-archaeology": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        1,
-        0,
-        0,
-        1,
-        1,
-        0,
-        0,
-        0,
-        0,
-        0
+      "metrics": {}
+    },
+    "hotspot": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "churn_files": [
+          {
+            "path": "src/main.go",
+            "commits_in_window": 11
+          }
+        ]
+      }
+    },
+    "static-analysis": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
       ],
-      [
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        2,
-        0,
-        1,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        0,
-        0,
-        1,
-        0,
-        2,
-        1,
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      [
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        2,
-        0,
-        0,
-        1,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        1,
-        0,
-        0
-      ]
-    ],
-    "braveDeploys": 0,
-    "nightOwlRatio": 0.32,
-    "busiestDay": {
-      "date": "2025-10-01",
-      "count": 1
-    },
-    "longestStreak": {
-      "days": 2,
-      "startDate": "2025-11-01",
-      "endDate": "2025-11-02"
-    },
-    "longestSilence": {
-      "days": 3,
-      "startDate": "2025-10-01",
-      "endDate": "2025-10-04"
-    },
-    "commitsPerMonth": [
-      {
-        "month": "2025-10",
-        "count": 10
-      },
-      {
-        "month": "2025-11",
-        "count": 11
-      },
-      {
-        "month": "2025-12",
-        "count": 10
-      },
-      {
-        "month": "2026-01",
-        "count": 10
-      },
-      {
-        "month": "2026-02",
-        "count": 9
-      }
-    ],
-    "firstCommit": "2025-10-01T09:00:00Z",
-    "lastCommit": "2026-02-25T17:00:00+03:00"
-  },
-  "code": {
-    "mostTouchedFiles": [
-      {
-        "path": "src/main.go",
-        "commits": 50,
-        "added": 50,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "docs/notes.md",
-        "commits": 17,
-        "added": 17,
-        "deleted": 0,
-        "deletedFromHead": false
-      },
-      {
-        "path": "src/util.go",
-        "commits": 10,
-        "added": 10,
-        "deleted": 0,
-        "deletedFromHead": false
-      }
-    ],
-    "largestCommit": {
-      "hash": "edac6cea3c3e05982b761a753e47071b73a03821",
-      "subject": "chore: bump dependency 45",
-      "date": "2026-02-13T11:00:00Z",
-      "linesChanged": 3,
-      "added": 3,
-      "deleted": 0,
-      "files": 3
-    },
-    "averageCommitSize": 1.5,
-    "medianCommitSize": 1,
-    "totalAdded": 77,
-    "totalDeleted": 0,
-    "oldestUntouchedFile": {
-      "path": "src/util.go",
-      "lastModified": "2026-02-13T11:00:00Z"
-    },
-    "fileTypeDistribution": [
-      {
-        "extension": "go",
-        "changes": 60,
-        "added": 60,
-        "deleted": 0
-      },
-      {
-        "extension": "md",
-        "changes": 17,
-        "added": 17,
-        "deleted": 0
-      }
-    ],
-    "codeAge": [
-      {
-        "year": 2025,
-        "lines": 49
-      },
-      {
-        "year": 2026,
-        "lines": 28
-      }
-    ],
-    "survivingFromFirstYear": 0.6364,
-    "codeAgeSampledFiles": 3,
-    "codeAgeTotalFiles": 3,
-    "trackedFiles": 3,
-    "trackedLines": 77
-  },
-  "messages": {
-    "typeDistribution": {
-      "chore": 5,
-      "ci": 5,
-      "docs": 5,
-      "feat": 5,
-      "fix": 10,
-      "merge": 5,
-      "other": 5,
-      "refactor": 5,
-      "test": 5
-    },
-    "conventionalRatio": 0.7,
-    "lowConfidence": false,
-    "shortMessages": 5,
-    "longestSubject": {
-      "hash": "51ba86080032743fc772a7964247e21269dc3066",
-      "length": 36,
-      "subject": "fix: correct off-by-one in parser 41"
-    },
-    "averageSubjectLength": 25.9,
-    "emojiCommits": 0,
-    "topEmoji": [],
-    "revertCount": 0,
-    "typoFixCount": 5,
-    "topWords": [
-      {
-        "word": "case",
-        "count": 5
-      },
-      {
-        "word": "chore",
-        "count": 5
-      },
-      {
-        "word": "comment",
-        "count": 5
-      },
-      {
-        "word": "core",
-        "count": 5
-      },
-      {
-        "word": "correct",
-        "count": 5
-      },
-      {
-        "word": "coverage",
-        "count": 5
-      },
-      {
-        "word": "dependency",
-        "count": 5
-      },
-      {
-        "word": "docs",
-        "count": 5
-      },
-      {
-        "word": "extract",
-        "count": 5
-      },
-      {
-        "word": "feat",
-        "count": 5
-      },
-      {
-        "word": "handler",
-        "count": 5
-      },
-      {
-        "word": "helper",
-        "count": 5
-      },
-      {
-        "word": "number",
-        "count": 5
-      },
-      {
-        "word": "off-by-one",
-        "count": 5
-      },
-      {
-        "word": "parser",
-        "count": 5
-      },
-      {
-        "word": "readme",
-        "count": 5
-      },
-      {
-        "word": "refactor",
-        "count": 5
-      },
-      {
-        "word": "section",
-        "count": 5
-      },
-      {
-        "word": "typo",
-        "count": 5
-      },
-      {
-        "word": "workflow",
-        "count": 5
-      },
-      {
-        "word": "topic-18'",
-        "count": 1
-      },
-      {
-        "word": "topic-28'",
-        "count": 1
-      },
-      {
-        "word": "topic-38'",
-        "count": 1
-      },
-      {
-        "word": "topic-48'",
-        "count": 1
-      },
-      {
-        "word": "topic-8'",
-        "count": 1
-      }
-    ]
-  },
-  "social": {
-    "busFactor": 2,
-    "directoryBusFactor": [
-      {
-        "path": "src",
-        "busFactor": 2,
-        "contributors": 4,
-        "commits": 50
-      },
-      {
-        "path": "docs",
-        "busFactor": 2,
-        "contributors": 4,
-        "commits": 17
-      }
-    ],
-    "coupling": [
-      {
-        "a": "docs/notes.md",
-        "b": "src/main.go",
-        "support": 17,
-        "confidence": 1,
-        "expected": false
-      },
-      {
-        "a": "src/main.go",
-        "b": "src/util.go",
-        "support": 10,
-        "confidence": 1,
-        "expected": false
-      }
-    ],
-    "churn": [
-      {
-        "path": "src/main.go",
-        "maxCommitsInWindow": 11,
-        "windowStart": "2025-10-04T17:00:00+03:00",
-        "totalCommits": 50,
-        "added": 50,
-        "deleted": 0
-      }
-    ],
-    "knowledgeConcentration": [
-      {
-        "path": "docs",
-        "largestShare": 0.2941,
-        "contributors": 4,
-        "commits": 17
-      },
-      {
-        "path": "src",
-        "largestShare": 0.26,
-        "contributors": 4,
-        "commits": 50
-      }
-    ]
-  },
-  "notables": {
-    "bulkCommits": [],
-    "latestNightCommit": {
-      "hash": "33b55dd2b874ce83590b20299f155858906c9154",
-      "subject": "ci: update workflow 39",
-      "date": "2026-01-26T04:00:00Z",
-      "linesChanged": 2,
-      "added": 2,
-      "deleted": 0,
-      "files": 2
-    },
-    "earliestMorningCommit": {
-      "hash": "33b55dd2b874ce83590b20299f155858906c9154",
-      "subject": "ci: update workflow 39",
-      "date": "2026-01-26T04:00:00Z",
-      "linesChanged": 2,
-      "added": 2,
-      "deleted": 0,
-      "files": 2
-    },
-    "weekendRatio": 0.3,
-    "holidayCommits": 0,
-    "firstCommitSubject": "feat(core): add handler number 0",
-    "mergeCount": 0,
-    "timezoneSpread": [
-      {
-        "offsetMinutes": -300,
-        "commits": 16
-      },
-      {
-        "offsetMinutes": 0,
-        "commits": 17
-      },
-      {
-        "offsetMinutes": 180,
-        "commits": 17
-      }
-    ]
-  },
-  "warnings": []
+      "metrics": {}
+    }
+  }
 }
