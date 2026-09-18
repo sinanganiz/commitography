@@ -36,13 +36,20 @@ const (
 	maxJobWarnings = 100
 )
 
-var (
+// managerError is the type of the manager's sentinel errors. They are
+// constants rather than package variables, so nothing can reassign one
+// (ADR-0042 clause 2), and errors.Is still matches them by value.
+type managerError string
+
+func (e managerError) Error() string { return string(e) }
+
+const (
 	// ErrActiveJob means another job currently owns the single worker slot.
-	ErrActiveJob = errors.New("another analysis job is already active")
+	ErrActiveJob managerError = "another analysis job is already active"
 	// ErrJobNotFound means the requested ID is not retained by the manager.
-	ErrJobNotFound = errors.New("analysis job not found")
+	ErrJobNotFound managerError = "analysis job not found"
 	// ErrInvalidState means the requested transition is not valid for the job.
-	ErrInvalidState = errors.New("invalid analysis job state transition")
+	ErrInvalidState managerError = "invalid analysis job state transition"
 )
 
 // Failure is a safe, structured terminal error. The manager stores no raw Git

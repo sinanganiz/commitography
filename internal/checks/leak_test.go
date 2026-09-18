@@ -80,15 +80,17 @@ func machineValues(t *testing.T, repo repository, extra ...string) []string {
 // acceptance criteria name. The path pattern covers a drive letter, a UNC name
 // and the conventional absolute roots of a user's machine; a repository's own
 // paths are relative and match none of them.
-var (
-	emailPattern = regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`)
+func emailPattern() *regexp.Regexp {
+	return regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`)
+}
 
-	// A drive letter has to be a letter on its own. Without the leading class,
-	// a remedy ending "Fix it with:" followed by a newline reads as one once
-	// the newline is JSON-escaped.
-	machinePathPattern = regexp.MustCompile(
+// A drive letter has to be a letter on its own. Without the leading class, a
+// remedy ending "Fix it with:" followed by a newline reads as one once the
+// newline is JSON-escaped.
+func machinePathPattern() *regexp.Regexp {
+	return regexp.MustCompile(
 		`(?i)((^|[^A-Za-z0-9_])[A-Za-z]:[\\/])|(\\\\[A-Za-z0-9._-]+\\)|(/(home|users|root|tmp|var|private)/)`)
-)
+}
 
 // scanArtifact applies ADR-0067 clause 2: nothing that names this machine.
 func scanArtifact(t *testing.T, what, content string, forbidden []string) {
@@ -99,10 +101,10 @@ func scanArtifact(t *testing.T, what, content string, forbidden []string) {
 				"address or hostname (clause 2)", what, value)
 		}
 	}
-	if m := emailPattern.FindString(content); m != "" {
+	if m := emailPattern().FindString(content); m != "" {
 		report(t, 33, "%s contains the address %q; no exported artifact carries a raw email address", what, m)
 	}
-	if m := machinePathPattern.FindString(content); m != "" {
+	if m := machinePathPattern().FindString(content); m != "" {
 		report(t, 67, "%s contains %q, which is part of an absolute local path; an artifact carries none "+
 			"(clause 2)", what, m)
 	}
@@ -125,11 +127,11 @@ func scanDiagnostic(t *testing.T, what, content string, supplied []string, forbi
 				"a diagnostic repeats only the form that was typed (clauses 3 and 5)", what, value)
 		}
 	}
-	if m := emailPattern.FindString(residue); m != "" {
+	if m := emailPattern().FindString(residue); m != "" {
 		report(t, 67, "%s contains the address %q; no diagnostic carries an address or a hostname "+
 			"under any circumstance (clause 4)", what, m)
 	}
-	if m := machinePathPattern.FindString(residue); m != "" {
+	if m := machinePathPattern().FindString(residue); m != "" {
 		report(t, 67, "%s contains %q, part of an absolute path the operator did not supply (clause 3)",
 			what, m)
 	}

@@ -100,9 +100,7 @@ func TestConcurrentRunsKeepTheirWarningsApart(t *testing.T) {
 		if err := os.WriteFile(path, []byte(key+": true\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		wg.Add(1)
-		go func(i int, path string) {
-			defer wg.Done()
+		wg.Go(func() {
 			var mu sync.Mutex
 			_, err := newAnalyzer().Run(context.Background(), Options{
 				RepoPath:   repo,
@@ -117,7 +115,7 @@ func TestConcurrentRunsKeepTheirWarningsApart(t *testing.T) {
 			if err != nil {
 				t.Errorf("run %d: %v", i, err)
 			}
-		}(i, path)
+		})
 	}
 	wg.Wait()
 

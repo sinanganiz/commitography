@@ -12,7 +12,9 @@ import (
 
 // emailShaped is deliberately loose: the point is that nothing resembling an
 // address survives, not that a specific one does not.
-var emailShaped = regexp.MustCompile(`[\w.+-]+@[\w-]+\.[\w.]+`)
+func emailShaped() *regexp.Regexp {
+	return regexp.MustCompile(`[\w.+-]+@[\w-]+\.[\w.]+`)
+}
 
 func reportWithAuthors() *Report {
 	base := time.Date(2025, 1, 1, 9, 0, 0, 0, time.UTC)
@@ -64,7 +66,7 @@ func TestDefaultsHashEmails(t *testing.T) {
 	ApplyPrivacy(r, cfg)
 
 	out := serialize(t, r)
-	if match := emailShaped.FindString(out); match != "" {
+	if match := emailShaped().FindString(out); match != "" {
 		t.Errorf("report still contains an email-shaped string: %q", match)
 	}
 
@@ -110,7 +112,7 @@ func TestAnonymizeReplacesNamesAndDropsEmails(t *testing.T) {
 	if strings.Contains(out, "Grace Hopper") {
 		t.Error("a real contributor name survived --anonymize")
 	}
-	if emailShaped.MatchString(out) {
+	if emailShaped().MatchString(out) {
 		t.Error("an email-shaped string survived --anonymize")
 	}
 	for _, a := range r.PerAuthor.Authors {
