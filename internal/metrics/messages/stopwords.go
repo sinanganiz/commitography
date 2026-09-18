@@ -1,11 +1,10 @@
 package messages
 
-// stopwords are dropped from the word cloud. The list mixes ordinary English
-// function words with the vocabulary every commit log is saturated with, since
-// "commit", "update" and "merge" say nothing about what a repository is for.
-var stopwords = map[string]bool{}
-
-func init() {
+// stopwords returns the words dropped from the word cloud. The list mixes
+// ordinary English function words with the vocabulary every commit log is
+// saturated with, since "commit", "update" and "merge" say nothing about what
+// a repository is for.
+func stopwords() map[string]bool {
 	list := []string{
 		// English function words
 		"the", "and", "for", "are", "but", "not", "you", "all", "any", "can",
@@ -33,7 +32,9 @@ func init() {
 		"file", "files", "line", "lines", "test", "tests", "testing",
 		"revert", "reverts", "reverted", "bump", "bumps", "bumped",
 	}
+	set := make(map[string]bool, len(list))
 	for _, w := range list {
-		stopwords[w] = true
+		set[w] = true
 	}
+	return set
 }
