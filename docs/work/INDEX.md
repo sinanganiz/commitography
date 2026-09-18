@@ -87,7 +87,7 @@ to be amended mid-flight.
 | [0004](0004-fixtures-and-golden-harness.md) | foundation | Deterministic fixtures and golden harness | ADR-0019, ADR-0057, ADR-0064 | WP-0003 | Done |
 | [0005](0005-package-layout-migration.md) | foundation | Package layout migration | ADR-0040, ADR-0049, ADR-0060, ADR-0061, ADR-0063, ADR-0065, ADR-0066 | WP-0003, WP-0004 | Done |
 | [0006](0006-error-model.md) | foundation | Error model and reason codes | ADR-0041, ADR-0032, ADR-0062, ADR-0064, ADR-0067 | WP-0005 | Done |
-| [0007](0007-dependency-wiring.md) | foundation | Dependency wiring and ambient state removal | ADR-0042, ADR-0061, ADR-0021, ADR-0044, ADR-0067 | WP-0005 | Ready |
+| [0007](0007-dependency-wiring.md) | foundation | Dependency wiring and ambient state removal | ADR-0042, ADR-0061, ADR-0021, ADR-0044, ADR-0067 | WP-0005 | Done |
 | [0008](0008-report-document.md) | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032, ADR-0062 | WP-0005, WP-0006 | Ready |
 | [0009](0009-identity-and-privacy.md) | core | Identity model and privacy layers | ADR-0033, ADR-0010, ADR-0032 | WP-0008 | Ready |
 | [0010](0010-configuration-planes.md) | core | Configuration planes and resolution | ADR-0026, ADR-0021, ADR-0062 | WP-0008 | Ready |
