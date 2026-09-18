@@ -34,6 +34,7 @@ import (
 // own main, not a package the product's errors cross, and it reports to a gate
 // rather than to an operator.
 func TestErrorClassAtPackageBoundaries(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	documented, _ := reasonCodes(t, repo)
 	root := filepath.Join(repo.root, "testdata", "fixtures")
@@ -166,6 +167,7 @@ func TestErrorClassAtPackageBoundaries(t *testing.T) {
 // outside: the documented values still come out of the two mappings, so the
 // single construction site cannot be a mapping nobody uses.
 func TestExitCodeAndStatusHaveOneSiteEach(t *testing.T) {
+	t.Parallel()
 	user := core.NewUserError(core.ReasonEmptyRepository, "", "Make a commit.", "the repository has no commits")
 	internal := core.Internalf(nil, "writing the report")
 

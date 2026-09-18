@@ -39,6 +39,7 @@ func commitBy(identityID string, day int, paths ...string) model.Commit {
 }
 
 func TestChurnHotspotDetection(t *testing.T) {
+	t.Parallel()
 	in := socialInput(t)
 	var commits []model.Commit
 	// hot.go is touched six times inside a fortnight.

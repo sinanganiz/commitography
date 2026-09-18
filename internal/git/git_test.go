@@ -9,6 +9,7 @@ import (
 )
 
 func TestCommandContextCancelsGitProcess(t *testing.T) {
+	t.Parallel()
 	repo, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)

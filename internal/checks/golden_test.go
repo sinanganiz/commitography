@@ -26,6 +26,7 @@ const goldenDir = "testdata/golden"
 // compared. A commit that changes one states why in its body; the golden
 // commit message checker enforces that.
 func TestGoldenSmall(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	large := largeFixture(t, repo)
 	fixtures := generatedFixtures(t, repo)
@@ -40,6 +41,7 @@ func TestGoldenSmall(t *testing.T) {
 // TestGoldenLarge is the full-gate half of ADR-0019 clause 2: the designated
 // large fixture (ADR-0057 clause 2).
 func TestGoldenLarge(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	compareGolden(t, repo, largeFixture(t, repo))
 }

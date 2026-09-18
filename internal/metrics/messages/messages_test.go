@@ -8,6 +8,7 @@ import (
 )
 
 func TestConventionalCommitDetection(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		subject      string
 		category     string
@@ -36,6 +37,7 @@ func TestConventionalCommitDetection(t *testing.T) {
 }
 
 func TestHeuristicRuleOrdering(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		subject string
 		want    string
@@ -103,6 +105,7 @@ func TestHeuristicRuleOrdering(t *testing.T) {
 }
 
 func TestEarlierRuleWinsOverLaterOne(t *testing.T) {
+	t.Parallel()
 	// Rule 3 (fix) precedes rule 4 (feat), so a subject mentioning both is a fix.
 	if got, _ := Classify("Fix the crash and add a guard"); got != "fix" {
 		t.Errorf("Classify = %q, want %q by rule ordering", got, "fix")
@@ -126,6 +129,7 @@ func subjects(list ...string) []model.Commit {
 }
 
 func TestConventionalRatioAndConfidenceLabel(t *testing.T) {
+	t.Parallel()
 	m := BuildMessages(subjects("feat: a", "fix: b", "random thing", "another one"))
 	if m.ConventionalRatio != 0.5 {
 		t.Errorf("conventionalRatio = %v, want 0.5", m.ConventionalRatio)
@@ -144,6 +148,7 @@ func TestConventionalRatioAndConfidenceLabel(t *testing.T) {
 }
 
 func TestShortMessageCounter(t *testing.T) {
+	t.Parallel()
 	m := BuildMessages(subjects(
 		"wip",                        // low-effort word
 		"WIP",                        // case-insensitive
@@ -157,6 +162,7 @@ func TestShortMessageCounter(t *testing.T) {
 }
 
 func TestRevertAndTypoCounters(t *testing.T) {
+	t.Parallel()
 	m := BuildMessages(subjects(
 		`Revert "feat: x"`,
 		"revert the thing",
@@ -173,6 +179,7 @@ func TestRevertAndTypoCounters(t *testing.T) {
 }
 
 func TestEmojiDetection(t *testing.T) {
+	t.Parallel()
 	m := BuildMessages(subjects(
 		"🎉 launch day",
 		"🎉 another party",
@@ -189,6 +196,7 @@ func TestEmojiDetection(t *testing.T) {
 }
 
 func TestLongestSubjectIsTruncatedForDisplay(t *testing.T) {
+	t.Parallel()
 	long := strings.Repeat("x", 500)
 	m := BuildMessages(subjects("short", long))
 	if m.LongestSubject == nil {
@@ -204,6 +212,7 @@ func TestLongestSubjectIsTruncatedForDisplay(t *testing.T) {
 }
 
 func TestWordCloudDropsStopwordsAndShortWords(t *testing.T) {
+	t.Parallel()
 	m := BuildMessages(subjects(
 		"add caching to the resolver",
 		"caching for the resolver again",
@@ -224,6 +233,7 @@ func TestWordCloudDropsStopwordsAndShortWords(t *testing.T) {
 }
 
 func TestAverageSubjectLength(t *testing.T) {
+	t.Parallel()
 	m := BuildMessages(subjects("abc", "abcdefg")) // 3 and 7
 	if m.AverageSubjectLength != 5.0 {
 		t.Errorf("averageSubjectLength = %v, want 5.0", m.AverageSubjectLength)
@@ -231,6 +241,7 @@ func TestAverageSubjectLength(t *testing.T) {
 }
 
 func TestMessagesOnEmptyInput(t *testing.T) {
+	t.Parallel()
 	m := BuildMessages(nil)
 	if m.TypeDistribution == nil || m.TopWords == nil || m.TopEmoji == nil {
 		t.Error("collections must serialize as empty, not null")

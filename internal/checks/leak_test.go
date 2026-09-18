@@ -142,6 +142,7 @@ func scanDiagnostic(t *testing.T, what, content string, supplied []string, forbi
 // TestLeakScanReport applies the artifact rule to the report of every fixture,
 // which is the artifact ADR-0021 makes the product's contract.
 func TestLeakScanReport(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	forbidden := machineValues(t, repo)
 	fixtures := generatedFixtures(t, repo)
@@ -171,6 +172,7 @@ func TestLeakScanReport(t *testing.T) {
 // likeliest place for a resolved path to reach one. The configuration warning
 // did exactly that until this package, naming the file it had resolved.
 func TestLeakScanWarnings(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	forbidden := machineValues(t, repo)
 
@@ -204,6 +206,7 @@ func TestLeakScanWarnings(t *testing.T) {
 // command prints. The supplied path is what the operator typed, and the scan
 // removes it before judging the rest, so a resolved form still fails.
 func TestLeakScanDiagnostics(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	root := filepath.Join(repo.root, "testdata", "fixtures")
 	forbidden := machineValues(t, repo)
@@ -246,6 +249,7 @@ func TestLeakScanDiagnostics(t *testing.T) {
 // in the forms an operator types, so what the rule permits is exactly those,
 // and any other path in the log is one the product resolved or discovered.
 func TestLeakScanLog(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	forbidden := machineValues(t, repo)
 	fixtures := generatedFixtures(t, repo)
@@ -290,6 +294,7 @@ func TestLeakScanLog(t *testing.T) {
 // local API produces, including each refusal, because an API response is an
 // artifact whatever its status (ADR-0067 clause 2).
 func TestLeakScanAPIResponses(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	root := filepath.Join(repo.root, "testdata", "fixtures")
 	if _, err := os.Stat(filepath.Join(root, "basic")); err != nil {
@@ -407,6 +412,7 @@ func TestLeakScanAPIResponses(t *testing.T) {
 // feeds each rule a leak of the kind it exists to catch and requires the rule
 // to name it.
 func TestLeakScanRejectsALeakedPath(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	forbidden := machineValues(t, repo)
 

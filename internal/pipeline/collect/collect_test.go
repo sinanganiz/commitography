@@ -43,6 +43,7 @@ func gitOutput(t *testing.T, repo string, args ...string) string {
 }
 
 func TestCollectCommitCountMatchesRevList(t *testing.T) {
+	t.Parallel()
 	repo := fixture(t, "basic")
 	h, err := newCollector().Collect(Options{RepoPath: repo})
 	if err != nil {
@@ -59,6 +60,7 @@ func TestCollectCommitCountMatchesRevList(t *testing.T) {
 }
 
 func TestCollectTotalAddedLinesMatchesGit(t *testing.T) {
+	t.Parallel()
 	repo := fixture(t, "basic")
 	h, err := newCollector().Collect(Options{RepoPath: repo})
 	if err != nil {
@@ -93,6 +95,7 @@ func TestCollectTotalAddedLinesMatchesGit(t *testing.T) {
 }
 
 func TestCollectPreservesAuthorTimezoneOffsets(t *testing.T) {
+	t.Parallel()
 	repo := fixture(t, "basic")
 	h, err := newCollector().Collect(Options{RepoPath: repo})
 	if err != nil {
@@ -160,6 +163,7 @@ func offsetMinutesFromISO(iso string) (int, error) {
 }
 
 func TestCollectRootCommitHasNoParents(t *testing.T) {
+	t.Parallel()
 	repo := fixture(t, "basic")
 	h, err := newCollector().Collect(Options{RepoPath: repo})
 	if err != nil {
@@ -194,6 +198,7 @@ func TestCollectRootCommitHasNoParents(t *testing.T) {
 }
 
 func TestCollectMergeCommitsCarryNoFiles(t *testing.T) {
+	t.Parallel()
 	repo := fixture(t, "merges")
 	h, err := newCollector().Collect(Options{RepoPath: repo})
 	if err != nil {
@@ -219,6 +224,7 @@ func TestCollectMergeCommitsCarryNoFiles(t *testing.T) {
 }
 
 func TestCollectSingleCommitRepository(t *testing.T) {
+	t.Parallel()
 	h, err := newCollector().Collect(Options{RepoPath: fixture(t, "single")})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
@@ -232,6 +238,7 @@ func TestCollectSingleCommitRepository(t *testing.T) {
 }
 
 func TestCollectUnusualPaths(t *testing.T) {
+	t.Parallel()
 	h, err := newCollector().Collect(Options{RepoPath: fixture(t, "binary")})
 	if err != nil {
 		t.Fatalf("Collect: %v", err)
@@ -273,6 +280,7 @@ func TestCollectUnusualPaths(t *testing.T) {
 }
 
 func TestCollectMailmapReconcilesWithShortlog(t *testing.T) {
+	t.Parallel()
 	repo := fixture(t, "mailmap")
 	h, err := newCollector().Collect(Options{RepoPath: repo, UseMailmap: true})
 	if err != nil {

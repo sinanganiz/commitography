@@ -27,6 +27,7 @@ type record struct {
 // template section set, a complete index, no schedule content in an accepted
 // record, and resolvable ADR-NNNN references in every tracked file.
 func TestRecordIntegrity(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	records := loadRecords(t, repo)
 

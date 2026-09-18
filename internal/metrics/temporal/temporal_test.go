@@ -29,6 +29,7 @@ func testInput(_ []model.Commit) core.Input {
 }
 
 func TestTemporalHistogramsUseAuthorLocalTime(t *testing.T) {
+	t.Parallel()
 	commits := []model.Commit{
 		// 2026-01-05 is a Monday.
 		at(2026, time.January, 5, 9, 0, 0),   // Mon 09:00 UTC
@@ -81,6 +82,7 @@ func TestTemporalHistogramsUseAuthorLocalTime(t *testing.T) {
 }
 
 func TestBusiestDayBreaksTiesOnEarliestDate(t *testing.T) {
+	t.Parallel()
 	commits := []model.Commit{
 		at(2026, time.March, 2, 10, 0, 0),
 		at(2026, time.March, 2, 11, 0, 0),
@@ -97,6 +99,7 @@ func TestBusiestDayBreaksTiesOnEarliestDate(t *testing.T) {
 }
 
 func TestLongestStreakAndSilence(t *testing.T) {
+	t.Parallel()
 	commits := []model.Commit{
 		at(2026, time.April, 1, 10, 0, 0),
 		at(2026, time.April, 2, 10, 0, 0),
@@ -123,6 +126,7 @@ func TestLongestStreakAndSilence(t *testing.T) {
 }
 
 func TestSingleDayRepositoryEdgeCase(t *testing.T) {
+	t.Parallel()
 	commits := []model.Commit{
 		at(2026, time.May, 4, 9, 0, 0),
 		at(2026, time.May, 4, 17, 0, 0),
@@ -137,6 +141,7 @@ func TestSingleDayRepositoryEdgeCase(t *testing.T) {
 }
 
 func TestStreakUsesLocalDatesNotUTC(t *testing.T) {
+	t.Parallel()
 	// 23:00 at +03 is 20:00 UTC the same day; 01:00 at +03 the next day is
 	// 22:00 UTC on the first day. Counted in UTC these collapse onto one date
 	// and the streak would be 1 rather than 2.
@@ -151,6 +156,7 @@ func TestStreakUsesLocalDatesNotUTC(t *testing.T) {
 }
 
 func TestCommitsPerMonthZeroFillsGaps(t *testing.T) {
+	t.Parallel()
 	commits := []model.Commit{
 		at(2025, time.November, 1, 10, 0, 0),
 		at(2026, time.February, 1, 10, 0, 0),
@@ -173,6 +179,7 @@ func TestCommitsPerMonthZeroFillsGaps(t *testing.T) {
 }
 
 func TestTemporalOnEmptyInput(t *testing.T) {
+	t.Parallel()
 	m := BuildTemporal(testInput(nil), nil)
 	if len(m.HourHistogram) != 24 || len(m.WeekdayHistogram) != 7 || len(m.HourWeekdayGrid) != 7 {
 		t.Error("histograms must keep their fixed shape even with no commits")
@@ -183,6 +190,7 @@ func TestTemporalOnEmptyInput(t *testing.T) {
 }
 
 func TestFirstAndLastCommitPreserveOffsets(t *testing.T) {
+	t.Parallel()
 	commits := []model.Commit{
 		at(2026, time.July, 1, 12, 0, 3),
 		at(2026, time.July, 9, 12, 0, -5),

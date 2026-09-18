@@ -27,6 +27,7 @@ const (
 // Backward: the catalogue lists no code the enumeration lacks, so a code
 // cannot be documented and unreachable.
 func TestReasonCodeCatalogue(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	documented, _ := reasonCodes(t, repo)
 	declared := declaredReasons(t, repo)
@@ -70,6 +71,7 @@ func TestReasonCodeCatalogue(t *testing.T) {
 // would fail for a reason the tree cannot fix, and the usual response to that
 // is to delete the checker.
 func TestReasonCodeEmission(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	_, userCodes := reasonCodes(t, repo)
 	declared := declaredReasons(t, repo)
@@ -93,6 +95,7 @@ func TestReasonCodeEmission(t *testing.T) {
 // built as a composite literal, would both bypass the catalogue comparison
 // above and make it vacuous.
 func TestReasonCodeConstruction(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	constants := reasonConstants(t, repo)
 	call := regexp.MustCompile(`NewUserError\(\s*(?:core\.)?([A-Za-z0-9_.]+|"[^"]*")`)
@@ -233,6 +236,7 @@ func emittedReasons(t *testing.T, repo repository, declared map[string]bool) map
 // TestReasonCodeHelpers exercises the parsing the checkers above depend on, so
 // that a checker cannot pass because its parser silently matched nothing.
 func TestReasonCodeHelpers(t *testing.T) {
+	t.Parallel()
 	code := regexp.MustCompile("`([a-z][a-z0-9_]*)`")
 	row := regexp.MustCompile("(?m)^\\| `([a-z][a-z0-9_]*)` \\|")
 	section := "some prose with `first_code` and `second`.\n\n" +

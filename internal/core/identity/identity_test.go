@@ -9,6 +9,7 @@ import (
 )
 
 func TestUnconfiguredDisplayNameComesFromMostRecentCommit(t *testing.T) {
+	t.Parallel()
 	base := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
 	commits := []model.Commit{
 		{Hash: "a", AuthorName: "Old Name", AuthorEmail: "P@Example.com", AuthorDate: base},
@@ -26,6 +27,7 @@ func TestUnconfiguredDisplayNameComesFromMostRecentCommit(t *testing.T) {
 }
 
 func TestIdentitiesSortedByDescendingCommitCount(t *testing.T) {
+	t.Parallel()
 	var commits []model.Commit
 	for i := 0; i < 5; i++ {
 		commits = append(commits, model.Commit{AuthorName: "A", AuthorEmail: "a@x.com"})
@@ -45,6 +47,7 @@ func TestIdentitiesSortedByDescendingCommitCount(t *testing.T) {
 }
 
 func TestResolveIsStableForUnknownAddresses(t *testing.T) {
+	t.Parallel()
 	r := NewResolver(config.Default(), nil)
 	if got := r.Resolve("Someone", "  Someone@Example.COM "); got != "someone@example.com" {
 		t.Errorf("Resolve = %q, want the normalized address", got)

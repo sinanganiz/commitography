@@ -50,6 +50,7 @@ func bindingSubjects() []string {
 // carries at least one record reference in its file-level comment, and every
 // reference it carries resolves. It does not judge whether a reference is apt.
 func TestDecisionReference(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	known := map[int]bool{}
 	for _, r := range loadRecords(t, repo) {

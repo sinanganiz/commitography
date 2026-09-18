@@ -14,6 +14,7 @@ import (
 // form the error carries as its offending value, which is the form the operator
 // supplied (ADR-0067 clauses 3 and 5).
 func TestReportExplainsMissingMountsOnlyInsideContainers(t *testing.T) {
+	t.Parallel()
 	notRepository := core.NewUserError(core.ReasonNotARepository, "/repo",
 		"Point at the directory that contains .git.", "the path is not a git repository")
 	missingRoot := core.NewUserError(core.ReasonPathNotFound, "/repos",
@@ -91,6 +92,7 @@ func TestReportExplainsMissingMountsOnlyInsideContainers(t *testing.T) {
 // A malformed command line is a usage error, so it exits on the user code and
 // not the internal one (ADR-0034 clause 5).
 func TestMalformedCommandLineIsAUsageError(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{
 		{"--no-such-flag"},
 		{"--wrapped", "not-a-year"},
@@ -114,6 +116,7 @@ func TestMalformedCommandLineIsAUsageError(t *testing.T) {
 
 // --version is not a malformed command line, and neither is --help.
 func TestVersionAndHelpSucceed(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{{"--version"}, {"--help"}} {
 		if err := execute(testEnvironment(), args); err != nil {
 			t.Errorf("%v: %v", args, err)

@@ -32,6 +32,7 @@ const hostileCondition = "hostile-names"
 // any one function. Both destinations are checked as well, so a hostile name
 // cannot reach an artifact even if it survives the analysis.
 func TestHostileNamesProduceNoPanicAndNoLeak(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	fixture := fixtureWithCondition(t, repo, hostileCondition)
 	root := filepath.Join(repo.root, "testdata", "fixtures")
@@ -81,6 +82,7 @@ func TestHostileNamesProduceNoPanicAndNoLeak(t *testing.T) {
 // and checks every response, because the API is the other destination and its
 // rule is the stricter one (ADR-0067 clause 2).
 func TestHostileNamesThroughTheServerPath(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	fixture := fixtureWithCondition(t, repo, hostileCondition)
 	root := filepath.Join(repo.root, "testdata", "fixtures")
@@ -188,6 +190,7 @@ func fixtureWithCondition(t *testing.T, repo repository, condition string) strin
 // TestHostileNamesFixtureIsClassified keeps the checker above from passing
 // because the manifest quietly stopped naming the condition.
 func TestHostileNamesFixtureIsClassified(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	if fixture := fixtureWithCondition(t, repo, hostileCondition); fixture == "" {
 		report(t, 19, "no fixture carries the %q condition", hostileCondition)

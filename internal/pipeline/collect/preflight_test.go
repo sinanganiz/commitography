@@ -10,6 +10,7 @@ import (
 )
 
 func TestPreflightBasicRepository(t *testing.T) {
+	t.Parallel()
 	repo := fixture(t, "basic")
 	info, err := newCollector().Preflight(context.Background(), repo, repo)
 	if err != nil {
@@ -36,6 +37,7 @@ func TestPreflightBasicRepository(t *testing.T) {
 }
 
 func TestPreflightDetectsShallowClone(t *testing.T) {
+	t.Parallel()
 	shallow := fixture(t, "shallow")
 	info, err := newCollector().Preflight(context.Background(), shallow, shallow)
 	if err != nil {
@@ -50,6 +52,7 @@ func TestPreflightDetectsShallowClone(t *testing.T) {
 }
 
 func TestShallowErrorMessage(t *testing.T) {
+	t.Parallel()
 	err := ShallowError("../repo")
 	if !strings.HasPrefix(err.Error(), "this repository is a shallow clone") {
 		t.Errorf("unexpected message: %q", err.Error())
@@ -80,6 +83,7 @@ func TestShallowErrorMessage(t *testing.T) {
 }
 
 func TestPreflightEmptyRepository(t *testing.T) {
+	t.Parallel()
 	empty := fixture(t, "empty")
 	_, err := newCollector().Preflight(context.Background(), empty, "fixtures/empty")
 	if err == nil {
@@ -99,6 +103,7 @@ func TestPreflightEmptyRepository(t *testing.T) {
 // so an absolute path reaches the message only when the operator typed one
 // (ADR-0067 clauses 3 and 5).
 func TestPreflightNotARepository(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	_, err := newCollector().Preflight(context.Background(), dir, "./somewhere-else")
 	if err == nil {
@@ -119,6 +124,7 @@ func TestPreflightNotARepository(t *testing.T) {
 }
 
 func TestParseGitVersion(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		in    string
 		want  [3]int
@@ -143,6 +149,7 @@ func TestParseGitVersion(t *testing.T) {
 }
 
 func TestCompareVersions(t *testing.T) {
+	t.Parallel()
 	min := mustParseVersion(MinGitVersion)
 	if compareVersions([3]int{2, 21, 9}, min) >= 0 {
 		t.Error("2.21.9 should sort below the minimum")

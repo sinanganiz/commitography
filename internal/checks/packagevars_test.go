@@ -121,6 +121,7 @@ func embedded(gen *ast.GenDecl, spec *ast.ValueSpec) bool {
 // one suppression of the package-variable lint rule, the one ADR-0061 clause 3
 // describes.
 func TestPackageVariables(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	fset := token.NewFileSet()
 	suppressions := 0
@@ -157,6 +158,7 @@ func TestPackageVariables(t *testing.T) {
 // clause 6 requires, kept as a test: each source below carries one violation
 // the checker exists to catch, and the checker must name it.
 func TestPackageVariablesRejectViolations(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, file, source string
 	}{

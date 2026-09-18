@@ -39,6 +39,7 @@ func commitBy(identityID string, day int, paths ...string) model.Commit {
 }
 
 func TestBusFactorOfDominatedRepositoryIsOne(t *testing.T) {
+	t.Parallel()
 	counts := map[string]int{"a@x": 80, "b@x": 10, "c@x": 5, "d@x": 5}
 	if got := busFactor(counts); got != 1 {
 		t.Errorf("busFactor = %d, want 1 when one identity authored 80%%", got)
@@ -46,6 +47,7 @@ func TestBusFactorOfDominatedRepositoryIsOne(t *testing.T) {
 }
 
 func TestBusFactorOfEvenlySplitRepositoryIsTwo(t *testing.T) {
+	t.Parallel()
 	counts := map[string]int{"a@x": 25, "b@x": 25, "c@x": 25, "d@x": 25}
 	if got := busFactor(counts); got != 2 {
 		t.Errorf("busFactor = %d, want 2 for four identities at 25%% each", got)
@@ -53,6 +55,7 @@ func TestBusFactorOfEvenlySplitRepositoryIsTwo(t *testing.T) {
 }
 
 func TestBusFactorEdgeCases(t *testing.T) {
+	t.Parallel()
 	if got := busFactor(nil); got != 0 {
 		t.Errorf("busFactor(nil) = %d, want 0", got)
 	}
@@ -66,6 +69,7 @@ func TestBusFactorEdgeCases(t *testing.T) {
 }
 
 func TestDirectoryBusFactorAndKnowledgeConcentration(t *testing.T) {
+	t.Parallel()
 	in := socialInput(t)
 	var commits []model.Commit
 	// One person owns src/ entirely; two share web/.
@@ -116,6 +120,7 @@ func TestDirectoryBusFactorAndKnowledgeConcentration(t *testing.T) {
 }
 
 func TestDirectoriesBelowActivityThresholdAreOmitted(t *testing.T) {
+	t.Parallel()
 	in := socialInput(t)
 	var commits []model.Commit
 	for i := 0; i < directoryMinWork-1; i++ {

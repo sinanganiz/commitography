@@ -7,6 +7,7 @@ import (
 )
 
 func TestEmbeddedBundleReferencesNoExternalResources(t *testing.T) {
+	t.Parallel()
 	// allowedURLPrefixes are the absolute URLs the bundled libraries carry as
 	// plain strings: XML namespaces that name SVG and MathML elements, and the
 	// documentation pages React and MUI link from their production error

@@ -33,6 +33,7 @@ func load(explicitPath, repoPath string) (Config, error) {
 }
 
 func TestLoadWithoutFileYieldsDefaults(t *testing.T) {
+	t.Parallel()
 	cfg, err := load("", t.TempDir())
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -49,6 +50,7 @@ func TestLoadWithoutFileYieldsDefaults(t *testing.T) {
 }
 
 func TestLoadAppendsToDefaultLists(t *testing.T) {
+	t.Parallel()
 	dir := writeConfig(t, `
 exclude_paths:
   - "generated/**"
@@ -71,6 +73,7 @@ exclude_authors:
 }
 
 func TestExplicitEmptyListClearsDefaults(t *testing.T) {
+	t.Parallel()
 	dir := writeConfig(t, "exclude_paths: []\n")
 	cfg, err := load("", dir)
 	if err != nil {
@@ -86,6 +89,7 @@ func TestExplicitEmptyListClearsDefaults(t *testing.T) {
 }
 
 func TestScalarOverrides(t *testing.T) {
+	t.Parallel()
 	dir := writeConfig(t, `
 outlier_threshold_lines: 500
 count_merges: true
@@ -115,6 +119,7 @@ identities:
 }
 
 func TestExplicitPathReplacesRepositoryConfig(t *testing.T) {
+	t.Parallel()
 	repoDir := writeConfig(t, "outlier_threshold_lines: 111\n")
 	otherDir := writeConfig(t, "outlier_threshold_lines: 222\n")
 	explicit := filepath.Join(otherDir, FileName)
@@ -129,6 +134,7 @@ func TestExplicitPathReplacesRepositoryConfig(t *testing.T) {
 }
 
 func TestInvalidDateSourceIsAnError(t *testing.T) {
+	t.Parallel()
 	dir := writeConfig(t, "date_source: invalid\n")
 	_, err := load("", dir)
 	if err == nil {
@@ -140,6 +146,7 @@ func TestInvalidDateSourceIsAnError(t *testing.T) {
 }
 
 func TestInvalidThresholdAndThemeAreErrors(t *testing.T) {
+	t.Parallel()
 	for _, body := range []string{"outlier_threshold_lines: 0\n", "theme: neon\n"} {
 		if _, err := load("", writeConfig(t, body)); err == nil {
 			t.Errorf("expected an error for %q", strings.TrimSpace(body))
@@ -148,6 +155,7 @@ func TestInvalidThresholdAndThemeAreErrors(t *testing.T) {
 }
 
 func TestUnknownKeyWarnsButDoesNotFail(t *testing.T) {
+	t.Parallel()
 	var warnings []string
 	dir := writeConfig(t, "excludePaths:\n  - foo\ncount_merges: true\n")
 
@@ -166,6 +174,7 @@ func TestUnknownKeyWarnsButDoesNotFail(t *testing.T) {
 }
 
 func TestLoadWithWarnUsesCallLocalSink(t *testing.T) {
+	t.Parallel()
 	dir := writeConfig(t, "unknown_key: true\n")
 	var first, second []string
 	if _, err := Load(osFiles{}, "", dir, func(format string, args ...any) {
@@ -184,6 +193,7 @@ func TestLoadWithWarnUsesCallLocalSink(t *testing.T) {
 }
 
 func TestIsBotIdentity(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name, email string
 		want        bool

@@ -14,6 +14,7 @@ import (
 // sync.WaitGroup.Go does. Build tags are ignored, so the tagged verification
 // packages are covered too, and no file is exempt.
 func TestGoroutineOwnership(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	fset := token.NewFileSet()
 
@@ -46,6 +47,7 @@ func bareGoStatements(fset *token.FileSet, parsed *ast.File) []int {
 // TestGoroutineOwnershipRejectsABareGoStatement is the failure demonstration
 // ADR-0064 clause 6 requires, kept as a test.
 func TestGoroutineOwnershipRejectsABareGoStatement(t *testing.T) {
+	t.Parallel()
 	fset := token.NewFileSet()
 	source := `package example
 

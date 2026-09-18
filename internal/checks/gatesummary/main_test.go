@@ -8,6 +8,7 @@ import (
 )
 
 func TestReadGoTestCounts(t *testing.T) {
+	t.Parallel()
 	stream := strings.Join([]string{
 		`{"Action":"run","Package":"p","Test":"TestPass"}`,
 		`{"Action":"pass","Package":"p","Test":"TestPass"}`,
@@ -53,6 +54,7 @@ func TestReadGoTestCounts(t *testing.T) {
 }
 
 func TestEmptyStepFails(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	err := run([]string{"gotest", dir, "empty"}, strings.NewReader(""), &bytes.Buffer{})
 	if err == nil || !strings.Contains(err.Error(), "ran no checks") {
@@ -61,6 +63,7 @@ func TestEmptyStepFails(t *testing.T) {
 }
 
 func TestStepAndReport(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join(t.TempDir(), "gate")
 	pass := `{"Action":"pass","Package":"p","Test":"TestA"}`
 	if err := run([]string{"gotest", dir, "tests"}, strings.NewReader(pass), &bytes.Buffer{}); err != nil {

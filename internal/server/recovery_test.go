@@ -18,6 +18,7 @@ import (
 // A panic in a route becomes a 500 carrying nothing about the panic, and the
 // panic does not escape the handler.
 func TestRecoveryLayerReportsAPanicAsAnInternalError(t *testing.T) {
+	t.Parallel()
 	secret := "/private/mounted/repository"
 	handler := withRecovery(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		panic("index out of range reading " + secret)
@@ -48,6 +49,7 @@ func TestRecoveryLayerReportsAPanicAsAnInternalError(t *testing.T) {
 // aborted rather than completed. A truncated response is what stops a client
 // reading a panic as a success.
 func TestRecoveryLayerAbortsAPanicAfterTheResponseBegan(t *testing.T) {
+	t.Parallel()
 	handler := withRecovery(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"jobs":[`))
@@ -68,6 +70,7 @@ func TestRecoveryLayerAbortsAPanicAfterTheResponseBegan(t *testing.T) {
 
 // A deliberate abort is the standard library's own signal and passes through.
 func TestRecoveryLayerPassesAnIntentionalAbortThrough(t *testing.T) {
+	t.Parallel()
 	handler := withRecovery(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		panic(http.ErrAbortHandler)
 	}))
@@ -83,6 +86,7 @@ func TestRecoveryLayerPassesAnIntentionalAbortThrough(t *testing.T) {
 // as a function. A panicking identifier generator is reached from inside a
 // route, so this exercises the whole chain.
 func TestHandlerIsBehindTheRecoveryLayer(t *testing.T) {
+	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -112,6 +116,7 @@ func TestHandlerIsBehindTheRecoveryLayer(t *testing.T) {
 // A panic inside the analysis fails the job and releases the active slot. It
 // is never reported as a success, and it is never a user error.
 func TestWorkerPanicFailsTheJob(t *testing.T) {
+	t.Parallel()
 	manager := newTestManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
 			panic("slice bounds out of range")
@@ -163,6 +168,7 @@ func TestWorkerPanicFailsTheJob(t *testing.T) {
 // A recovered panic is classified internal, which is what keeps it off the
 // user exit code and out of a 4xx.
 func TestRecoveredPanicIsAnInternalError(t *testing.T) {
+	t.Parallel()
 	err := recovered("nil pointer dereference", "serving a request")
 	if core.ClassOf(err) != core.ClassInternal {
 		t.Errorf("class = %v, want internal", core.ClassOf(err))

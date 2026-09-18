@@ -63,6 +63,7 @@ func readAll(t *testing.T, dir string) string {
 }
 
 func TestRunProducesDashboard(t *testing.T) {
+	t.Parallel()
 	opts := baseOptions(t, "basic")
 	opts.outputDirSet = true
 
@@ -84,6 +85,7 @@ func TestRunProducesDashboard(t *testing.T) {
 }
 
 func TestCLIAndAnalysisServiceProduceTheSameReport(t *testing.T) {
+	t.Parallel()
 	opts := baseOptions(t, "basic")
 	opts.outputDirSet = true
 	if err := run(t, opts); err != nil {
@@ -118,6 +120,7 @@ func TestCLIAndAnalysisServiceProduceTheSameReport(t *testing.T) {
 }
 
 func TestDefaultOutputContainsNoPlaintextEmail(t *testing.T) {
+	t.Parallel()
 	opts := baseOptions(t, "basic")
 	opts.outputDirSet = true
 	opts.PerAuthor = true // the only route by which addresses could reach the output
@@ -132,6 +135,7 @@ func TestDefaultOutputContainsNoPlaintextEmail(t *testing.T) {
 }
 
 func TestAnonymizeRemovesRealNames(t *testing.T) {
+	t.Parallel()
 	opts := baseOptions(t, "basic")
 	opts.outputDirSet = true
 	opts.PerAuthor = true
@@ -156,6 +160,7 @@ func TestAnonymizeRemovesRealNames(t *testing.T) {
 }
 
 func TestJSONOnlySkipsHTML(t *testing.T) {
+	t.Parallel()
 	opts := baseOptions(t, "basic")
 	opts.outputDirSet = true
 	opts.JSONOnly = true
@@ -178,6 +183,7 @@ func TestJSONOnlySkipsHTML(t *testing.T) {
 }
 
 func TestPerAuthorIsOptIn(t *testing.T) {
+	t.Parallel()
 	without := baseOptions(t, "basic")
 	without.outputDirSet = true
 	if err := run(t, without); err != nil {
@@ -207,6 +213,7 @@ func TestPerAuthorIsOptIn(t *testing.T) {
 }
 
 func TestShallowCloneIsRefused(t *testing.T) {
+	t.Parallel()
 	opts := baseOptions(t, "shallow")
 	opts.outputDirSet = true
 
@@ -228,6 +235,7 @@ func TestShallowCloneIsRefused(t *testing.T) {
 }
 
 func TestAllowShallowProceeds(t *testing.T) {
+	t.Parallel()
 	opts := baseOptions(t, "shallow")
 	opts.outputDirSet = true
 	opts.AllowShallow = true
@@ -245,6 +253,7 @@ func TestAllowShallowProceeds(t *testing.T) {
 }
 
 func TestEmptyAndMissingRepositoriesExitTwo(t *testing.T) {
+	t.Parallel()
 	empty := baseOptions(t, "empty")
 	empty.outputDirSet = true
 	if err := run(t, empty); err == nil || core.ExitCode(err) != core.ExitUser {
@@ -262,6 +271,7 @@ func TestEmptyAndMissingRepositoriesExitTwo(t *testing.T) {
 }
 
 func TestQuietAndVerboseConflict(t *testing.T) {
+	t.Parallel()
 	opts := baseOptions(t, "basic")
 	opts.Verbose = true
 
@@ -281,6 +291,7 @@ func TestQuietAndVerboseConflict(t *testing.T) {
 }
 
 func TestWrappedRefusesThinYears(t *testing.T) {
+	t.Parallel()
 	opts := baseOptions(t, "basic")
 	opts.outputDirSet = true
 	opts.Wrapped = 1999
@@ -303,6 +314,7 @@ func TestWrappedRefusesThinYears(t *testing.T) {
 }
 
 func TestWrappedProducesItsOwnPage(t *testing.T) {
+	t.Parallel()
 	opts := baseOptions(t, "basic")
 	opts.outputDirSet = true
 	opts.Wrapped = 2026
@@ -321,6 +333,7 @@ func TestWrappedProducesItsOwnPage(t *testing.T) {
 }
 
 func TestBotsAreExcludedFromOutput(t *testing.T) {
+	t.Parallel()
 	opts := baseOptions(t, "bots")
 	opts.outputDirSet = true
 

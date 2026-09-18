@@ -10,6 +10,7 @@ import (
 )
 
 func TestWithinRootRejectsPrefixSibling(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join(t.TempDir(), "repo")
 	if err := os.Mkdir(root, 0o755); err != nil {
 		t.Fatal(err)
@@ -24,6 +25,7 @@ func TestWithinRootRejectsPrefixSibling(t *testing.T) {
 }
 
 func TestValidateRepositoryRejectsOutsideAllowedRoot(t *testing.T) {
+	t.Parallel()
 	allowed := t.TempDir()
 	outside := t.TempDir()
 	app, err := newAppWithRoots(nil, []string{allowed})
@@ -40,6 +42,7 @@ func TestValidateRepositoryRejectsOutsideAllowedRoot(t *testing.T) {
 }
 
 func TestValidateRepositoryAcceptsRepositoryInsideRoot(t *testing.T) {
+	t.Parallel()
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -60,6 +63,7 @@ func TestValidateRepositoryAcceptsRepositoryInsideRoot(t *testing.T) {
 // An allowed root comes from the command line, so the refusal names it, in the
 // form it was given (ADR-0067 clause 3).
 func TestMissingAllowedRootIsReportedByName(t *testing.T) {
+	t.Parallel()
 	missing := filepath.Join(t.TempDir(), "not-mounted")
 	_, err := newAppWithRoots(nil, []string{missing})
 	if got := core.ReasonOf(err); got != core.ReasonPathNotFound {
@@ -77,6 +81,7 @@ func TestMissingAllowedRootIsReportedByName(t *testing.T) {
 }
 
 func TestEmptyAllowedRootsAreReported(t *testing.T) {
+	t.Parallel()
 	empty := t.TempDir()
 	populated := t.TempDir()
 	if err := os.Mkdir(filepath.Join(populated, "repository"), 0o755); err != nil {
@@ -93,6 +98,7 @@ func TestEmptyAllowedRootsAreReported(t *testing.T) {
 }
 
 func TestValidateRepositoryRejectsSymlinkEscape(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	outside := t.TempDir()
 	link := filepath.Join(root, "linked")

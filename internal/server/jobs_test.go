@@ -12,6 +12,7 @@ import (
 )
 
 func TestManagerAllowsOneActiveJobAndRetainsTerminalHistory(t *testing.T) {
+	t.Parallel()
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
 	manager := newTestManager(ManagerOptions{
 		Limit: 2,
@@ -57,6 +58,7 @@ func TestManagerAllowsOneActiveJobAndRetainsTerminalHistory(t *testing.T) {
 }
 
 func TestManagerEvictsOldestTerminalJob(t *testing.T) {
+	t.Parallel()
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
 	next := 0
 	manager := newTestManager(ManagerOptions{
@@ -89,6 +91,7 @@ func TestManagerEvictsOldestTerminalJob(t *testing.T) {
 }
 
 func TestStartRunsWorkerAndCancellationReleasesSlot(t *testing.T) {
+	t.Parallel()
 	started := make(chan struct{}, 1)
 	manager := newTestManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ pipeline.Options, sink pipeline.ProgressSink) (*pipeline.Result, error) {
@@ -132,6 +135,7 @@ func TestStartRunsWorkerAndCancellationReleasesSlot(t *testing.T) {
 }
 
 func TestProgressSequenceIsMonotonicAndSnapshotsProjectElapsed(t *testing.T) {
+	t.Parallel()
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
 	manager := newTestManager(ManagerOptions{
 		Clock: core.ClockFunc(func() time.Time {
@@ -166,6 +170,7 @@ func TestProgressSequenceIsMonotonicAndSnapshotsProjectElapsed(t *testing.T) {
 }
 
 func TestOnlySucceededJobsExposeReports(t *testing.T) {
+	t.Parallel()
 	manager := newTestManager(ManagerOptions{NewID: func() (string, error) { return "report-job", nil }})
 	job, err := manager.Create("/repos/report")
 	if err != nil {
@@ -195,6 +200,7 @@ func TestOnlySucceededJobsExposeReports(t *testing.T) {
 // The build version is injected at composition and must reach every analysis
 // the manager runs, whatever the caller put in the options (ADR-0061 clause 4).
 func TestStartInjectsTheManagersToolVersion(t *testing.T) {
+	t.Parallel()
 	versions := make(chan string, 1)
 	manager := newTestManager(ManagerOptions{
 		ToolVersion: "v-injected",
@@ -214,6 +220,7 @@ func TestStartInjectsTheManagersToolVersion(t *testing.T) {
 }
 
 func TestCancelAllRequestsWorkerCancellation(t *testing.T) {
+	t.Parallel()
 	started := make(chan struct{}, 1)
 	manager := newTestManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
@@ -250,6 +257,7 @@ func TestCancelAllRequestsWorkerCancellation(t *testing.T) {
 }
 
 func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
+	t.Parallel()
 	release := make(chan struct{})
 	warned := make(chan struct{})
 	manager := newTestManager(ManagerOptions{
@@ -300,6 +308,7 @@ func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
 }
 
 func TestWarningsAreBounded(t *testing.T) {
+	t.Parallel()
 	manager := newTestManager(ManagerOptions{})
 	job, err := manager.Create("/repos/project")
 	if err != nil {
@@ -325,6 +334,7 @@ func TestWarningsAreBounded(t *testing.T) {
 // A runner that ignores cancellation and returns a report anyway must not turn
 // a cancelled job into a succeeded one.
 func TestCancellationWinsOverALateResult(t *testing.T) {
+	t.Parallel()
 	started := make(chan struct{})
 	manager := newTestManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
@@ -354,6 +364,7 @@ func TestCancellationWinsOverALateResult(t *testing.T) {
 }
 
 func TestTerminalStatesCannotBeOverwritten(t *testing.T) {
+	t.Parallel()
 	report := func() *pipeline.Result { return &pipeline.Result{Report: &core.Report{}} }
 	for _, tc := range []struct {
 		name   string
@@ -392,6 +403,7 @@ func TestTerminalStatesCannotBeOverwritten(t *testing.T) {
 }
 
 func TestHistoryKeepsExactlyTheTenNewestJobs(t *testing.T) {
+	t.Parallel()
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
 	next := 0
 	manager := newTestManager(ManagerOptions{
@@ -444,6 +456,7 @@ func waitForTerminal(t *testing.T, manager *Manager, id string) Status {
 }
 
 func TestStaleFailureNeverCarriesUnderlyingErrors(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		reason string
 		want   string

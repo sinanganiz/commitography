@@ -9,6 +9,7 @@ import (
 )
 
 func TestReasonEnumerationMatchesReasons(t *testing.T) {
+	t.Parallel()
 	seen := map[Reason]bool{}
 	for _, r := range Reasons() {
 		if seen[r] {
@@ -28,6 +29,7 @@ func TestReasonEnumerationMatchesReasons(t *testing.T) {
 }
 
 func TestExitCodeComesFromTheClass(t *testing.T) {
+	t.Parallel()
 	user := NewUserError(ReasonEmptyRepository, "repo", "Make a commit.", "the repository has no commits")
 	for _, tc := range []struct {
 		name string
@@ -47,6 +49,7 @@ func TestExitCodeComesFromTheClass(t *testing.T) {
 }
 
 func TestHTTPStatusComesFromTheClassAndReason(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		reason Reason
 		want   int
@@ -77,6 +80,7 @@ func TestHTTPStatusComesFromTheClassAndReason(t *testing.T) {
 // The artifact rendering is the one ADR-0067 clause 2 governs, so it must not
 // carry the offending value even though the diagnostic does.
 func TestArtifactRenderingDropsTheOffendingValue(t *testing.T) {
+	t.Parallel()
 	err := NewUserError(ReasonNotARepository, "/private/typed/path", "Point at a directory that contains .git.",
 		"the path is not a git repository")
 
@@ -98,6 +102,7 @@ func TestArtifactRenderingDropsTheOffendingValue(t *testing.T) {
 }
 
 func TestArtifactRenderingOfAnInternalErrorRevealsNothing(t *testing.T) {
+	t.Parallel()
 	err := Internalf(errors.New("open /home/someone/.config: permission denied"), "loading configuration")
 	if got := Artifact(err); got != internalArtifactMessage {
 		t.Errorf("Artifact = %q, want %q", got, internalArtifactMessage)
@@ -108,6 +113,7 @@ func TestArtifactRenderingOfAnInternalErrorRevealsNothing(t *testing.T) {
 }
 
 func TestReasonAndRemedySurviveWrapping(t *testing.T) {
+	t.Parallel()
 	cause := errors.New("cause")
 	user := NewUserError(ReasonInvalidConfiguration, "theme: dark", "Set theme to default.",
 		"the configuration carries an invalid value").Wrapping(cause)
@@ -128,6 +134,7 @@ func TestReasonAndRemedySurviveWrapping(t *testing.T) {
 }
 
 func TestReasonOfAnUnclassifiedErrorIsEmpty(t *testing.T) {
+	t.Parallel()
 	if got := ReasonOf(errors.New("bare")); got != "" {
 		t.Errorf("ReasonOf = %q, want the empty reason", got)
 	}

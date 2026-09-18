@@ -88,6 +88,7 @@ func buildFromFixture(t *testing.T, name string, cfg config.Config, mutate func(
 }
 
 func TestReportValidatesAgainstCommittedSchema(t *testing.T) {
+	t.Parallel()
 	schema := loadSchema(t)
 
 	anonymized := config.Default()
@@ -131,6 +132,7 @@ func TestReportValidatesAgainstCommittedSchema(t *testing.T) {
 }
 
 func TestSchemaRejectsAMalformedReport(t *testing.T) {
+	t.Parallel()
 	schema := loadSchema(t)
 
 	// A guard on the validator itself: a schema that accepts anything would

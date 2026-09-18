@@ -34,6 +34,7 @@ func requireForbidden(t *testing.T, app *App, path string) {
 // resolving junctions in filepath.EvalSymlinks by default; this test fails if
 // that ever lets a junction lead out of the allowed root.
 func TestWindowsJunctionOutOfTheRootIsRejected(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "outside-repository")
 	if out, err := git.Command("", "init", "-q", outside).CombinedOutput(); err != nil {
@@ -55,6 +56,7 @@ func TestWindowsJunctionOutOfTheRootIsRejected(t *testing.T) {
 }
 
 func TestWindowsCaseAndSeparatorVariantsStayInsideTheRoot(t *testing.T) {
+	t.Parallel()
 	root := testRepoPath(t)
 	app, err := newAppWithRoots(nil, []string{root})
 	if err != nil {
@@ -75,6 +77,7 @@ func TestWindowsCaseAndSeparatorVariantsStayInsideTheRoot(t *testing.T) {
 }
 
 func TestWindowsParentTraversalLeavesTheRoot(t *testing.T) {
+	t.Parallel()
 	parent := t.TempDir()
 	root := filepath.Join(parent, "root")
 	if err := os.Mkdir(root, 0o755); err != nil {
@@ -100,6 +103,7 @@ func TestWindowsParentTraversalLeavesTheRoot(t *testing.T) {
 // spellings of a path inside the root are refused too: the root is compared in
 // the form it was given, so the dashboard documents typing that form.
 func TestWindowsExtendedAndUNCPathsCannotLeaveTheRoot(t *testing.T) {
+	t.Parallel()
 	parent := t.TempDir()
 	root := filepath.Join(parent, "root")
 	outside := filepath.Join(parent, "outside")

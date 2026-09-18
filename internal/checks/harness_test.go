@@ -33,6 +33,7 @@ func message(record int, format string, args ...any) string {
 
 // TestHarnessMessageFormat keeps the message shape from drifting.
 func TestHarnessMessageFormat(t *testing.T) {
+	t.Parallel()
 	shape := regexp.MustCompile(`^ADR-[0-9]{4}: `)
 	for _, record := range []int{1, 49, 9999} {
 		if got := message(record, "%s", "example"); !shape.MatchString(got) {

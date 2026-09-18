@@ -9,6 +9,7 @@ import (
 // git is asked to delimit records with. Such a subject splits its own record,
 // and the tail carries the numstat block for the commit before it.
 func TestParseLogRejoinsSubjectContainingRecordSeparator(t *testing.T) {
+	t.Parallel()
 	const hash = "4e45512de2d76e0366c5e7ac5d02119419bfc9ea"
 	stream := "\x01" + hash +
 		"\x1fRaymond Hettinger\x1fpython@rcn.com" +
@@ -59,6 +60,7 @@ func TestParseLogRejoinsSubjectContainingRecordSeparator(t *testing.T) {
 // A stream that never presents a valid header is a genuine failure, not a
 // continuation, and must still be counted and reported.
 func TestParseLogReportsHeaderlessStream(t *testing.T) {
+	t.Parallel()
 	var warnings []string
 	opts := Options{OnWarning: func(msg string) { warnings = append(warnings, msg) }}
 
@@ -78,6 +80,7 @@ func TestParseLogReportsHeaderlessStream(t *testing.T) {
 }
 
 func TestParseLogReportsProgress(t *testing.T) {
+	t.Parallel()
 	const hash = "4e45512de2d76e0366c5e7ac5d02119419bfc9ea"
 	stream := "\x01" + hash +
 		"\x1fName\x1fname@example.com" +
@@ -97,6 +100,7 @@ func TestParseLogReportsProgress(t *testing.T) {
 }
 
 func TestIsRecordStart(t *testing.T) {
+	t.Parallel()
 	sha1 := strings.Repeat("a", 40)
 	sha256 := strings.Repeat("0", 64)
 
@@ -127,6 +131,7 @@ func TestIsRecordStart(t *testing.T) {
 // the single-invocation reader returns. Real repositories are too small here to
 // cross shardThreshold, so the sharded path is invoked directly.
 func TestShardedReadMatchesSingleStream(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"basic", "merges", "binary", "single"} {
 		t.Run(name, func(t *testing.T) {
 			repo := fixture(t, name)
@@ -179,6 +184,7 @@ func TestShardedReadMatchesSingleStream(t *testing.T) {
 
 // Sharding must never change how much work is done, only how it is divided.
 func TestShardCount(t *testing.T) {
+	t.Parallel()
 	if got := shardCount(shardThreshold - 1); got != 1 {
 		t.Errorf("shardCount below threshold = %d, want 1", got)
 	}

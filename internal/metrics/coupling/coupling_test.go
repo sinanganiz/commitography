@@ -39,6 +39,7 @@ func commitBy(identityID string, day int, paths ...string) model.Commit {
 }
 
 func TestCouplingFindsDeliberatePairAndRejectsWeakOne(t *testing.T) {
+	t.Parallel()
 	in := socialInput(t)
 	var commits []model.Commit
 	// alpha and beta change together twelve times; gamma joins only four.
@@ -83,6 +84,7 @@ func TestCouplingFindsDeliberatePairAndRejectsWeakOne(t *testing.T) {
 }
 
 func TestCouplingFlagsSameStemPairsAsExpected(t *testing.T) {
+	t.Parallel()
 	in := socialInput(t)
 	var commits []model.Commit
 	for i := 0; i < 8; i++ {
@@ -99,6 +101,7 @@ func TestCouplingFlagsSameStemPairsAsExpected(t *testing.T) {
 }
 
 func TestCouplingSkipsVeryWideCommits(t *testing.T) {
+	t.Parallel()
 	in := socialInput(t)
 	wide := make([]string, filter.CouplingMaxFilesPerCommit+1)
 	for i := range wide {
@@ -118,6 +121,7 @@ func TestCouplingSkipsVeryWideCommits(t *testing.T) {
 }
 
 func TestStemOf(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"src/Foo.ts":      "foo",
 		"src/Foo.test.ts": "foo",

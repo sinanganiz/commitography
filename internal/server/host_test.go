@@ -18,6 +18,7 @@ func localRequest(method, target string, body io.Reader) *http.Request {
 }
 
 func TestHostHeaderAcceptsOnlyLoopbackNames(t *testing.T) {
+	t.Parallel()
 	app := newApp(t, newTestManager(ManagerOptions{}))
 	handler := app.Handler()
 	for _, tc := range []struct {
@@ -71,6 +72,7 @@ func TestHostHeaderAcceptsOnlyLoopbackNames(t *testing.T) {
 // origin check alone passes. Even with a valid session cookie it must be
 // refused before a job exists.
 func TestRebindingPageCannotStartJobs(t *testing.T) {
+	t.Parallel()
 	app := testApp(t, newTestManager(ManagerOptions{}))
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(jobBody(t, "")))
 	req.Host = "attacker.example:8080"
@@ -87,6 +89,7 @@ func TestRebindingPageCannotStartJobs(t *testing.T) {
 }
 
 func TestExplicitListenAddressIsAnAllowedHost(t *testing.T) {
+	t.Parallel()
 	app := newApp(t, newTestManager(ManagerOptions{}))
 	app.AllowListenHost("192.168.1.20:8080")
 	app.AllowListenHost("0.0.0.0:8080")

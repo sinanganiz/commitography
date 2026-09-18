@@ -31,6 +31,7 @@ func fixture(t *testing.T, name string) string {
 }
 
 func TestLinguistGeneratedIsExcluded(t *testing.T) {
+	t.Parallel()
 	repo := fixture(t, "noise")
 	if _, err := os.Stat(filepath.Join(repo, ".gitattributes")); err != nil {
 		t.Fatal("ADR-0064: the noise fixture has no .gitattributes; regenerate it with `make fixtures`")
@@ -50,6 +51,7 @@ func TestLinguistGeneratedIsExcluded(t *testing.T) {
 }
 
 func TestGitAttributesNegationReincludes(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	body := "generated/*.go linguist-generated=true\ngenerated/keep.go -linguist-generated\n"
 	if err := os.WriteFile(filepath.Join(dir, ".gitattributes"), []byte(body), 0o644); err != nil {
@@ -70,6 +72,7 @@ func TestGitAttributesNegationReincludes(t *testing.T) {
 }
 
 func TestDefaultPatternsMatchAtAnyDepth(t *testing.T) {
+	t.Parallel()
 	pf, err := NewPathFilter(osFiles{}, config.Default(), t.TempDir())
 	if err != nil {
 		t.Fatalf("NewPathFilter: %v", err)
@@ -101,6 +104,7 @@ func TestDefaultPatternsMatchAtAnyDepth(t *testing.T) {
 // are excluded too. Without these, the defaults excluded generated paths only in
 // repositories with a single package at the root.
 func TestDefaultsCoverNestedMonorepoPaths(t *testing.T) {
+	t.Parallel()
 	pf, err := NewPathFilter(osFiles{}, config.Default(), t.TempDir())
 	if err != nil {
 		t.Fatalf("NewPathFilter: %v", err)
@@ -147,6 +151,7 @@ func TestDefaultsCoverNestedMonorepoPaths(t *testing.T) {
 }
 
 func TestEmptyExcludeListDisablesFiltering(t *testing.T) {
+	t.Parallel()
 	cfg := config.Default()
 	cfg.ExcludePaths = nil
 	pf, err := NewPathFilter(osFiles{}, cfg, t.TempDir())
@@ -159,6 +164,7 @@ func TestEmptyExcludeListDisablesFiltering(t *testing.T) {
 }
 
 func TestApplyDoesNotMutateInput(t *testing.T) {
+	t.Parallel()
 	commits := []model.Commit{{
 		Hash:        "a",
 		AuthorName:  "Ada",

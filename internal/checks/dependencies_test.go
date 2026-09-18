@@ -27,6 +27,7 @@ func pendingRemoval() map[string]bool {
 // TestDependencyAllowList enforces ADR-0049 clause 2 and 3: every direct
 // dependency in a tracked Go or npm manifest appears in the allow list.
 func TestDependencyAllowList(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	if !repo.isTracked(allowListFile) {
 		fatal(t, 49, "the dependency allow list %s is not tracked", allowListFile)

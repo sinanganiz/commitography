@@ -23,6 +23,7 @@ func fixture(t *testing.T, name string) string {
 }
 
 func TestRunDoesNothingWithACancelledContext(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -44,6 +45,7 @@ func TestRunDoesNothingWithACancelledContext(t *testing.T) {
 // Cancelling while git log streams history stops the Git process, and the run
 // reports the cancellation rather than the failure of the killed process.
 func TestRunReportsCancellationDuringHistoryCollection(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -63,6 +65,7 @@ func TestRunReportsCancellationDuringHistoryCollection(t *testing.T) {
 // Cancelling once history has been read stops the run at the next checkpoint:
 // no metric stage runs and no report is produced.
 func TestRunStopsAtTheNextCheckpointAfterCancellation(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -90,6 +93,7 @@ func TestRunStopsAtTheNextCheckpointAfterCancellation(t *testing.T) {
 // The job server and the CLI may run analyses side by side; a warning raised
 // by one run must reach only that run's sink.
 func TestConcurrentRunsKeepTheirWarningsApart(t *testing.T) {
+	t.Parallel()
 	repo := fixture(t, "basic")
 	keys := []string{"first_unknown_key", "second_unknown_key"}
 

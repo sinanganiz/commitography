@@ -38,6 +38,7 @@ const largeCondition = "large-fixture"
 // TestFixtureDeterminism keeps equal to what the generator produces, so this
 // checker reads tracked files only (ADR-0063 clause 4).
 func TestFixtureConditions(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	fixtures := generatedFixtures(t, repo)
 	conditions := loadFixtureConditions(t, repo)

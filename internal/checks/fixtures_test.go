@@ -26,6 +26,7 @@ const fixtureHashes = "testdata/fixture-hashes.txt"
 // With COMMITOGRAPHY_UPDATE_FIXTURE_HASHES=1 the committed list is rewritten
 // from the first generation instead of compared.
 func TestFixtureDeterminism(t *testing.T) {
+	t.Parallel()
 	first := os.Getenv("COMMITOGRAPHY_FIXTURES_FIRST")
 	second := os.Getenv("COMMITOGRAPHY_FIXTURES_SECOND")
 	if first == "" || second == "" {

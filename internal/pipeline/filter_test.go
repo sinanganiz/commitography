@@ -27,6 +27,7 @@ func analyze(t *testing.T, name string, cfg config.Config) (filter.Result, *filt
 }
 
 func TestLockfileContributesNoLines(t *testing.T) {
+	t.Parallel()
 	res, pf := analyze(t, "noise", config.Default())
 
 	var lockfileLines, includedLines int
@@ -56,6 +57,7 @@ func TestLockfileContributesNoLines(t *testing.T) {
 }
 
 func TestMergesAreExcludedByDefault(t *testing.T) {
+	t.Parallel()
 	res, _ := analyze(t, "merges", config.Default())
 	if res.ExcludedMerges != 5 {
 		t.Errorf("ExcludedMerges = %d, want 5", res.ExcludedMerges)
@@ -68,6 +70,7 @@ func TestMergesAreExcludedByDefault(t *testing.T) {
 }
 
 func TestCountMergesKeepsMerges(t *testing.T) {
+	t.Parallel()
 	cfg := config.Default()
 	cfg.CountMerges = true
 	res, _ := analyze(t, "merges", cfg)
@@ -77,6 +80,7 @@ func TestCountMergesKeepsMerges(t *testing.T) {
 }
 
 func TestBulkCommitIsFlagged(t *testing.T) {
+	t.Parallel()
 	res, _ := analyze(t, "noise", config.Default())
 
 	if len(res.BulkCommits) == 0 {
@@ -100,6 +104,7 @@ func TestBulkCommitIsFlagged(t *testing.T) {
 }
 
 func TestBotCommitsAreExcluded(t *testing.T) {
+	t.Parallel()
 	res, _ := analyze(t, "bots", config.Default())
 	if res.ExcludedBots != 2 {
 		t.Errorf("ExcludedBots = %d, want 2", res.ExcludedBots)

@@ -12,6 +12,7 @@ import (
 // address before starting one (ADR-0065 clause 5). None of these cases reaches
 // a process.
 func TestBrowserOpenerRefusesForeignURLs(t *testing.T) {
+	t.Parallel()
 	loopback := &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 8080}
 	everywhere := &net.TCPAddr{IP: net.IPv4zero, Port: 9090}
 	for _, tc := range []struct {
@@ -38,6 +39,7 @@ func TestBrowserOpenerRefusesForeignURLs(t *testing.T) {
 // Every URL the server announces is one the opener accepts, so the refusal
 // above never blocks the real call.
 func TestBrowserOpenerAcceptsTheAnnouncedAddress(t *testing.T) {
+	t.Parallel()
 	for _, addr := range []net.Addr{
 		&net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 8080},
 		&net.TCPAddr{IP: net.IPv4zero, Port: 9090},

@@ -22,6 +22,7 @@ func (w messageWriter) Write(data []byte) (int, error) {
 }
 
 func TestServeBindsAndPrintsURL(t *testing.T) {
+	t.Parallel()
 	// The server goroutine is owned by the test and waited for after the
 	// context is cancelled (ADR-0044 clause 1).
 	var serving sync.WaitGroup
@@ -62,6 +63,7 @@ func TestServeBindsAndPrintsURL(t *testing.T) {
 }
 
 func TestServeBrowserFailureIsWarning(t *testing.T) {
+	t.Parallel()
 	// The server goroutine is owned by the test and waited for after the
 	// context is cancelled (ADR-0044 clause 1).
 	var serving sync.WaitGroup
@@ -100,6 +102,7 @@ func TestServeBrowserFailureIsWarning(t *testing.T) {
 // The announcement is tested without binding: listening on every interface
 // would make the operating system firewall prompt on each test run.
 func TestAnnounceStatesListenerReachability(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name        string
 		addr        *net.TCPAddr
@@ -176,6 +179,7 @@ func TestAnnounceStatesListenerReachability(t *testing.T) {
 }
 
 func TestServeCallsShutdownHook(t *testing.T) {
+	t.Parallel()
 	// The server goroutine is owned by the test and waited for after the
 	// context is cancelled (ADR-0044 clause 1).
 	var serving sync.WaitGroup

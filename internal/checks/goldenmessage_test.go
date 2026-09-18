@@ -17,6 +17,7 @@ import (
 // It reads the whole history, so a shallow clone is a missing precondition
 // (ADR-0064 clause 2); the gates check out full history.
 func TestGoldenCommitMessages(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	ctx := context.Background()
 	shallow, err := git.RunContext(ctx, repo.root, "rev-parse", "--is-shallow-repository")
@@ -77,6 +78,7 @@ func goldenReason(message string) string {
 }
 
 func TestGoldenReason(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, message string
 		ok            bool

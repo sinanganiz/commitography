@@ -20,6 +20,7 @@ import (
 // session cookie, raw data in responses and the default listener.
 
 func TestRouteTraversalReadsNoFiles(t *testing.T) {
+	t.Parallel()
 	app := testApp(t, newTestManager(ManagerOptions{}))
 	goMod, err := os.ReadFile(filepath.Join(testRepoPath(t), "go.mod"))
 	if err != nil {
@@ -73,6 +74,7 @@ func TestRouteTraversalReadsNoFiles(t *testing.T) {
 }
 
 func TestStateChangingRoutesRequireSessionAndSameOrigin(t *testing.T) {
+	t.Parallel()
 	app, outcomes, started := controlledApp(t)
 	id := createdID(t, expect(t, "create", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: jobBody(t, "")}), http.StatusAccepted, ""))
 	waitForStatus(t, app, id, StatusRunning)
@@ -137,6 +139,7 @@ func requireSecurityHeaders(t *testing.T, label string, res *httptest.ResponseRe
 }
 
 func TestSecurityHeadersOnEveryResponseClass(t *testing.T) {
+	t.Parallel()
 	app, outcomes, _ := controlledApp(t)
 	valid := jobBody(t, "")
 	for _, tc := range []struct {
@@ -181,6 +184,7 @@ func TestSecurityHeadersOnEveryResponseClass(t *testing.T) {
 }
 
 func TestSessionCookieIsProcessScopedAndStrict(t *testing.T) {
+	t.Parallel()
 	// Each app draws its secret from its own source, as two processes do.
 	first, err := newAppWithRandom(nil, core.SeededRandom(11), nil)
 	if err != nil {
@@ -228,6 +232,7 @@ func jsonKeys(t *testing.T, data []byte) map[string]bool {
 // list contracts, and a report whose top-level fields are the report schema's.
 // Raw history, cache files and plaintext e-mail addresses have no place in them.
 func TestResponsesCarryOnlyDocumentedData(t *testing.T) {
+	t.Parallel()
 	app := testApp(t, newTestManager(ManagerOptions{}))
 	id := createdID(t, expect(t, "create", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: jobBody(t, `,"options":{"noBlame":true}`)}), http.StatusAccepted, ""))
 	// The wait is bounded by a poll count, so the test reads no clock
@@ -305,6 +310,7 @@ func TestResponsesCarryOnlyDocumentedData(t *testing.T) {
 }
 
 func TestDefaultListenerIsLoopback(t *testing.T) {
+	t.Parallel()
 	if defaultListenAddress != "127.0.0.1:8080" {
 		t.Fatalf("default listen address = %q, want 127.0.0.1:8080", defaultListenAddress)
 	}

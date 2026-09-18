@@ -15,6 +15,7 @@ import (
 )
 
 func TestAPICapabilitiesAndJobList(t *testing.T) {
+	t.Parallel()
 	app := newApp(t, newTestManager(ManagerOptions{}))
 	handler := app.Handler()
 
@@ -49,6 +50,7 @@ func TestAPICapabilitiesAndJobList(t *testing.T) {
 }
 
 func TestAPILifecycleRoutesAreVersioned(t *testing.T) {
+	t.Parallel()
 	app := newApp(t, newTestManager(ManagerOptions{}))
 	handler := app.Handler()
 	for _, tc := range []struct {
@@ -70,6 +72,7 @@ func TestAPILifecycleRoutesAreVersioned(t *testing.T) {
 }
 
 func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
+	t.Parallel()
 	manager := newTestManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
 			return &pipeline.Result{}, nil
@@ -113,6 +116,7 @@ func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
 }
 
 func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
+	t.Parallel()
 	manager := newTestManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
 			return &pipeline.Result{Report: &core.Report{}}, nil
@@ -145,6 +149,7 @@ func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
 }
 
 func TestAPICreatePassesOptionsToAnalysis(t *testing.T) {
+	t.Parallel()
 	received := make(chan pipeline.Options, 1)
 	manager := newTestManager(ManagerOptions{
 		Runner: func(_ context.Context, opts pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
@@ -179,6 +184,7 @@ func TestAPICreatePassesOptionsToAnalysis(t *testing.T) {
 }
 
 func TestAPIStatusUsesContractProgressFields(t *testing.T) {
+	t.Parallel()
 	fraction := 0.42
 	manager := newTestManager(ManagerOptions{
 		Runner: func(_ context.Context, _ pipeline.Options, sink pipeline.ProgressSink) (*pipeline.Result, error) {
@@ -221,6 +227,7 @@ func TestAPIStatusUsesContractProgressFields(t *testing.T) {
 }
 
 func TestAPICancelTransitionsJob(t *testing.T) {
+	t.Parallel()
 	started := make(chan struct{}, 1)
 	manager := newTestManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
@@ -265,6 +272,7 @@ func TestAPICancelTransitionsJob(t *testing.T) {
 }
 
 func TestAPICancelRejectsCompletedJob(t *testing.T) {
+	t.Parallel()
 	manager := newTestManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
 			return &pipeline.Result{Report: &core.Report{}}, nil
@@ -284,6 +292,7 @@ func TestAPICancelRejectsCompletedJob(t *testing.T) {
 }
 
 func TestSessionBootstrapAndOriginProtection(t *testing.T) {
+	t.Parallel()
 	app := testApp(t, newTestManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
 			return &pipeline.Result{}, nil

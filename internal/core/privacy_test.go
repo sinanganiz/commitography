@@ -61,6 +61,7 @@ func serialize(t *testing.T, r *Report) string {
 }
 
 func TestDefaultsHashEmails(t *testing.T) {
+	t.Parallel()
 	cfg := config.Default() // HashEmails true, Anonymize false
 	r := reportWithAuthors()
 	ApplyPrivacy(r, cfg)
@@ -88,6 +89,7 @@ func TestDefaultsHashEmails(t *testing.T) {
 }
 
 func TestHashEmailIsStableAndCaseInsensitive(t *testing.T) {
+	t.Parallel()
 	a := HashEmail("Ada@Example.COM")
 	b := HashEmail("  ada@example.com  ")
 	if a != b {
@@ -102,6 +104,7 @@ func TestHashEmailIsStableAndCaseInsensitive(t *testing.T) {
 }
 
 func TestAnonymizeReplacesNamesAndDropsEmails(t *testing.T) {
+	t.Parallel()
 	cfg := config.Default()
 	cfg.Anonymize = true
 	r := reportWithAuthors()
@@ -126,6 +129,7 @@ func TestAnonymizeReplacesNamesAndDropsEmails(t *testing.T) {
 }
 
 func TestPseudonymsFollowArrivalOrder(t *testing.T) {
+	t.Parallel()
 	cfg := config.Default()
 	cfg.Anonymize = true
 	r := reportWithAuthors() // Ada arrives first, Grace a month later
@@ -144,6 +148,7 @@ func TestPseudonymsFollowArrivalOrder(t *testing.T) {
 }
 
 func TestAnonymizeKeepsMessageContent(t *testing.T) {
+	t.Parallel()
 	cfg := config.Default()
 	cfg.Anonymize = true
 	r := reportWithAuthors()
@@ -163,6 +168,7 @@ func TestAnonymizeKeepsMessageContent(t *testing.T) {
 }
 
 func TestAlphabeticLabel(t *testing.T) {
+	t.Parallel()
 	cases := map[int]string{0: "A", 1: "B", 25: "Z", 26: "AA", 27: "AB", 51: "AZ", 52: "BA"}
 	for i, want := range cases {
 		if got := alphabeticLabel(i); got != want {
@@ -172,6 +178,7 @@ func TestAlphabeticLabel(t *testing.T) {
 }
 
 func TestPrivacyWithoutPerAuthorSection(t *testing.T) {
+	t.Parallel()
 	cfg := config.Default()
 	cfg.Anonymize = true
 	r := &Report{

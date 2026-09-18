@@ -21,6 +21,7 @@ func collectFixture(t *testing.T, name string, useMailmap bool) []model.Commit {
 }
 
 func TestResolverReconcilesWithShortlogOnMailmapFixture(t *testing.T) {
+	t.Parallel()
 	repo := fixture(t, "mailmap")
 	commits := collectFixture(t, "mailmap", true)
 
@@ -44,6 +45,7 @@ func TestResolverReconcilesWithShortlogOnMailmapFixture(t *testing.T) {
 }
 
 func TestConfiguredIdentityMergesTwoEmails(t *testing.T) {
+	t.Parallel()
 	commits := collectFixture(t, "basic", false)
 
 	plain := identity.NewResolver(config.Default(), commits)
@@ -80,6 +82,7 @@ func TestConfiguredIdentityMergesTwoEmails(t *testing.T) {
 }
 
 func TestBotsAreFlagged(t *testing.T) {
+	t.Parallel()
 	commits := collectFixture(t, "bots", true)
 	r := identity.NewResolver(config.Default(), commits)
 

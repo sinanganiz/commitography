@@ -36,6 +36,7 @@ func taxonomySubjects() []string { return []string{"person", "repository"} }
 // file (ADR-0030 clause 5), and every condition names an axis defined in
 // axes.md (ADR-0030 clause 2).
 func TestTaxonomyIntegrity(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 
 	var doc taxonomyDocument

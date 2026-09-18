@@ -8,6 +8,7 @@ import (
 )
 
 func TestRepositoryChangedDetectsRelevantMutations(t *testing.T) {
+	t.Parallel()
 	base := model.RepositoryInfo{
 		HeadCommit:    "abc",
 		DefaultBranch: "main",

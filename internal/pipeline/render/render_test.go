@@ -44,6 +44,7 @@ func sampleReport() *core.Report {
 }
 
 func TestRenderWritesOnlyIndexAndReport(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join(t.TempDir(), "nested", "out")
 
 	if err := Render(sampleReport(), dir); err != nil {
@@ -69,6 +70,7 @@ func TestRenderWritesOnlyIndexAndReport(t *testing.T) {
 }
 
 func TestRenderedPageIsSelfContained(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	if err := Render(sampleReport(), dir); err != nil {
 		t.Fatalf("Render: %v", err)
@@ -103,6 +105,7 @@ func TestRenderedPageIsSelfContained(t *testing.T) {
 }
 
 func TestScriptClosingTagInSubjectCannotBreakOut(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	if err := Render(sampleReport(), dir); err != nil {
 		t.Fatalf("Render: %v", err)
@@ -134,6 +137,7 @@ func TestScriptClosingTagInSubjectCannotBreakOut(t *testing.T) {
 }
 
 func TestPageMovesWithoutItsDirectory(t *testing.T) {
+	t.Parallel()
 	src := t.TempDir()
 	if err := Render(sampleReport(), src); err != nil {
 		t.Fatalf("Render: %v", err)
@@ -155,6 +159,7 @@ func TestPageMovesWithoutItsDirectory(t *testing.T) {
 }
 
 func TestRenderLeavesUnrelatedFilesAlone(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	keep := filepath.Join(dir, "notes.txt")
 	if err := os.WriteFile(keep, []byte("keep me"), 0o644); err != nil {
@@ -169,6 +174,7 @@ func TestRenderLeavesUnrelatedFilesAlone(t *testing.T) {
 }
 
 func TestRenderOverwritesExistingOutput(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	if err := Render(sampleReport(), dir); err != nil {
 		t.Fatalf("first Render: %v", err)
@@ -182,6 +188,7 @@ func TestRenderOverwritesExistingOutput(t *testing.T) {
 }
 
 func TestRenderWrapped(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	previous := 40
 
@@ -202,6 +209,7 @@ func TestRenderWrapped(t *testing.T) {
 }
 
 func TestWrappedOmitsDeltaWhenPreviousYearIsEmpty(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	if err := RenderWrapped(sampleReport(), dir, 2026, nil); err != nil {
 		t.Fatalf("RenderWrapped: %v", err)
@@ -213,6 +221,7 @@ func TestWrappedOmitsDeltaWhenPreviousYearIsEmpty(t *testing.T) {
 }
 
 func TestWriteReportJSONIsValidAndIndented(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), ReportFile)
 	if err := WriteReportJSON(sampleReport(), path); err != nil {
 		t.Fatalf("WriteReportJSON: %v", err)

@@ -111,6 +111,7 @@ func withoutElapsed(t *testing.T, res *httptest.ResponseRecorder) jobStatusRespo
 // TestAPIEndpointMatrix walks every documented endpoint through its success and
 // failure responses, in the order a job's lifecycle reaches them.
 func TestAPIEndpointMatrix(t *testing.T) {
+	t.Parallel()
 	app, outcomes, started := controlledApp(t)
 	valid := jobBody(t, "")
 	evil := "http://evil.example"
@@ -236,6 +237,7 @@ func TestAPIEndpointMatrix(t *testing.T) {
 }
 
 func TestAPIRejectsAFolderThatIsNotARepository(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	folder := filepath.Join(root, "not-a-repository")
 	if err := os.Mkdir(folder, 0o755); err != nil {
@@ -258,6 +260,7 @@ func TestAPIRejectsAFolderThatIsNotARepository(t *testing.T) {
 }
 
 func TestAPIHistoryEvictsTheOldestFinishedJob(t *testing.T) {
+	t.Parallel()
 	manager := newTestManager(ManagerOptions{
 		Limit: 2,
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {

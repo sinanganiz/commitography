@@ -3,6 +3,7 @@ package pipeline
 import "testing"
 
 func TestEventEmitterProducesEstimatedProgress(t *testing.T) {
+	t.Parallel()
 	var events []ProgressEvent
 	emitter := eventEmitter{sink: func(event ProgressEvent) {
 		events = append(events, event)

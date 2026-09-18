@@ -3,6 +3,7 @@ package main
 import "testing"
 
 func TestServeFlagsDefaultToLoopbackWithoutBrowser(t *testing.T) {
+	t.Parallel()
 	flags := newServeCommand(testEnvironment()).Flags()
 	for name, want := range map[string]string{
 		"listen":       "127.0.0.1:8080",

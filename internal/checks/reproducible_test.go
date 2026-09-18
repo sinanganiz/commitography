@@ -24,6 +24,7 @@ import (
 // linker flag naming a variable that no longer exists, which the linker
 // ignores silently, shows up as a default version (ADR-0061).
 func TestReproducibleBuild(t *testing.T) {
+	t.Parallel()
 	first := os.Getenv("COMMITOGRAPHY_REPRODUCIBLE_FIRST")
 	second := os.Getenv("COMMITOGRAPHY_REPRODUCIBLE_SECOND")
 	if first == "" || second == "" {

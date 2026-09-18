@@ -16,6 +16,7 @@ import (
 // say why. Build tags are ignored, so tagged verification packages are
 // covered too.
 func TestProcessExecutionSitesNameTheirRecord(t *testing.T) {
+	t.Parallel()
 	repo := openRepository(t)
 	fset := token.NewFileSet()
 	sites := 0

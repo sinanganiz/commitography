@@ -50,6 +50,7 @@ func syntheticHistory(commits int) *model.History {
 }
 
 func TestWriteReadHistoryRoundTrip(t *testing.T) {
+	t.Parallel()
 	h := syntheticHistory(10000)
 	path := filepath.Join(t.TempDir(), "commits.json")
 
@@ -90,6 +91,7 @@ func TestWriteReadHistoryRoundTrip(t *testing.T) {
 }
 
 func TestWriteHistoryIsCompact(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "commits.json")
 	if err := WriteHistory(syntheticHistory(3), path); err != nil {
 		t.Fatalf("WriteHistory: %v", err)
@@ -112,6 +114,7 @@ func TestWriteHistoryIsCompact(t *testing.T) {
 }
 
 func TestReadHistoryRejectsForeignSchemaVersion(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "commits.json")
 	if err := os.WriteFile(path, []byte(`{"schemaVersion":999,"commits":[]}`), 0o644); err != nil {
 		t.Fatal(err)
