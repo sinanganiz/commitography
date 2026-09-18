@@ -48,7 +48,7 @@ func TestErrorClassAtPackageBoundaries(t *testing.T) {
 	}
 	analyse := func(opts pipeline.Options) error {
 		opts.OperatorSupplied = true
-		_, err := pipeline.Run(context.Background(), opts, nil)
+		_, err := newAnalyzer().Run(context.Background(), opts, nil)
 		return err
 	}
 

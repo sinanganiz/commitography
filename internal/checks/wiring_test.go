@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/core"
+	"github.com/sinanganiz/commitography/internal/pipeline"
+	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 )
 
@@ -17,4 +19,16 @@ func checkTime() time.Time {
 // with the clock fixed.
 func newCollector() *collect.Collector {
 	return collect.New(core.FixedClock(checkTime()), core.SystemFilesystem())
+}
+
+// newAnalyzer is the analysis service wired the way the entry points wire it,
+// with the clock fixed.
+func newAnalyzer() *pipeline.Analyzer {
+	return newAnalyzerAt(core.FixedClock(checkTime()))
+}
+
+// newAnalyzerAt is the analysis service wired with the given clock.
+func newAnalyzerAt(clock core.Clock) *pipeline.Analyzer {
+	files := core.SystemFilesystem()
+	return pipeline.New(collect.New(clock, files), aggregate.New(clock, files), files)
 }

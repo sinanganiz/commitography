@@ -71,8 +71,8 @@ type ProgressEvent struct {
 // ProgressSink receives progress events from an analysis run.
 type ProgressSink func(ProgressEvent)
 
-// RunFunc is the callable shape of the shared analysis service, which Run
-// implements.
+// RunFunc is the callable shape of the shared analysis service, which
+// Analyzer.Run implements.
 type RunFunc func(context.Context, Options, ProgressSink) (*Result, error)
 
 // SuppliedPath returns the repository path in the form a message may name, or

@@ -27,7 +27,7 @@ func TestRunDoesNothingWithACancelledContext(t *testing.T) {
 	cancel()
 
 	var events []ProgressEvent
-	result, err := Run(ctx, Options{RepoPath: fixture(t, "basic"), NoBlame: true}, func(event ProgressEvent) {
+	result, err := newAnalyzer().Run(ctx, Options{RepoPath: fixture(t, "basic"), NoBlame: true}, func(event ProgressEvent) {
 		events = append(events, event)
 	})
 	if !errors.Is(err, context.Canceled) {
@@ -47,7 +47,7 @@ func TestRunReportsCancellationDuringHistoryCollection(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	result, err := Run(ctx, Options{RepoPath: fixture(t, "basic"), NoBlame: true}, func(event ProgressEvent) {
+	result, err := newAnalyzer().Run(ctx, Options{RepoPath: fixture(t, "basic"), NoBlame: true}, func(event ProgressEvent) {
 		if event.Stage == StageCollecting && event.Current > 0 {
 			cancel()
 		}
@@ -67,7 +67,7 @@ func TestRunStopsAtTheNextCheckpointAfterCancellation(t *testing.T) {
 	defer cancel()
 
 	var stages []string
-	result, err := Run(ctx, Options{RepoPath: fixture(t, "basic"), NoBlame: true}, func(event ProgressEvent) {
+	result, err := newAnalyzer().Run(ctx, Options{RepoPath: fixture(t, "basic"), NoBlame: true}, func(event ProgressEvent) {
 		stages = append(stages, event.Stage)
 		if event.Stage == StageIdentity {
 			cancel()
@@ -104,7 +104,7 @@ func TestConcurrentRunsKeepTheirWarningsApart(t *testing.T) {
 		go func(i int, path string) {
 			defer wg.Done()
 			var mu sync.Mutex
-			_, err := Run(context.Background(), Options{
+			_, err := newAnalyzer().Run(context.Background(), Options{
 				RepoPath:   repo,
 				ConfigPath: path,
 				NoBlame:    true,

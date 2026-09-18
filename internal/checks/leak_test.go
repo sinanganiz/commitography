@@ -179,7 +179,7 @@ func TestLeakScanWarnings(t *testing.T) {
 		fatal(t, 67, "writing a configuration file: %v", err)
 	}
 	var raised []string
-	result, err := pipeline.Run(context.Background(), pipeline.Options{
+	result, err := newAnalyzer().Run(context.Background(), pipeline.Options{
 		RepoPath:         filepath.Join(repo.root, "testdata", "fixtures", "basic"),
 		ConfigPath:       config,
 		OperatorSupplied: true,
@@ -218,7 +218,7 @@ func TestLeakScanDiagnostics(t *testing.T) {
 			// Driving it with an absolute path would make the check vacuous,
 			// because the leak and the permitted value would be the same string.
 			supplied := filepath.Join("..", "..", "testdata", "fixtures", fixture)
-			_, err := pipeline.Run(context.Background(),
+			_, err := newAnalyzer().Run(context.Background(),
 				pipeline.Options{RepoPath: supplied, OperatorSupplied: true}, nil)
 			if err == nil {
 				fatal(t, 67, "fixture %s was not refused, so it produces no diagnostic to scan", fixture)

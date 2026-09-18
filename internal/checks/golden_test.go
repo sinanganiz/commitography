@@ -153,7 +153,7 @@ func produce(t *testing.T, repo repository, fixture string) (string, bool) {
 	// OperatorSupplied mirrors the command line, so a refusal names the path
 	// the way the command would (ADR-0067 clause 3); normalise then replaces
 	// the fixture root, as it already does for the report.
-	result, err := pipeline.Run(context.Background(), pipeline.Options{RepoPath: dir, OperatorSupplied: true}, nil)
+	result, err := newAnalyzer().Run(context.Background(), pipeline.Options{RepoPath: dir, OperatorSupplied: true}, nil)
 	if err != nil {
 		return normalise(fmt.Sprintf("exit code %d\nError: %v\n", core.ExitCode(err), err), root), true
 	}

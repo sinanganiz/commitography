@@ -13,6 +13,8 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
+	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/pipeline/render"
 )
 
@@ -96,7 +98,9 @@ func TestCLIAndAnalysisServiceProduceTheSameReport(t *testing.T) {
 		t.Fatalf("decode CLI report: %v", err)
 	}
 
-	serviceResult, err := pipeline.Run(context.Background(), pipeline.Options{
+	clock, files := core.SystemClock(), core.SystemFilesystem()
+	analyzer := pipeline.New(collect.New(clock, files), aggregate.New(clock, files), files)
+	serviceResult, err := analyzer.Run(context.Background(), pipeline.Options{
 		RepoPath: opts.RepoPath,
 		NoBlame:  true,
 	}, nil)

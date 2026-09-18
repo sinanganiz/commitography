@@ -51,7 +51,7 @@ func TestHostileNamesProduceNoPanicAndNoLeak(t *testing.T) {
 		}
 	}()
 
-	result, err := pipeline.Run(context.Background(),
+	result, err := newAnalyzer().Run(context.Background(),
 		pipeline.Options{RepoPath: dir, OperatorSupplied: true, PerAuthor: true}, nil)
 	if err != nil {
 		fatal(t, 41, "analysing the %s fixture %s failed: %v", hostileCondition, fixture, err)

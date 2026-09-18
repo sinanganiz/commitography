@@ -17,6 +17,8 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
+	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 )
 
 // Status is the externally meaningful state of an analysis job.
@@ -122,7 +124,8 @@ func NewManager(options ManagerOptions) *Manager {
 	}
 	runner := options.Runner
 	if runner == nil {
-		runner = pipeline.Run
+		clock, files := core.SystemClock(), core.SystemFilesystem()
+		runner = pipeline.New(collect.New(clock, files), aggregate.New(clock, files), files).Run
 	}
 	return &Manager{
 		limit:   limit,

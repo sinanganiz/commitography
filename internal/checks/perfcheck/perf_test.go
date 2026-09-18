@@ -27,8 +27,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/git"
 	"github.com/sinanganiz/commitography/internal/pipeline"
+	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/server"
 )
 
@@ -137,7 +140,9 @@ func removeTree(dir string) {
 func timeAnalysis(t *testing.T, repo string, noBlame bool) time.Duration {
 	t.Helper()
 	started := time.Now()
-	if _, err := pipeline.Run(context.Background(), pipeline.Options{RepoPath: repo, NoBlame: noBlame, PerAuthor: true}, nil); err != nil {
+	clock, files := core.SystemClock(), core.SystemFilesystem()
+	analyzer := pipeline.New(collect.New(clock, files), aggregate.New(clock, files), files)
+	if _, err := analyzer.Run(context.Background(), pipeline.Options{RepoPath: repo, NoBlame: noBlame, PerAuthor: true}, nil); err != nil {
 		t.Fatalf("analyzing %s: %v", repo, err)
 	}
 	return time.Since(started)

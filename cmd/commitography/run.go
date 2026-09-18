@@ -9,6 +9,8 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
+	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/pipeline/render"
 	"github.com/sinanganiz/commitography/internal/server"
 )
@@ -82,7 +84,9 @@ func Run(opts Options) error {
 		OnWarning:      func(message string) { progress.Warn("%s", message) },
 		ToolVersion:    opts.ToolVersion,
 	}
-	result, err := pipeline.Run(context.Background(), analysisOpts, func(event pipeline.ProgressEvent) {
+	clock, files := core.SystemClock(), core.SystemFilesystem()
+	analyzer := pipeline.New(collect.New(clock, files), aggregate.New(clock, files), files)
+	result, err := analyzer.Run(context.Background(), analysisOpts, func(event pipeline.ProgressEvent) {
 		progress.Stage(cliStage(event.Stage), event.Detail)
 	})
 	if err != nil {

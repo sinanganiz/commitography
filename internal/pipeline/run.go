@@ -22,10 +22,24 @@ const minWrappedCommits = 10
 const configurationRemedy = "Correct the setting in " + config.FileName +
 	", or remove the file to use the defaults; --config points at another file."
 
+// Analyzer is the shared analysis service. It composes the stages it is
+// given, and holds nothing else but the file access configuration loading and
+// path filtering read through (ADR-0042 clause 1, ADR-0060 clause 3).
+type Analyzer struct {
+	collector *collect.Collector
+	builder   *aggregate.Builder
+	files     core.Filesystem
+}
+
+// New constructs the analysis service from its stages and file access.
+func New(collector *collect.Collector, builder *aggregate.Builder, files core.Filesystem) *Analyzer {
+	return &Analyzer{collector: collector, builder: builder, files: files}
+}
+
 // Run performs one complete analysis without rendering or writing output
 // files. It runs one fixed stage order so CLI and server callers receive the
 // same report for the same inputs.
-func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) {
+func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -43,8 +57,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 
 	emit := eventEmitter{sink: sink}
 	emit.emit(StagePreflight, "validating repository")
-	collector := collect.New(core.SystemClock(), core.SystemFilesystem())
-	info, err := collector.Preflight(ctx, repoPath, opts.SuppliedPath())
+	info, err := a.collector.Preflight(ctx, repoPath, opts.SuppliedPath())
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +73,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 			opts.OnWarning(fmt.Sprintf(format, args...))
 		}
 	}
-	cfg, err := config.Load(core.SystemFilesystem(), opts.ConfigPath, repoPath, configWarn)
+	cfg, err := config.Load(a.files, opts.ConfigPath, repoPath, configWarn)
 	if err != nil {
 		// The configuration package may not import core (ADR-0066 clause 3),
 		// so its errors are classified here, by their single consumer. Its
@@ -90,7 +103,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		}
 	}
 	emit.emit(StageCollecting, "reading history")
-	history, err := collector.Collect(collect.Options{
+	history, err := a.collector.Collect(collect.Options{
 		RepoPath:     repoPath,
 		SuppliedPath: opts.SuppliedPath(),
 		UseMailmap:   cfg.UseMailmap,
@@ -118,7 +131,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	identities := resolver.Identities()
 	emit.emitCount(StageIdentity, fmt.Sprintf("%d contributors", len(identities)), len(identities), len(identities))
 
-	pathFilter, err := filter.NewPathFilter(core.SystemFilesystem(), cfg, repoPath)
+	pathFilter, err := filter.NewPathFilter(a.files, cfg, repoPath)
 	if err != nil {
 		return nil, core.NewUserError(core.ReasonInvalidConfiguration, err.Error(),
 			configurationRemedy, "an exclude_paths pattern could not be compiled")
@@ -174,7 +187,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	if err := contextError(ctx); err != nil {
 		return nil, err
 	}
-	report, err := aggregate.New(core.SystemClock(), core.SystemFilesystem()).Build(input)
+	report, err := a.builder.Build(input)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +212,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 		if err := contextError(ctx); err != nil {
 			return nil, err
 		}
-		end, err := collector.Preflight(ctx, repoPath, opts.SuppliedPath())
+		end, err := a.collector.Preflight(ctx, repoPath, opts.SuppliedPath())
 		if err != nil {
 			result.Stale = true
 			result.StaleReason = fmt.Sprintf("%s: %s", StaleRevalidationFailed, core.Artifact(err))
