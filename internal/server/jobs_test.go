@@ -13,12 +13,12 @@ import (
 
 func TestManagerAllowsOneActiveJobAndRetainsTerminalHistory(t *testing.T) {
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Limit: 2,
-		Now: func() time.Time {
+		Clock: core.ClockFunc(func() time.Time {
 			clock = clock.Add(time.Second)
 			return clock
-		},
+		}),
 		NewID: func() (string, error) {
 			return "job-" + clock.Format("150405"), nil
 		},
@@ -59,12 +59,12 @@ func TestManagerAllowsOneActiveJobAndRetainsTerminalHistory(t *testing.T) {
 func TestManagerEvictsOldestTerminalJob(t *testing.T) {
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
 	next := 0
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Limit: 2,
-		Now: func() time.Time {
+		Clock: core.ClockFunc(func() time.Time {
 			clock = clock.Add(time.Second)
 			return clock
-		},
+		}),
 		NewID: func() (string, error) {
 			next++
 			return string(rune('a' + next - 1)), nil
@@ -90,7 +90,7 @@ func TestManagerEvictsOldestTerminalJob(t *testing.T) {
 
 func TestStartRunsWorkerAndCancellationReleasesSlot(t *testing.T) {
 	started := make(chan struct{}, 1)
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ pipeline.Options, sink pipeline.ProgressSink) (*pipeline.Result, error) {
 			sink(pipeline.ProgressEvent{Sequence: 1, Stage: pipeline.StageCollecting})
 			started <- struct{}{}
@@ -133,11 +133,11 @@ func TestStartRunsWorkerAndCancellationReleasesSlot(t *testing.T) {
 
 func TestProgressSequenceIsMonotonicAndSnapshotsProjectElapsed(t *testing.T) {
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
-	manager := NewManager(ManagerOptions{
-		Now: func() time.Time {
+	manager := newTestManager(ManagerOptions{
+		Clock: core.ClockFunc(func() time.Time {
 			clock = clock.Add(time.Second)
 			return clock
-		},
+		}),
 		NewID: func() (string, error) { return "progress-job", nil },
 	})
 	job, err := manager.Create("/repos/progress")
@@ -166,7 +166,7 @@ func TestProgressSequenceIsMonotonicAndSnapshotsProjectElapsed(t *testing.T) {
 }
 
 func TestOnlySucceededJobsExposeReports(t *testing.T) {
-	manager := NewManager(ManagerOptions{NewID: func() (string, error) { return "report-job", nil }})
+	manager := newTestManager(ManagerOptions{NewID: func() (string, error) { return "report-job", nil }})
 	job, err := manager.Create("/repos/report")
 	if err != nil {
 		t.Fatal(err)
@@ -178,7 +178,7 @@ func TestOnlySucceededJobsExposeReports(t *testing.T) {
 		t.Fatalf("failed report error = %v, want ErrInvalidState", err)
 	}
 
-	manager = NewManager(ManagerOptions{NewID: func() (string, error) { return "success-job", nil }})
+	manager = newTestManager(ManagerOptions{NewID: func() (string, error) { return "success-job", nil }})
 	job, err = manager.Create("/repos/report")
 	if err != nil {
 		t.Fatal(err)
@@ -196,7 +196,7 @@ func TestOnlySucceededJobsExposeReports(t *testing.T) {
 // the manager runs, whatever the caller put in the options (ADR-0061 clause 4).
 func TestStartInjectsTheManagersToolVersion(t *testing.T) {
 	versions := make(chan string, 1)
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		ToolVersion: "v-injected",
 		Runner: func(_ context.Context, options pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			versions <- options.ToolVersion
@@ -215,7 +215,7 @@ func TestStartInjectsTheManagersToolVersion(t *testing.T) {
 
 func TestCancelAllRequestsWorkerCancellation(t *testing.T) {
 	started := make(chan struct{}, 1)
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			started <- struct{}{}
 			<-ctx.Done()
@@ -252,7 +252,7 @@ func TestCancelAllRequestsWorkerCancellation(t *testing.T) {
 func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
 	release := make(chan struct{})
 	warned := make(chan struct{})
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(_ context.Context, opts pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			opts.OnWarning("config: unknown key")
 			opts.OnWarning("history: skipped commit")
@@ -300,7 +300,7 @@ func TestWarningsAreVisibleDuringRunAndMergedWithReport(t *testing.T) {
 }
 
 func TestWarningsAreBounded(t *testing.T) {
-	manager := NewManager(ManagerOptions{})
+	manager := newTestManager(ManagerOptions{})
 	job, err := manager.Create("/repos/project")
 	if err != nil {
 		t.Fatal(err)
@@ -326,7 +326,7 @@ func TestWarningsAreBounded(t *testing.T) {
 // a cancelled job into a succeeded one.
 func TestCancellationWinsOverALateResult(t *testing.T) {
 	started := make(chan struct{})
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			close(started)
 			<-ctx.Done()
@@ -365,7 +365,7 @@ func TestTerminalStatesCannotBeOverwritten(t *testing.T) {
 		{name: "failed", finish: func(m *Manager, id string) error { return m.Fail(id, Failure{Code: "test"}, time.Time{}) }, want: StatusFailed},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			manager := NewManager(ManagerOptions{})
+			manager := newTestManager(ManagerOptions{})
 			job, err := manager.Create("/repos/project")
 			if err != nil {
 				t.Fatal(err)
@@ -394,11 +394,11 @@ func TestTerminalStatesCannotBeOverwritten(t *testing.T) {
 func TestHistoryKeepsExactlyTheTenNewestJobs(t *testing.T) {
 	clock := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
 	next := 0
-	manager := NewManager(ManagerOptions{
-		Now: func() time.Time {
+	manager := newTestManager(ManagerOptions{
+		Clock: core.ClockFunc(func() time.Time {
 			clock = clock.Add(time.Second)
 			return clock
-		},
+		}),
 		NewID: func() (string, error) {
 			next++
 			return fmt.Sprintf("job-%02d", next), nil
@@ -425,8 +425,10 @@ func TestHistoryKeepsExactlyTheTenNewestJobs(t *testing.T) {
 
 func waitForTerminal(t *testing.T, manager *Manager, id string) Status {
 	t.Helper()
-	deadline := time.Now().Add(2 * time.Second)
-	for {
+	// Bounded by a poll count rather than a deadline, so the test reads no
+	// clock (ADR-0042 clause 4): 400 polls of 5ms is two seconds.
+	const maxPolls = 400
+	for poll := 0; ; poll++ {
 		current, err := manager.Get(id)
 		if err != nil {
 			t.Fatal(err)
@@ -434,7 +436,7 @@ func waitForTerminal(t *testing.T, manager *Manager, id string) Status {
 		if current.Status != StatusQueued && current.Status != StatusRunning {
 			return current.Status
 		}
-		if time.Now().After(deadline) {
+		if poll == maxPolls {
 			t.Fatalf("job %s is still %s", id, current.Status)
 		}
 		time.Sleep(5 * time.Millisecond)
@@ -454,7 +456,7 @@ func TestStaleFailureNeverCarriesUnderlyingErrors(t *testing.T) {
 			want:   pipeline.StaleRevalidationFailed,
 		},
 	} {
-		manager := NewManager(ManagerOptions{})
+		manager := newTestManager(ManagerOptions{})
 		job, err := manager.Create("/repos/project")
 		if err != nil {
 			t.Fatal(err)

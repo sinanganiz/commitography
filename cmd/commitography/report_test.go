@@ -96,7 +96,7 @@ func TestMalformedCommandLineIsAUsageError(t *testing.T) {
 		{"--wrapped", "not-a-year"},
 		{"one", "two"},
 	} {
-		err := execute(buildInfo{}, args)
+		err := execute(testEnvironment(), args)
 		if err == nil {
 			t.Fatalf("%v was accepted", args)
 		}
@@ -115,7 +115,7 @@ func TestMalformedCommandLineIsAUsageError(t *testing.T) {
 // --version is not a malformed command line, and neither is --help.
 func TestVersionAndHelpSucceed(t *testing.T) {
 	for _, args := range [][]string{{"--version"}, {"--help"}} {
-		if err := execute(buildInfo{version: "test"}, args); err != nil {
+		if err := execute(testEnvironment(), args); err != nil {
 			t.Errorf("%v: %v", args, err)
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/sinanganiz/commitography/internal/pipeline"
 	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
+	"github.com/sinanganiz/commitography/internal/server"
 )
 
 // checkTime is the instant the checkers' clocks read, so nothing a checker
@@ -25,6 +26,19 @@ func newCollector() *collect.Collector {
 // with the clock fixed.
 func newAnalyzer() *pipeline.Analyzer {
 	return newAnalyzerAt(core.FixedClock(checkTime()))
+}
+
+// newApp is the local application wired the way the server command wires it,
+// with the clock fixed and the randomness seeded, allowing the given roots.
+func newApp(roots []string) (*server.App, error) {
+	clock, files := core.FixedClock(checkTime()), core.SystemFilesystem()
+	collector := collect.New(clock, files)
+	manager := server.NewManager(server.ManagerOptions{
+		Clock:  clock,
+		NewID:  server.RandomIDs(core.SeededRandom(1)),
+		Runner: pipeline.New(collector, aggregate.New(clock, files), files).Run,
+	})
+	return server.NewApp(manager, collector, core.SeededRandom(2), roots)
 }
 
 // newAnalyzerAt is the analysis service wired with the given clock.

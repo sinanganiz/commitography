@@ -15,7 +15,7 @@ import (
 )
 
 func TestAPICapabilitiesAndJobList(t *testing.T) {
-	app := NewApp(NewManager(ManagerOptions{}))
+	app := newApp(t, newTestManager(ManagerOptions{}))
 	handler := app.Handler()
 
 	req := localRequest(http.MethodGet, "/api/v1/capabilities", nil)
@@ -49,7 +49,7 @@ func TestAPICapabilitiesAndJobList(t *testing.T) {
 }
 
 func TestAPILifecycleRoutesAreVersioned(t *testing.T) {
-	app := NewApp(NewManager(ManagerOptions{}))
+	app := newApp(t, newTestManager(ManagerOptions{}))
 	handler := app.Handler()
 	for _, tc := range []struct {
 		method string
@@ -70,7 +70,7 @@ func TestAPILifecycleRoutesAreVersioned(t *testing.T) {
 }
 
 func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
 			return &pipeline.Result{}, nil
 		},
@@ -113,7 +113,7 @@ func TestAPICreatesJobAndRejectsUnknownFields(t *testing.T) {
 }
 
 func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
 			return &pipeline.Result{Report: &core.Report{}}, nil
 		},
@@ -146,7 +146,7 @@ func TestAPILifecycleServesStatusReportAndDelete(t *testing.T) {
 
 func TestAPICreatePassesOptionsToAnalysis(t *testing.T) {
 	received := make(chan pipeline.Options, 1)
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(_ context.Context, opts pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			received <- opts
 			return &pipeline.Result{}, nil
@@ -180,7 +180,7 @@ func TestAPICreatePassesOptionsToAnalysis(t *testing.T) {
 
 func TestAPIStatusUsesContractProgressFields(t *testing.T) {
 	fraction := 0.42
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(_ context.Context, _ pipeline.Options, sink pipeline.ProgressSink) (*pipeline.Result, error) {
 			sink(pipeline.ProgressEvent{
 				Sequence:  1,
@@ -222,7 +222,7 @@ func TestAPIStatusUsesContractProgressFields(t *testing.T) {
 
 func TestAPICancelTransitionsJob(t *testing.T) {
 	started := make(chan struct{}, 1)
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ pipeline.Options, _ pipeline.ProgressSink) (*pipeline.Result, error) {
 			started <- struct{}{}
 			<-ctx.Done()
@@ -265,7 +265,7 @@ func TestAPICancelTransitionsJob(t *testing.T) {
 }
 
 func TestAPICancelRejectsCompletedJob(t *testing.T) {
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
 			return &pipeline.Result{Report: &core.Report{}}, nil
 		},
@@ -284,7 +284,7 @@ func TestAPICancelRejectsCompletedJob(t *testing.T) {
 }
 
 func TestSessionBootstrapAndOriginProtection(t *testing.T) {
-	app := testApp(t, NewManager(ManagerOptions{
+	app := testApp(t, newTestManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
 			return &pipeline.Result{}, nil
 		},
@@ -338,7 +338,7 @@ func testApp(t *testing.T, manager *Manager) *App {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app, err := NewAppWithAllowedRoots(manager, []string{root})
+	app, err := newAppWithRoots(manager, []string{root})
 	if err != nil {
 		t.Fatal(err)
 	}

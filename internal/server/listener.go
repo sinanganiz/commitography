@@ -8,8 +8,8 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/core"
@@ -19,6 +19,10 @@ const defaultListenAddress = "127.0.0.1:8080"
 
 // Options controls the local server listener. AllowedRoots is carried forward
 // for the path-validation layer; listener setup itself does not inspect paths.
+//
+// Output, Errors and InContainer are required: the composition location
+// passes the process's streams and its container detection (ADR-0042
+// clause 1).
 type Options struct {
 	ListenAddress string
 	Open          bool
@@ -28,8 +32,7 @@ type Options struct {
 	Errors        io.Writer
 	OpenBrowser   func(string) error
 	OnShutdown    func()
-	// InContainer reports whether the process runs inside a container. Nil
-	// detects it from the marker files Docker and Podman create.
+	// InContainer reports whether the process runs inside a container.
 	InContainer func() bool
 }
 
@@ -42,12 +45,6 @@ func Serve(ctx context.Context, opts Options) error {
 	}
 	if opts.ListenAddress == "" {
 		opts.ListenAddress = defaultListenAddress
-	}
-	if opts.Output == nil {
-		opts.Output = os.Stdout
-	}
-	if opts.Errors == nil {
-		opts.Errors = os.Stderr
 	}
 	if opts.Handler == nil {
 		opts.Handler = http.NotFoundHandler()
@@ -62,11 +59,7 @@ func Serve(ctx context.Context, opts Options) error {
 		return core.Internalf(err, "listening on the requested address")
 	}
 
-	inContainer := opts.InContainer
-	if inContainer == nil {
-		inContainer = Running
-	}
-	url := announce(listener.Addr(), opts.ListenAddress, inContainer(), opts.Output, opts.Errors)
+	url := announce(listener.Addr(), opts.ListenAddress, opts.InContainer(), opts.Output, opts.Errors)
 	if opts.Open {
 		opener := opts.OpenBrowser
 		if opener == nil {
@@ -77,9 +70,16 @@ func Serve(ctx context.Context, opts Options) error {
 		}
 	}
 
+	// The shutdown watcher is owned here and waited for before Serve returns
+	// (ADR-0044 clause 1). stopped releases it when the server ends for any
+	// other reason than the context, so the wait cannot block forever.
 	httpServer := &http.Server{Handler: opts.Handler}
-	go shutdownOnContext(ctx, httpServer, opts.OnShutdown)
+	stopped := make(chan struct{})
+	var watcher sync.WaitGroup
+	watcher.Go(func() { shutdownOnContext(ctx, stopped, httpServer, opts.OnShutdown) })
 	err = httpServer.Serve(listener)
+	close(stopped)
+	watcher.Wait()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
@@ -129,8 +129,12 @@ func announce(addr net.Addr, requested string, inContainer bool, out, errs io.Wr
 	return url
 }
 
-func shutdownOnContext(ctx context.Context, httpServer *http.Server, onShutdown func()) {
-	<-ctx.Done()
+func shutdownOnContext(ctx context.Context, stopped <-chan struct{}, httpServer *http.Server, onShutdown func()) {
+	select {
+	case <-ctx.Done():
+	case <-stopped:
+		return
+	}
 	if onShutdown != nil {
 		onShutdown()
 	}

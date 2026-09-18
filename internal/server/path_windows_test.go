@@ -43,7 +43,7 @@ func TestWindowsJunctionOutOfTheRootIsRejected(t *testing.T) {
 	if err := createJunction(link, outside); err != nil {
 		t.Skipf("creating a junction is unavailable: %v", err)
 	}
-	app, err := NewAppWithAllowedRoots(nil, []string{root})
+	app, err := newAppWithRoots(nil, []string{root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestWindowsJunctionOutOfTheRootIsRejected(t *testing.T) {
 
 func TestWindowsCaseAndSeparatorVariantsStayInsideTheRoot(t *testing.T) {
 	root := testRepoPath(t)
-	app, err := NewAppWithAllowedRoots(nil, []string{root})
+	app, err := newAppWithRoots(nil, []string{root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestWindowsParentTraversalLeavesTheRoot(t *testing.T) {
 	if out, err := git.Command("", "init", "-q", filepath.Join(parent, "sibling")).CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
-	app, err := NewAppWithAllowedRoots(nil, []string{root})
+	app, err := newAppWithRoots(nil, []string{root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestWindowsExtendedAndUNCPathsCannotLeaveTheRoot(t *testing.T) {
 			t.Fatalf("git init: %v: %s", err, out)
 		}
 	}
-	app, err := NewAppWithAllowedRoots(nil, []string{root})
+	app, err := newAppWithRoots(nil, []string{root})
 	if err != nil {
 		t.Fatal(err)
 	}

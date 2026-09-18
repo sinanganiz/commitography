@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/pipeline"
-	"github.com/sinanganiz/commitography/internal/server"
 )
 
 // The leak scan (ADR-0063 table 2), applying ADR-0067 clause 6: one scan, two
@@ -241,7 +240,7 @@ func TestLeakScanAPIResponses(t *testing.T) {
 	outside := t.TempDir()
 	forbidden := machineValues(t, repo, outside)
 
-	app, err := server.NewAppWithAllowedRoots(server.NewManager(server.ManagerOptions{}), []string{root})
+	app, err := newApp([]string{root})
 	if err != nil {
 		fatal(t, 67, "building the local application: %v", err)
 	}

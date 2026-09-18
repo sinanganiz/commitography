@@ -15,7 +15,6 @@ import (
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 	"github.com/sinanganiz/commitography/internal/pipeline/render"
-	"github.com/sinanganiz/commitography/internal/server"
 )
 
 // hostileCondition is the fixture condition of ADR-0019 clause 1: names that
@@ -90,7 +89,7 @@ func TestHostileNamesThroughTheServerPath(t *testing.T) {
 	}
 	forbidden := machineValues(t, repo)
 
-	app, err := server.NewAppWithAllowedRoots(server.NewManager(server.ManagerOptions{}), []string{root})
+	app, err := newApp([]string{root})
 	if err != nil {
 		fatal(t, 41, "building the local application: %v", err)
 	}

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
@@ -19,7 +20,7 @@ import (
 // session cookie, raw data in responses and the default listener.
 
 func TestRouteTraversalReadsNoFiles(t *testing.T) {
-	app := testApp(t, NewManager(ManagerOptions{}))
+	app := testApp(t, newTestManager(ManagerOptions{}))
 	goMod, err := os.ReadFile(filepath.Join(testRepoPath(t), "go.mod"))
 	if err != nil {
 		t.Fatal(err)
@@ -180,7 +181,11 @@ func TestSecurityHeadersOnEveryResponseClass(t *testing.T) {
 }
 
 func TestSessionCookieIsProcessScopedAndStrict(t *testing.T) {
-	first := NewApp(NewManager(ManagerOptions{}))
+	// Each app draws its secret from its own source, as two processes do.
+	first, err := newAppWithRandom(nil, core.SeededRandom(11), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	res := httptest.NewRecorder()
 	first.Handler().ServeHTTP(res, localRequest(http.MethodGet, "/api/v1/capabilities", nil))
 	cookies := res.Result().Cookies()
@@ -197,7 +202,11 @@ func TestSessionCookieIsProcessScopedAndStrict(t *testing.T) {
 	if !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(cookie.Value) {
 		t.Errorf("session value %q is not a 256-bit random hex token", cookie.Value)
 	}
-	if second := NewApp(NewManager(ManagerOptions{})); second.sessionToken == first.sessionToken {
+	second, err := newAppWithRandom(nil, core.SeededRandom(12), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.sessionToken == first.sessionToken {
 		t.Error("two server processes share a session secret")
 	}
 }
@@ -219,11 +228,13 @@ func jsonKeys(t *testing.T, data []byte) map[string]bool {
 // list contracts, and a report whose top-level fields are the report schema's.
 // Raw history, cache files and plaintext e-mail addresses have no place in them.
 func TestResponsesCarryOnlyDocumentedData(t *testing.T) {
-	app := testApp(t, NewManager(ManagerOptions{}))
+	app := testApp(t, newTestManager(ManagerOptions{}))
 	id := createdID(t, expect(t, "create", call(t, app, apiCall{method: http.MethodPost, path: "/api/v1/jobs", body: jobBody(t, `,"options":{"noBlame":true}`)}), http.StatusAccepted, ""))
-	deadline := time.Now().Add(2 * time.Minute)
+	// The wait is bounded by a poll count, so the test reads no clock
+	// (ADR-0042 clause 4): 2400 polls of 50ms is two minutes.
+	const maxPolls = 2400
 	var statusBody []byte
-	for {
+	for poll := 0; ; poll++ {
 		res := call(t, app, apiCall{method: http.MethodGet, path: "/api/v1/jobs/" + id})
 		statusBody = res.Body.Bytes()
 		var status jobStatusResponse
@@ -236,7 +247,7 @@ func TestResponsesCarryOnlyDocumentedData(t *testing.T) {
 		if status.Status != StatusQueued && status.Status != StatusRunning {
 			t.Fatalf("analysis of the repository ended %s: %+v", status.Status, status.Error)
 		}
-		if time.Now().After(deadline) {
+		if poll == maxPolls {
 			t.Fatal("the analysis did not finish")
 		}
 		time.Sleep(50 * time.Millisecond)

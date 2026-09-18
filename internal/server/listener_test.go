@@ -6,9 +6,13 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
+
+// notInContainer is the container detection the listener tests run with.
+func notInContainer() bool { return false }
 
 type messageWriter chan string
 
@@ -18,19 +22,24 @@ func (w messageWriter) Write(data []byte) (int, error) {
 }
 
 func TestServeBindsAndPrintsURL(t *testing.T) {
+	// The server goroutine is owned by the test and waited for after the
+	// context is cancelled (ADR-0044 clause 1).
+	var serving sync.WaitGroup
+	defer serving.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	out := make(messageWriter, 1)
 	errCh := make(chan error, 1)
-	go func() {
+	serving.Go(func() {
 		errCh <- Serve(ctx, Options{
 			ListenAddress: "127.0.0.1:0",
 			Output:        out,
 			Errors:        &bytes.Buffer{},
+			InContainer:   notInContainer,
 			Handler:       http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNoContent) }),
 		})
-	}()
+	})
 
 	select {
 	case message := <-out:
@@ -53,21 +62,26 @@ func TestServeBindsAndPrintsURL(t *testing.T) {
 }
 
 func TestServeBrowserFailureIsWarning(t *testing.T) {
+	// The server goroutine is owned by the test and waited for after the
+	// context is cancelled (ADR-0044 clause 1).
+	var serving sync.WaitGroup
+	defer serving.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	out := make(messageWriter, 1)
 	var errors bytes.Buffer
 	errCh := make(chan error, 1)
-	go func() {
+	serving.Go(func() {
 		errCh <- Serve(ctx, Options{
 			ListenAddress: "127.0.0.1:0",
 			Open:          true,
 			Output:        out,
 			Errors:        &errors,
+			InContainer:   notInContainer,
 			OpenBrowser:   func(string) error { return context.Canceled },
 		})
-	}()
+	})
 
 	select {
 	case <-out:
@@ -162,19 +176,25 @@ func TestAnnounceStatesListenerReachability(t *testing.T) {
 }
 
 func TestServeCallsShutdownHook(t *testing.T) {
+	// The server goroutine is owned by the test and waited for after the
+	// context is cancelled (ADR-0044 clause 1).
+	var serving sync.WaitGroup
+	defer serving.Wait()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	out := make(messageWriter, 1)
 	called := make(chan struct{}, 1)
 	errCh := make(chan error, 1)
-	go func() {
+	serving.Go(func() {
 		errCh <- Serve(ctx, Options{
 			ListenAddress: "127.0.0.1:0",
 			Output:        out,
+			Errors:        &bytes.Buffer{},
+			InContainer:   notInContainer,
 			OnShutdown:    func() { called <- struct{}{} },
 		})
-	}()
+	})
 	select {
 	case <-out:
 	case <-time.After(2 * time.Second):

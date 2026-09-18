@@ -13,12 +13,13 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
-	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
-	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/pipeline/render"
 )
 
-var emailShaped = regexp.MustCompile(`[\w.+-]+@[\w-]+\.[\w.]+`)
+// emailShaped matches anything that looks like an email address.
+func emailShaped() *regexp.Regexp {
+	return regexp.MustCompile(`[\w.+-]+@[\w-]+\.[\w.]+`)
+}
 
 func fixture(t *testing.T, name string) string {
 	t.Helper()
@@ -65,7 +66,7 @@ func TestRunProducesDashboard(t *testing.T) {
 	opts := baseOptions(t, "basic")
 	opts.outputDirSet = true
 
-	if err := Run(opts); err != nil {
+	if err := run(t, opts); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -85,7 +86,7 @@ func TestRunProducesDashboard(t *testing.T) {
 func TestCLIAndAnalysisServiceProduceTheSameReport(t *testing.T) {
 	opts := baseOptions(t, "basic")
 	opts.outputDirSet = true
-	if err := Run(opts); err != nil {
+	if err := run(t, opts); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -98,8 +99,7 @@ func TestCLIAndAnalysisServiceProduceTheSameReport(t *testing.T) {
 		t.Fatalf("decode CLI report: %v", err)
 	}
 
-	clock, files := core.SystemClock(), core.SystemFilesystem()
-	analyzer := pipeline.New(collect.New(clock, files), aggregate.New(clock, files), files)
+	analyzer, _ := composeRun(testEnvironment(), opts)
 	serviceResult, err := analyzer.Run(context.Background(), pipeline.Options{
 		RepoPath: opts.RepoPath,
 		NoBlame:  true,
@@ -122,11 +122,11 @@ func TestDefaultOutputContainsNoPlaintextEmail(t *testing.T) {
 	opts.outputDirSet = true
 	opts.PerAuthor = true // the only route by which addresses could reach the output
 
-	if err := Run(opts); err != nil {
+	if err := run(t, opts); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
-	if match := emailShaped.FindString(readAll(t, opts.OutputDir)); match != "" {
+	if match := emailShaped().FindString(readAll(t, opts.OutputDir)); match != "" {
 		t.Errorf("output contains an email-shaped string: %q", match)
 	}
 }
@@ -137,7 +137,7 @@ func TestAnonymizeRemovesRealNames(t *testing.T) {
 	opts.PerAuthor = true
 	opts.Anonymize = true
 
-	if err := Run(opts); err != nil {
+	if err := run(t, opts); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -150,7 +150,7 @@ func TestAnonymizeRemovesRealNames(t *testing.T) {
 	if !strings.Contains(out, "Contributor A") {
 		t.Error("no pseudonyms were assigned")
 	}
-	if match := emailShaped.FindString(out); match != "" {
+	if match := emailShaped().FindString(out); match != "" {
 		t.Errorf("output contains an email-shaped string: %q", match)
 	}
 }
@@ -160,7 +160,7 @@ func TestJSONOnlySkipsHTML(t *testing.T) {
 	opts.outputDirSet = true
 	opts.JSONOnly = true
 
-	if err := Run(opts); err != nil {
+	if err := run(t, opts); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
@@ -180,7 +180,7 @@ func TestJSONOnlySkipsHTML(t *testing.T) {
 func TestPerAuthorIsOptIn(t *testing.T) {
 	without := baseOptions(t, "basic")
 	without.outputDirSet = true
-	if err := Run(without); err != nil {
+	if err := run(t, without); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	report, err := os.ReadFile(filepath.Join(without.OutputDir, render.ReportFile))
@@ -194,7 +194,7 @@ func TestPerAuthorIsOptIn(t *testing.T) {
 	with := baseOptions(t, "basic")
 	with.outputDirSet = true
 	with.PerAuthor = true
-	if err := Run(with); err != nil {
+	if err := run(t, with); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	report, err = os.ReadFile(filepath.Join(with.OutputDir, render.ReportFile))
@@ -210,7 +210,7 @@ func TestShallowCloneIsRefused(t *testing.T) {
 	opts := baseOptions(t, "shallow")
 	opts.outputDirSet = true
 
-	err := Run(opts)
+	err := run(t, opts)
 	if err == nil {
 		t.Fatal("a shallow clone must be refused")
 	}
@@ -232,7 +232,7 @@ func TestAllowShallowProceeds(t *testing.T) {
 	opts.outputDirSet = true
 	opts.AllowShallow = true
 
-	if err := Run(opts); err != nil {
+	if err := run(t, opts); err != nil {
 		t.Fatalf("Run with --allow-shallow: %v", err)
 	}
 	report, err := os.ReadFile(filepath.Join(opts.OutputDir, render.ReportFile))
@@ -247,12 +247,12 @@ func TestAllowShallowProceeds(t *testing.T) {
 func TestEmptyAndMissingRepositoriesExitTwo(t *testing.T) {
 	empty := baseOptions(t, "empty")
 	empty.outputDirSet = true
-	if err := Run(empty); err == nil || core.ExitCode(err) != core.ExitUser {
+	if err := run(t, empty); err == nil || core.ExitCode(err) != core.ExitUser {
 		t.Errorf("empty repository: err = %v, exit = %d", err, core.ExitCode(err))
 	}
 
 	missing := Options{RepoPath: t.TempDir(), OutputDir: t.TempDir(), Quiet: true, outputDirSet: true}
-	err := Run(missing)
+	err := run(t, missing)
 	if err == nil || core.ExitCode(err) != core.ExitUser {
 		t.Errorf("non-repository path: err = %v, exit = %d", err, core.ExitCode(err))
 	}
@@ -265,7 +265,7 @@ func TestQuietAndVerboseConflict(t *testing.T) {
 	opts := baseOptions(t, "basic")
 	opts.Verbose = true
 
-	err := Run(opts)
+	err := run(t, opts)
 	if err == nil {
 		t.Fatal("--quiet with --verbose must be an error")
 	}
@@ -285,7 +285,7 @@ func TestWrappedRefusesThinYears(t *testing.T) {
 	opts.outputDirSet = true
 	opts.Wrapped = 1999
 
-	err := Run(opts)
+	err := run(t, opts)
 	if err == nil {
 		t.Fatal("a year with no commits must be refused")
 	}
@@ -307,7 +307,7 @@ func TestWrappedProducesItsOwnPage(t *testing.T) {
 	opts.outputDirSet = true
 	opts.Wrapped = 2026
 
-	if err := Run(opts); err != nil {
+	if err := run(t, opts); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	path := filepath.Join(opts.OutputDir, render.WrappedFileName(2026))
@@ -324,7 +324,7 @@ func TestBotsAreExcludedFromOutput(t *testing.T) {
 	opts := baseOptions(t, "bots")
 	opts.outputDirSet = true
 
-	if err := Run(opts); err != nil {
+	if err := run(t, opts); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	report, err := os.ReadFile(filepath.Join(opts.OutputDir, render.ReportFile))

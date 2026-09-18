@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewHandlerServesShellAndEmbeddedAssets(t *testing.T) {
-	handler := NewHandler()
+	handler := newApp(t, nil).Handler()
 
 	for _, tc := range []struct {
 		path string
@@ -33,7 +33,7 @@ func TestNewHandlerServesShellAndEmbeddedAssets(t *testing.T) {
 }
 
 func TestNewHandlerReservesAPIAndRejectsUnknownPaths(t *testing.T) {
-	handler := NewHandler()
+	handler := newApp(t, nil).Handler()
 	for _, path := range []string{"/unknown"} {
 		req := localRequest(http.MethodGet, path, nil)
 		res := httptest.NewRecorder()
@@ -45,7 +45,7 @@ func TestNewHandlerReservesAPIAndRejectsUnknownPaths(t *testing.T) {
 }
 
 func TestEmbeddedAssetsCannotBeListed(t *testing.T) {
-	handler := NewHandler()
+	handler := newApp(t, nil).Handler()
 	for _, path := range []string{"/assets/", "/assets"} {
 		req := localRequest(http.MethodGet, path, nil)
 		res := httptest.NewRecorder()

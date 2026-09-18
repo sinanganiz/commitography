@@ -4,15 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
-	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
-	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/pipeline/render"
-	"github.com/sinanganiz/commitography/internal/server"
 )
 
 // minWrappedCommits is the smallest year worth summarizing. Below it the cards
@@ -55,14 +51,13 @@ func (o *Options) SetChanged(outputDir, countMerges bool) {
 	o.countMergesSet = countMerges
 }
 
-// Run performs one analysis. It returns an error; main maps it to an exit code.
-func Run(opts Options) error {
+// Run performs one analysis with the analysis service and logger composeRun
+// constructed. It returns an error; main maps it to an exit code.
+func Run(opts Options, analyzer *pipeline.Analyzer, progress *core.Logger) error {
 	if opts.Quiet && opts.Verbose {
 		return core.NewUserError(core.ReasonInvalidInvocation, "--quiet --verbose", invocationRemedy,
 			"--quiet and --verbose cannot be used together")
 	}
-
-	progress := NewProgress(opts.Quiet, opts.Verbose)
 
 	analysisOpts := pipeline.Options{
 		RepoPath:   opts.RepoPath,
@@ -84,8 +79,6 @@ func Run(opts Options) error {
 		OnWarning:      func(message string) { progress.Warn("%s", message) },
 		ToolVersion:    opts.ToolVersion,
 	}
-	clock, files := core.SystemClock(), core.SystemFilesystem()
-	analyzer := pipeline.New(collect.New(clock, files), aggregate.New(clock, files), files)
 	result, err := analyzer.Run(context.Background(), analysisOpts, func(event pipeline.ProgressEvent) {
 		progress.Stage(cliStage(event.Stage), event.Detail)
 	})
@@ -103,8 +96,8 @@ func Run(opts Options) error {
 	// The configuration case is the one residual: a configuration file setting
 	// output_dir to an absolute path is a path read from a repository, which
 	// ADR-0067 clause 3 does not admit. It reaches standard error only, never
-	// an artifact, and the diagnostic half of the leak scan that would catch it
-	// arrives with WP-0007.
+	// an artifact. Removing it changes what the command prints, which WP-0007
+	// could not do; the leak scan's log half does not drive this line.
 	outputDir := result.Config.OutputDir
 	if opts.outputDirSet {
 		outputDir = opts.OutputDir
@@ -157,14 +150,11 @@ func cliStage(stage string) string {
 	}
 }
 
-// Report prints an error on standard error, which is where diagnostics go
+// report prints an error on standard error, which is where diagnostics go
 // (ADR-0034 clause 4). The exit code is not decided here; core.ExitCode is the
 // only site that decides one.
-func Report(err error) {
-	report(os.Stderr, err, server.Running())
-}
-
-// report prints the error's diagnostic rendering and, inside a container, a
+//
+// It prints the error's diagnostic rendering and, inside a container, a
 // hint for the mistake a container makes likely: a path that was never
 // mounted, or mounted from a mistyped source, which Docker Desktop replaces
 // with an empty folder.

@@ -82,7 +82,7 @@ func controlledApp(t *testing.T) (*App, chan<- outcome, *atomic.Int32) {
 	t.Helper()
 	outcomes := make(chan outcome)
 	var started atomic.Int32
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(ctx context.Context, _ pipeline.Options, sink pipeline.ProgressSink) (*pipeline.Result, error) {
 			started.Add(1)
 			sink(pipeline.ProgressEvent{Sequence: 1, Stage: pipeline.StageCollecting, Detail: "reading history"})
@@ -241,7 +241,7 @@ func TestAPIRejectsAFolderThatIsNotARepository(t *testing.T) {
 	if err := os.Mkdir(folder, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	app, err := NewAppWithAllowedRoots(NewManager(ManagerOptions{}), []string{root})
+	app, err := newAppWithRoots(newTestManager(ManagerOptions{}), []string{root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +258,7 @@ func TestAPIRejectsAFolderThatIsNotARepository(t *testing.T) {
 }
 
 func TestAPIHistoryEvictsTheOldestFinishedJob(t *testing.T) {
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Limit: 2,
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
 			return &pipeline.Result{Report: &core.Report{}}, nil

@@ -5,10 +5,10 @@ package server
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -17,8 +17,6 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
-	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
-	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 )
 
 // Status is the externally meaningful state of an analysis job.
@@ -77,12 +75,14 @@ type Snapshot struct {
 	Result       *pipeline.Result
 }
 
-// ManagerOptions configures a Manager. Test hooks are intentionally small and
-// do not alter production behavior.
+// ManagerOptions configures a Manager. Clock, NewID and Runner are its
+// dependencies and are required: the composition location constructs them
+// and nothing here supplies a default (ADR-0042 clause 1).
 type ManagerOptions struct {
-	Limit  int
+	Limit int
+	// NewID draws a job identifier; RandomIDs builds one from a random source.
 	NewID  func() (string, error)
-	Now    func() time.Time
+	Clock  core.Clock
 	Runner Runner
 	// ToolVersion is passed to every analysis the manager runs.
 	ToolVersion string
@@ -91,12 +91,15 @@ type ManagerOptions struct {
 // Runner is the shared analysis operation executed by a worker.
 type Runner func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error)
 
-// Manager owns at most one active job and a bounded terminal history.
+// Manager owns at most one active job and a bounded terminal history. It also
+// owns the goroutine each job runs on, and Wait blocks until every one has
+// returned (ADR-0044 clause 1).
 type Manager struct {
 	mu       sync.RWMutex
+	workers  sync.WaitGroup
 	limit    int
 	newID    func() (string, error)
-	now      func() time.Time
+	clock    core.Clock
 	runner   Runner
 	version  string
 	jobs     map[string]*job
@@ -114,24 +117,11 @@ func NewManager(options ManagerOptions) *Manager {
 	if limit <= 0 {
 		limit = maxRecentJobs
 	}
-	newID := options.NewID
-	if newID == nil {
-		newID = randomID
-	}
-	now := options.Now
-	if now == nil {
-		now = time.Now
-	}
-	runner := options.Runner
-	if runner == nil {
-		clock, files := core.SystemClock(), core.SystemFilesystem()
-		runner = pipeline.New(collect.New(clock, files), aggregate.New(clock, files), files).Run
-	}
 	return &Manager{
 		limit:   limit,
-		newID:   newID,
-		now:     now,
-		runner:  runner,
+		newID:   options.NewID,
+		clock:   options.Clock,
+		runner:  options.Runner,
 		version: options.ToolVersion,
 		jobs:    make(map[string]*job),
 	}
@@ -152,7 +142,7 @@ func (m *Manager) Create(repoPath string) (Snapshot, error) {
 	if id == "" || m.jobs[id] != nil {
 		return Snapshot{}, errors.New("job ID generator returned a duplicate or empty ID")
 	}
-	now := m.now()
+	now := m.clock.Now()
 	entry := &job{snapshot: Snapshot{
 		ID:        id,
 		Status:    StatusQueued,
@@ -187,8 +177,14 @@ func (m *Manager) Start(repoPath string, options pipeline.Options) (Snapshot, er
 			callerWarning(message)
 		}
 	}
-	go m.run(snapshot.ID, ctx, options)
+	m.workers.Go(func() { m.run(snapshot.ID, ctx, options) })
 	return snapshot, nil
+}
+
+// Wait blocks until every job the manager started has returned. Cancelling
+// first, with CancelAll, is what makes that prompt.
+func (m *Manager) Wait() {
+	m.workers.Wait()
 }
 
 func (m *Manager) run(id string, ctx context.Context, options pipeline.Options) {
@@ -198,10 +194,10 @@ func (m *Manager) run(id string, ctx context.Context, options pipeline.Options) 
 	// (ADR-0041 clause 6).
 	defer func() {
 		if value := recover(); value != nil {
-			_ = m.Fail(id, FailureFromError(recovered(value, "running an analysis")), m.now())
+			_ = m.Fail(id, FailureFromError(recovered(value, "running an analysis")), m.clock.Now())
 		}
 	}()
-	if err := m.MarkRunning(id, m.now()); err != nil {
+	if err := m.MarkRunning(id, m.clock.Now()); err != nil {
 		return
 	}
 	result, err := m.runner(ctx, options, func(event pipeline.ProgressEvent) {
@@ -210,14 +206,14 @@ func (m *Manager) run(id string, ctx context.Context, options pipeline.Options) 
 	// A requested cancellation wins over whatever the runner returned after it,
 	// so a job the user cancelled never ends as succeeded, failed or stale.
 	if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		_ = m.Cancelled(id, m.now())
+		_ = m.Cancelled(id, m.clock.Now())
 		return
 	}
 	if err != nil {
-		_ = m.Fail(id, FailureFromError(err), m.now())
+		_ = m.Fail(id, FailureFromError(err), m.clock.Now())
 		return
 	}
-	_ = m.Complete(id, result, m.now())
+	_ = m.Complete(id, result, m.clock.Now())
 }
 
 // Cancel requests cancellation of an active job. The job remains running until
@@ -272,7 +268,7 @@ func (m *Manager) Cancelled(id string, finishedAt time.Time) error {
 		return ErrInvalidState
 	}
 	if finishedAt.IsZero() {
-		finishedAt = m.now()
+		finishedAt = m.clock.Now()
 	}
 	entry.snapshot.Status = StatusCancelled
 	entry.snapshot.FinishedAt = timePtr(finishedAt)
@@ -294,7 +290,7 @@ func (m *Manager) MarkRunning(id string, startedAt time.Time) error {
 		return ErrInvalidState
 	}
 	if startedAt.IsZero() {
-		startedAt = m.now()
+		startedAt = m.clock.Now()
 	}
 	entry.snapshot.Status = StatusRunning
 	entry.snapshot.StartedAt = timePtr(startedAt)
@@ -363,7 +359,7 @@ func (m *Manager) Complete(id string, result *pipeline.Result, finishedAt time.T
 		return ErrInvalidState
 	}
 	if finishedAt.IsZero() {
-		finishedAt = m.now()
+		finishedAt = m.clock.Now()
 	}
 	entry.snapshot.FinishedAt = timePtr(finishedAt)
 	entry.snapshot.Result = result
@@ -396,7 +392,7 @@ func (m *Manager) Fail(id string, failure Failure, finishedAt time.Time) error {
 		return ErrInvalidState
 	}
 	if finishedAt.IsZero() {
-		finishedAt = m.now()
+		finishedAt = m.clock.Now()
 	}
 	entry.snapshot.Status = StatusFailed
 	entry.snapshot.FinishedAt = timePtr(finishedAt)
@@ -477,7 +473,7 @@ func (m *Manager) List() []Snapshot {
 
 func (m *Manager) projectSnapshotLocked(entry *job) Snapshot {
 	out := cloneSnapshot(entry.snapshot)
-	end := m.now()
+	end := m.clock.Now()
 	if out.FinishedAt != nil {
 		end = *out.FinishedAt
 	}
@@ -555,12 +551,16 @@ func cloneSnapshot(in Snapshot) Snapshot {
 	return out
 }
 
-func randomID() (string, error) {
-	data := make([]byte, 16)
-	if _, err := rand.Read(data); err != nil {
-		return "", err
+// RandomIDs returns a job identifier source drawing 128 bits from random for
+// each identifier.
+func RandomIDs(random core.Random) func() (string, error) {
+	return func() (string, error) {
+		data := make([]byte, 16)
+		if _, err := io.ReadFull(random, data); err != nil {
+			return "", err
+		}
+		return hex.EncodeToString(data), nil
 	}
-	return hex.EncodeToString(data), nil
 }
 
 func timePtr(value time.Time) *time.Time { return &value }

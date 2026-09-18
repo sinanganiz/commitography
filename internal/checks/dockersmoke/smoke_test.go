@@ -27,6 +27,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sinanganiz/commitography/internal/core"
+	"github.com/sinanganiz/commitography/internal/pipeline"
+	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/server"
 )
 
@@ -211,7 +215,7 @@ func TestServerModeMatchesTheNativeServer(t *testing.T) {
 	get(t, client, base+"/assets/app.css", http.StatusOK)
 	fromDocker := analyze(t, client, base, "/repos/basic")
 
-	app, err := server.NewAppWithAllowedRoots(nil, []string{fixtures})
+	app, err := newApp([]string{fixtures})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -648,4 +652,17 @@ func compact(v any) string {
 		return string(data[:200]) + "..."
 	}
 	return string(data)
+}
+
+// newApp is the local application wired the way the server command wires it
+// (cmd/commitography/compose.go), allowing the given roots.
+func newApp(roots []string) (*server.App, error) {
+	clock, random, files := core.SystemClock(), core.SystemRandom(), core.SystemFilesystem()
+	collector := collect.New(clock, files)
+	manager := server.NewManager(server.ManagerOptions{
+		Clock:  clock,
+		NewID:  server.RandomIDs(random),
+		Runner: pipeline.New(collector, aggregate.New(clock, files), files).Run,
+	})
+	return server.NewApp(manager, collector, random, roots)
 }

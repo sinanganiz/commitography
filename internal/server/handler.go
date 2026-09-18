@@ -1,14 +1,16 @@
 package server
 
 import (
-	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"github.com/sinanganiz/commitography/internal/core"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/pipeline/render"
 )
 
@@ -29,16 +31,13 @@ const indexShell = `<!doctype html>
 </html>
 `
 
-// NewHandler serves the embedded local application shell, its assets and the
-// API routes that App.Handler registers.
-func NewHandler() http.Handler {
-	return NewApp(nil).Handler()
-}
-
 // App is the local HTTP application and its in-memory job manager.
 type App struct {
 	Jobs         *Manager
 	sessionToken string
+
+	// collector validates a requested repository before a job is created.
+	collector *collect.Collector
 
 	// allowedRoots holds the resolved form of each root, used for every
 	// containment check. suppliedRoots holds the same roots in the form the
@@ -50,29 +49,24 @@ type App struct {
 	allowedHosts map[string]bool
 }
 
-// NewApp constructs an application around a job manager. A default manager is
-// created when manager is nil.
-func NewApp(manager *Manager) *App {
-	app, err := NewAppWithAllowedRoots(manager, nil)
-	if err != nil {
-		panic(err)
-	}
-	return app
-}
-
-// NewAppWithAllowedRoots constructs an application with canonical filesystem
-// roots used to validate repository requests.
-func NewAppWithAllowedRoots(manager *Manager, roots []string) (*App, error) {
-	if manager == nil {
-		manager = NewManager(ManagerOptions{})
-	}
+// NewApp constructs the application around its job manager, the collect stage
+// that validates requested repositories, and the random source its session
+// secret is drawn from, all constructed by the caller (ADR-0042 clause 1).
+// roots are the allowed repository roots as the operator supplied them; none
+// means the working directory.
+func NewApp(manager *Manager, collector *collect.Collector, random core.Random, roots []string) (*App, error) {
 	allowedRoots, suppliedRoots, err := canonicalRoots(roots)
+	if err != nil {
+		return nil, err
+	}
+	token, err := newSessionToken(random)
 	if err != nil {
 		return nil, err
 	}
 	return &App{
 		Jobs:          manager,
-		sessionToken:  newSessionToken(),
+		sessionToken:  token,
+		collector:     collector,
 		allowedRoots:  allowedRoots,
 		suppliedRoots: suppliedRoots,
 		allowedHosts:  loopbackHosts(),
@@ -193,12 +187,12 @@ func applySecurityHeaders(w http.ResponseWriter) {
 
 const sessionCookieName = "commitography_session"
 
-func newSessionToken() string {
+func newSessionToken(random core.Random) (string, error) {
 	data := make([]byte, 32)
-	if _, err := rand.Read(data); err != nil {
-		panic(fmt.Sprintf("generating local session secret: %v", err))
+	if _, err := io.ReadFull(random, data); err != nil {
+		return "", core.Internalf(err, "generating the local session secret")
 	}
-	return hex.EncodeToString(data)
+	return hex.EncodeToString(data), nil
 }
 
 func (a *App) sessionCookie() *http.Cookie {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,7 +11,7 @@ import (
 	"github.com/sinanganiz/commitography/internal/server"
 )
 
-func newServeCommand(toolVersion string) *cobra.Command {
+func newServeCommand(env environment) *cobra.Command {
 	var options server.Options
 
 	cmd := &cobra.Command{
@@ -21,19 +20,21 @@ func newServeCommand(toolVersion string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			app, err := server.NewAppWithAllowedRoots(server.NewManager(server.ManagerOptions{ToolVersion: toolVersion}), options.AllowedRoots)
+			app, serveOptions, logger, err := composeServe(env, options)
 			if err != nil {
 				return err
 			}
 			for _, root := range app.EmptyAllowedRoots() {
-				fmt.Fprintf(cmd.ErrOrStderr(), "warning: allowed root %q is empty; if it is a mount, check that its source path exists\n", root)
+				logger.Warn("allowed root %q is empty; if it is a mount, check that its source path exists", root)
 			}
-			app.AllowListenHost(options.ListenAddress)
-			options.Handler = app.Handler()
-			options.OnShutdown = app.Jobs.CancelAll
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
-			return server.Serve(ctx, options)
+			err = server.Serve(ctx, serveOptions)
+			// The manager owns every analysis goroutine, and none outlives the
+			// command (ADR-0044 clause 1).
+			app.Jobs.CancelAll()
+			app.Jobs.Wait()
+			return err
 		},
 	}
 

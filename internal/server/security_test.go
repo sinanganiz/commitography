@@ -8,7 +8,7 @@ import (
 )
 
 func TestResponsesCarrySecurityHeaders(t *testing.T) {
-	handler := NewApp(NewManager(ManagerOptions{})).Handler()
+	handler := newApp(t, newTestManager(ManagerOptions{})).Handler()
 	req := localRequest(http.MethodGet, "/", nil)
 	res := httptest.NewRecorder()
 	handler.ServeHTTP(res, req)
@@ -24,7 +24,7 @@ func TestResponsesCarrySecurityHeaders(t *testing.T) {
 }
 
 func TestPathErrorDoesNotEchoFilesystemPath(t *testing.T) {
-	app := NewApp(NewManager(ManagerOptions{}))
+	app := newApp(t, newTestManager(ManagerOptions{}))
 	handler := app.Handler()
 	secretPath := "C:/private/secret-repository"
 	req := localRequest(http.MethodPost, "/api/v1/jobs", strings.NewReader(`{"repoPath":"`+secretPath+`"}`))
@@ -40,7 +40,7 @@ func TestPathErrorDoesNotEchoFilesystemPath(t *testing.T) {
 }
 
 func TestAPIMethodAndUnknownJobMatrix(t *testing.T) {
-	app := NewApp(NewManager(ManagerOptions{}))
+	app := newApp(t, newTestManager(ManagerOptions{}))
 	handler := app.Handler()
 	cases := []struct {
 		method string

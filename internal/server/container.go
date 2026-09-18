@@ -4,16 +4,14 @@
 
 package server
 
-import "os"
-
-// markers are the files Docker and Podman create in every container.
-var markers = []string{"/.dockerenv", "/run/.containerenv"}
+import "github.com/sinanganiz/commitography/internal/core"
 
 // Running reports whether the process runs inside a Docker or Podman
-// container.
-func Running() bool {
-	for _, marker := range markers {
-		if _, err := os.Stat(marker); err == nil {
+// container, by looking for the marker files both create in every container.
+// The entry points ask once, at composition, and pass the answer on.
+func Running(files core.Filesystem) bool {
+	for _, marker := range []string{"/.dockerenv", "/run/.containerenv"} {
+		if _, err := files.Stat(marker); err == nil {
 			return true
 		}
 	}

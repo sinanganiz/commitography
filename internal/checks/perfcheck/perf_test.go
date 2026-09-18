@@ -187,7 +187,7 @@ type jobStatus struct {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	app, err := server.NewAppWithAllowedRoots(server.NewManager(server.ManagerOptions{}), []string{repos})
+	app, err := newApp([]string{repos})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -570,4 +570,17 @@ func TestDockerStartupAndMountOverhead(t *testing.T) {
 			t.Logf("docker CLI %-26s no-blame=%-5v %s", target.name, noBlame, time.Since(started).Round(time.Millisecond))
 		}
 	}
+}
+
+// newApp is the local application wired the way the server command wires it
+// (cmd/commitography/compose.go), allowing the given roots.
+func newApp(roots []string) (*server.App, error) {
+	clock, random, files := core.SystemClock(), core.SystemRandom(), core.SystemFilesystem()
+	collector := collect.New(clock, files)
+	manager := server.NewManager(server.ManagerOptions{
+		Clock:  clock,
+		NewID:  server.RandomIDs(random),
+		Runner: pipeline.New(collector, aggregate.New(clock, files), files).Run,
+	})
+	return server.NewApp(manager, collector, random, roots)
 }

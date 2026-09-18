@@ -87,7 +87,7 @@ func TestHandlerIsBehindTheRecoveryLayer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app, err := NewAppWithAllowedRoots(NewManager(ManagerOptions{
+	app, err := newAppWithRoots(newTestManager(ManagerOptions{
 		NewID: func() (string, error) { panic("no entropy source") },
 	}), []string{root})
 	if err != nil {
@@ -112,7 +112,7 @@ func TestHandlerIsBehindTheRecoveryLayer(t *testing.T) {
 // A panic inside the analysis fails the job and releases the active slot. It
 // is never reported as a success, and it is never a user error.
 func TestWorkerPanicFailsTheJob(t *testing.T) {
-	manager := NewManager(ManagerOptions{
+	manager := newTestManager(ManagerOptions{
 		Runner: func(context.Context, pipeline.Options, pipeline.ProgressSink) (*pipeline.Result, error) {
 			panic("slice bounds out of range")
 		},

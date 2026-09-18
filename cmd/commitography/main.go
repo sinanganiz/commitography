@@ -12,7 +12,7 @@ import (
 )
 
 // buildInfo is the link-time build metadata, read once at composition and
-// passed to whatever needs it (ADR-0061 clause 4).
+// passed to whatever needs it (ADR-0061 clause 4). systemEnvironment reads it.
 type buildInfo struct {
 	version, commit, date string
 }
@@ -23,10 +23,9 @@ func (b buildInfo) String() string {
 }
 
 func main() {
-	version, commit, date := core.BuildMetadata()
-	build := buildInfo{version: version, commit: commit, date: date}
-	if err := execute(build, os.Args[1:]); err != nil {
-		Report(err)
+	env := systemEnvironment()
+	if err := execute(env, os.Args[1:]); err != nil {
+		report(env.stderr, err, env.inContainer)
 		os.Exit(core.ExitCode(err))
 	}
 }
@@ -38,9 +37,9 @@ func main() {
 // runs, and returns a plain error for every one of them. ADR-0034 clause 5
 // makes all of them usage errors, and the body not having run is exactly what
 // identifies them. Until this package they exited on the internal-error code.
-func execute(build buildInfo, args []string) error {
+func execute(env environment, args []string) error {
 	entered := false
-	cmd := newRootCommand(build, &entered)
+	cmd := newRootCommand(env, &entered)
 	cmd.SetArgs(args)
 	err := cmd.Execute()
 	if err == nil || entered {
@@ -52,7 +51,7 @@ func execute(build buildInfo, args []string) error {
 // newRootCommand builds the command tree. entered is set as soon as the root
 // command's body runs, so execute can tell a rejected command line from a
 // failure inside the analysis.
-func newRootCommand(build buildInfo, entered *bool) *cobra.Command {
+func newRootCommand(env environment, entered *bool) *cobra.Command {
 	var (
 		opts        Options
 		showVersion bool
@@ -76,11 +75,11 @@ Repository-level by default; per-contributor breakdowns are opt-in behind
 		RunE: func(cmd *cobra.Command, args []string) error {
 			*entered = true
 			if showVersion {
-				fmt.Fprintln(cmd.OutOrStdout(), build.String())
+				fmt.Fprintln(cmd.OutOrStdout(), env.build.String())
 				return nil
 			}
 
-			opts.ToolVersion = build.version
+			opts.ToolVersion = env.build.version
 			opts.RepoPath = "."
 			if len(args) == 1 {
 				opts.RepoPath = args[0]
@@ -89,9 +88,12 @@ Repository-level by default; per-contributor breakdowns are opt-in behind
 				cmd.Flags().Changed("output"),
 				cmd.Flags().Changed("count-merges"),
 			)
-			return Run(opts)
+			analyzer, logger := composeRun(env, opts)
+			return Run(opts, analyzer, logger)
 		},
 	}
+	cmd.SetOut(env.stdout)
+	cmd.SetErr(env.stderr)
 
 	f := cmd.Flags()
 	f.StringVarP(&opts.OutputDir, "output", "o", "./out", "Output directory")
@@ -108,7 +110,7 @@ Repository-level by default; per-contributor breakdowns are opt-in behind
 	f.BoolVarP(&opts.Quiet, "quiet", "q", false, "Suppress progress output")
 	f.BoolVarP(&opts.Verbose, "verbose", "v", false, "Emit debug logging to stderr")
 	f.BoolVar(&showVersion, "version", false, "Print version and exit")
-	cmd.AddCommand(newServeCommand(build.version))
+	cmd.AddCommand(newServeCommand(env))
 
 	return cmd
 }

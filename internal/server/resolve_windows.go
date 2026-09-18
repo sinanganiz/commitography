@@ -8,8 +8,6 @@ import (
 	"unsafe"
 )
 
-var procGetFinalPathNameByHandleW = syscall.NewLazyDLL("kernel32.dll").NewProc("GetFinalPathNameByHandleW")
-
 // resolvePath returns the final path of an existing file or directory, with
 // every symbolic link and junction resolved. A junction needs no privilege to
 // create, and filepath.EvalSymlinks stops resolving junctions under the Go
@@ -30,9 +28,12 @@ func resolvePath(path string) (string, error) {
 	}
 	defer syscall.CloseHandle(handle)
 
+	// kernel32 is loaded in every Windows process, so resolving the procedure
+	// on each call costs a lookup, not a load.
+	getFinalPathNameByHandle := syscall.NewLazyDLL("kernel32.dll").NewProc("GetFinalPathNameByHandleW")
 	buffer := make([]uint16, syscall.MAX_PATH)
 	for {
-		n, _, callErr := procGetFinalPathNameByHandleW.Call(uintptr(handle), uintptr(unsafe.Pointer(&buffer[0])), uintptr(len(buffer)), 0)
+		n, _, callErr := getFinalPathNameByHandle.Call(uintptr(handle), uintptr(unsafe.Pointer(&buffer[0])), uintptr(len(buffer)), 0)
 		if n == 0 {
 			return "", &fs.PathError{Op: "resolve", Path: path, Err: callErr}
 		}
