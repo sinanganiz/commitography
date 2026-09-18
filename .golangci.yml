@@ -197,28 +197,12 @@ linters:
           pkg: ^context$
           msg: "ADR-0042: context carries cancellation and deadlines only"
 
-  exclusions:
-    rules:
-      # Package-level variables in code WP-0007 rewrites ("no globals, wiring
-      # is explicit in one place").
-      - path: internal/metrics/messages/messages\.go
-        linters: [gochecknoglobals]
-      - path: internal/metrics/messages/stopwords\.go
-        linters: [gochecknoglobals]
-      - path: internal/core/config/config\.go
-        linters: [gochecknoglobals]
-      - path: internal/server/container\.go
-        linters: [gochecknoglobals]
-      - path: internal/core/filter/paths\.go
-        linters: [gochecknoglobals]
-      - path: internal/pipeline/render/render\.go
-        linters: [gochecknoglobals]
-      - path: internal/pipeline/render/bundle_test\.go
-        linters: [gochecknoglobals]
-      - path: internal/server/resolve_windows\.go
-        linters: [gochecknoglobals]
-      # Link-time build metadata is not excluded here: internal/core/buildinfo.go
-      # carries the single in-file suppression ADR-0061 clause 3 requires.
+  # No exclusions. Link-time build metadata is not excluded here either:
+  # internal/core/buildinfo.go carries the single in-file suppression of
+  # gochecknoglobals that ADR-0061 clause 3 requires, and TestPackageVariables
+  # holds the tree to exactly that one. The linter's own allowances, such as
+  # a go:embed variable, are the only other package-level variables, and the
+  # tree has one: the embedded frontend bundle.
 
 formatters:
   enable:
