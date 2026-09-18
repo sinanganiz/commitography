@@ -80,7 +80,7 @@ func buildFromFixture(t *testing.T, name string, cfg config.Config, mutate func(
 		mutate(&in)
 	}
 
-	report, err := aggregate.Build(in)
+	report, err := aggregate.New(core.FixedClock(testTime()), core.SystemFilesystem()).Build(in)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}

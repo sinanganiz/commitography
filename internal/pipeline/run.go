@@ -174,7 +174,7 @@ func Run(ctx context.Context, opts Options, sink ProgressSink) (*Result, error) 
 	if err := contextError(ctx); err != nil {
 		return nil, err
 	}
-	report, err := aggregate.Build(input)
+	report, err := aggregate.New(core.SystemClock(), core.SystemFilesystem()).Build(input)
 	if err != nil {
 		return nil, err
 	}

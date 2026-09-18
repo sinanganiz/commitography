@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -40,7 +39,7 @@ const (
 // sampled blame through git, and reads working tree files to detect binaries
 // and count lines. Moving that work to replay now would reorder the server's
 // progress events. WP-0013 removes the deviation.
-func buildCode(in core.Input, analyzed, lineScoped []model.Commit) (core.CodeMetrics, []string, error) {
+func (b *Builder) buildCode(in core.Input, analyzed, lineScoped []model.Commit) (core.CodeMetrics, []string, error) {
 	var warnings []string
 	m := core.CodeMetrics{
 		MostTouchedFiles:     []core.TouchedFile{},
@@ -60,9 +59,9 @@ func buildCode(in core.Input, analyzed, lineScoped []model.Commit) (core.CodeMet
 
 	included := files.BuildFiles(in, lineScoped, tracked, &m)
 
-	textFiles := textCandidates(in.RepoPath, included)
+	textFiles := b.textCandidates(in.RepoPath, included)
 	m.CodeAgeTotalFiles = len(textFiles)
-	m.TrackedLines = countLines(in.RepoPath, textFiles)
+	m.TrackedLines = b.countLines(in.RepoPath, textFiles)
 
 	if in.NoBlame {
 		return m, warnings, nil
@@ -96,10 +95,10 @@ func trackedFilesContext(ctx context.Context, repoPath string) ([]string, error)
 // textCandidates removes files blame cannot say anything useful about: those
 // carrying a NUL byte near the start, and those absent from the working tree.
 // The result is sorted so sampling is reproducible.
-func textCandidates(repoPath string, paths []string) []string {
+func (b *Builder) textCandidates(repoPath string, paths []string) []string {
 	out := make([]string, 0, len(paths))
 	for _, p := range paths {
-		if looksBinary(filepath.Join(repoPath, filepath.FromSlash(p))) {
+		if b.looksBinary(filepath.Join(repoPath, filepath.FromSlash(p))) {
 			continue
 		}
 		out = append(out, p)
@@ -108,8 +107,8 @@ func textCandidates(repoPath string, paths []string) []string {
 	return out
 }
 
-func looksBinary(absPath string) bool {
-	f, err := os.Open(absPath)
+func (b *Builder) looksBinary(absPath string) bool {
+	f, err := b.files.Open(absPath)
 	if err != nil {
 		// Present in HEAD but missing from the working tree, as with a sparse
 		// checkout. Leave it out rather than guess at its contents.
@@ -188,10 +187,10 @@ func blameYears(ctx context.Context, repoPath string, paths []string, progress f
 	return out, warnings, nil
 }
 
-func countLines(repoPath string, paths []string) int {
+func (b *Builder) countLines(repoPath string, paths []string) int {
 	total := 0
 	for _, p := range paths {
-		data, err := os.ReadFile(filepath.Join(repoPath, filepath.FromSlash(p)))
+		data, err := b.files.ReadFile(filepath.Join(repoPath, filepath.FromSlash(p)))
 		if err != nil {
 			continue
 		}

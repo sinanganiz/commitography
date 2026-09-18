@@ -4,7 +4,6 @@ package aggregate
 
 import (
 	"context"
-	"time"
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/model"
@@ -13,14 +12,27 @@ import (
 	"github.com/sinanganiz/commitography/internal/metrics/temporal"
 )
 
+// Builder is the aggregate stage. It holds the clock that stamps the report's
+// generation time and the file access its working tree reads use, both
+// injected (ADR-0042 clause 1).
+type Builder struct {
+	clock core.Clock
+	files core.Filesystem
+}
+
+// New constructs the aggregate stage.
+func New(clock core.Clock, files core.Filesystem) *Builder {
+	return &Builder{clock: clock, files: files}
+}
+
 // Build computes the complete report.
-func Build(in core.Input) (*core.Report, error) {
+func (b *Builder) Build(in core.Input) (*core.Report, error) {
 	analyzed := in.Analyzed()
 	lineScoped := in.LineScoped()
 
 	r := &core.Report{
 		SchemaVersion: core.SchemaVersion,
-		GeneratedAt:   time.Now().UTC(),
+		GeneratedAt:   b.clock.Now().UTC(),
 		ToolVersion:   in.ToolVersion,
 		Warnings:      append([]string(nil), in.Warnings...),
 	}
@@ -32,7 +44,7 @@ func Build(in core.Input) (*core.Report, error) {
 	r.Temporal = temporal.BuildTemporal(in, analyzed)
 
 	progress(in, "metrics", "code", 0, 0)
-	code, codeWarnings, err := buildCode(in, analyzed, lineScoped)
+	code, codeWarnings, err := b.buildCode(in, analyzed, lineScoped)
 	if err != nil {
 		return nil, err
 	}
