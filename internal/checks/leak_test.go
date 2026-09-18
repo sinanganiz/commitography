@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 )
 
@@ -31,12 +33,12 @@ import (
 // strict for a diagnostic, which must be able to say which path was rejected,
 // or too loose for an artifact, which must say nothing at all.
 //
-// **The log half of this checker belongs to WP-0007.** The only log surface a
-// checker can reach today is a package-level sink; WP-0007 replaces it with an
-// injected logger and extends the diagnostic rule below to the progress and
-// warning output that then becomes drivable (ADR-0064 clause 5). What is
-// covered here is the report, every API response, and the refusal diagnostics
-// the command prints, which is every destination that exists as a value.
+// What is covered is the report, every API response and every warning under
+// the artifact rule, and under the diagnostic rule the refusals the command
+// prints and the log: the progress and warning lines the injected logger
+// writes (TestLeakScanLog). The command's stage names are its own words and
+// carry no value from the run; the lines it adds that do are the output path,
+// which the log test drives in the form the operator types.
 
 // machineValues are the strings that identify this machine: the roots the run
 // works under, the operator's home, the temporary directory, and the host's
@@ -230,6 +232,60 @@ func TestLeakScanDiagnostics(t *testing.T) {
 	}
 }
 
+// TestLeakScanLog applies the diagnostic rule to log output: everything the
+// injected logger writes during an analysis of each fixture, which is the
+// progress and warning output the command prints on standard error.
+//
+// The analysis is wired to the logger the way composeRun and Run wire it:
+// every progress event becomes a stage line carrying its detail, every warning
+// a warning line, and the run closes with the output path the operator gave.
+// The command also names each stage in words of its own, which carry no value
+// from the run; the checker writes the stage identifier in their place.
+//
+// The repository, the output directory and the configuration file are given
+// in the forms an operator types, so what the rule permits is exactly those,
+// and any other path in the log is one the product resolved or discovered.
+func TestLeakScanLog(t *testing.T) {
+	repo := openRepository(t)
+	forbidden := machineValues(t, repo)
+	fixtures := generatedFixtures(t, repo)
+	if len(fixtures) == 0 {
+		fatal(t, 64, "no fixture was generated; the gates generate them with `make fixtures`")
+	}
+
+	// An unknown key raises a configuration warning on every fixture, so each
+	// log carries a warning line as well as progress.
+	config := filepath.Join(t.TempDir(), "explicit.yml")
+	if err := os.WriteFile(config, []byte("unknown_key: true\ntheme: default\n"), 0o600); err != nil {
+		fatal(t, 67, "writing a configuration file: %v", err)
+	}
+	output := filepath.Join("out", "report.json")
+
+	for _, fixture := range fixtures {
+		t.Run(fixture, func(t *testing.T) {
+			supplied := filepath.Join("..", "..", "testdata", "fixtures", fixture)
+			var log bytes.Buffer
+			logger := core.NewLogger(&log, core.FixedClock(checkTime()), core.LoggerOptions{Verbose: true})
+			_, err := newAnalyzer().Run(context.Background(), pipeline.Options{
+				RepoPath:         supplied,
+				ConfigPath:       config,
+				OperatorSupplied: true,
+				NoBlame:          true,
+				OnWarning:        func(message string) { logger.Warn("%s", message) },
+			}, func(event pipeline.ProgressEvent) { logger.Stage(event.Stage, event.Detail) })
+			if err == nil {
+				logger.Stage("Rendering", output)
+				logger.Done(output)
+			}
+			if log.Len() == 0 {
+				fatal(t, 64, "the analysis of fixture %s wrote nothing to the log, so there is nothing to scan", fixture)
+			}
+			scanDiagnostic(t, "the log of fixture "+fixture, log.String(),
+				[]string{supplied, filepath.ToSlash(supplied), config, filepath.ToSlash(config), output}, forbidden)
+		})
+	}
+}
+
 // TestLeakScanAPIResponses applies the artifact rule to every response the
 // local API produces, including each refusal, because an API response is an
 // artifact whatever its status (ADR-0067 clause 2).
@@ -388,5 +444,20 @@ func TestLeakScanRejectsALeakedPath(t *testing.T) {
 		supplied, forbidden)
 	if !refused.Failed() {
 		report(t, 64, "the diagnostic rule accepted a resolved path, so it cannot catch one")
+	}
+
+	// The log is judged by the diagnostic rule too, so a warning line that
+	// names a resolved path, or an address, fails it.
+	for _, warning := range []string{
+		"could not read " + filepath.Join(repo.root, supplied[0], ".gitattributes"),
+		"skipping the commit by someone@example.com",
+	} {
+		var log bytes.Buffer
+		core.NewLogger(&log, core.FixedClock(checkTime()), core.LoggerOptions{}).Warn("%s", warning)
+		leaked := &testing.T{}
+		scanDiagnostic(leaked, "a deliberately leaked log", log.String(), supplied, forbidden)
+		if !leaked.Failed() {
+			report(t, 64, "the diagnostic rule accepted the log line %q, so it cannot catch one", log.String())
+		}
 	}
 }
