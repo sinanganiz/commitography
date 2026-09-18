@@ -56,7 +56,7 @@ GO_UNIT_PACKAGES := $(shell go list ./... | grep -vE '/internal/checks(/|$$)')
 .PHONY: build web test fixtures lint clean docker-image docker-smoke perfcheck \
 	gate-fast gate-full toolchain-versions build-go lint-go test-go checks \
 	typecheck-web test-web vulncheck-go vulncheck-web fixture-determinism \
-	golden-large golden-update reproducible-build reproducible-binary \
+	golden-large golden-update determinism reproducible-build reproducible-binary \
 	gate-release reproducible-release
 
 build: web
@@ -116,36 +116,39 @@ lint: lint-go
 #   fast (5 minutes)   build, format, vet, configuration rules, unit tests,
 #                      record integrity, taxonomy integrity, decision
 #                      reference, process execution sites, dependency allow
-#                      list, goroutine ownership, fixture conditions, golden
+#                      list, goroutine ownership, package variables,
+#                      parallel tests, fixture conditions, golden
 #                      comparison on small fixtures, golden commit
 #                      messages, reason code catalogue, error classification,
 #                      leak scan, frontend type check and unit tests
 #   full (15 minutes)  everything in fast, plus vulnerability scanning,
 #                      golden comparison on the large fixture, fixture
-#                      determinism (on every supported platform) and the
-#                      reproducible build of the local binary
+#                      determinism (on every supported platform), report
+#                      determinism and the reproducible build of the local
+#                      binary
 #   release            everything in full, plus the reproducible build of the
 #                      release binary
 #
 # Checks ADR-0057 assigns to a gate whose subject does not exist yet —
 # invariants, family contract, namespace violation, goroutine leak,
-# determinism, incremental equivalence, identity projection, mode
-# capability matrix, model-free equivalence, performance budgets, subprocess
-# count, cross-compilation, bundle integrity — are added by the package that
+# incremental equivalence, identity projection, mode capability matrix,
+# model-free equivalence, performance budgets, subprocess count,
+# cross-compilation, bundle integrity — are added by the package that
 # creates each subject.
 #
-# The leak scan now exists and runs in the fast gate. Its log half is narrowed
-# to WP-0007, which introduces the injected log sink it needs; the narrowing is
+# The leak scan runs in the fast gate and covers log output as well as
+# artifacts. The report determinism checker covers the same-input half; the
+# parallelism half arrives with parallelism (WP-0012), and the narrowing is
 # recorded next to the checker. The metric catalogue checker covers the reason
 # code set from WP-0006; WP-0008 extends it to metrics and cardinality limits.
 FAST_CHECKS := build-go lint-go test-go checks typecheck-web test-web
 FULL_CHECKS := vulncheck-go vulncheck-web fixture-determinism golden-large \
-	reproducible-build
+	determinism reproducible-build
 RELEASE_CHECKS := reproducible-release
 
 # Checkers that belong to the full gate or the release path and are therefore
 # skipped by `checks`. Each has its own target below.
-FULL_CHECKERS := ^(TestFixtureDeterminism|TestGoldenLarge|TestReproducibleBuild)$$
+FULL_CHECKERS := ^(TestFixtureDeterminism|TestGoldenLarge|TestDeterminism|TestDeterminismRejectsAClockDependentValue|TestReproducibleBuild)$$
 
 # Every gate prints the number of checks run, passed, failed and skipped
 # (ADR-0064 clause 4). Go tests and frontend tests count one per test; every
@@ -221,6 +224,13 @@ fixture-determinism:
 golden-large:
 	go test -json -count=1 -run '^TestGoldenLarge$$' ./internal/checks \
 		| $(GATESUMMARY) gotest $(GATE_DIR) golden-large
+
+# ADR-0021 clause 4 and ADR-0063 table 2, same-input half: every fixture is
+# analysed twice with clocks a day apart, and the reports must be identical
+# outside the generation metadata. The gate has generated the fixtures already.
+determinism:
+	go test -json -count=1 -run '^TestDeterminism' ./internal/checks \
+		| $(GATESUMMARY) gotest $(GATE_DIR) determinism
 
 # ADR-0049 clause 6 and ADR-0063 table 2. Builds the command twice with the
 # flags `make build` uses and compares the two binaries. Each build is its own
