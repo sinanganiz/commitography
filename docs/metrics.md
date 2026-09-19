@@ -353,3 +353,36 @@ Three pairs are deliberately separate rather than merged:
   remedies differ.
 - `empty_repository` refuses a run; `empty_population` describes a metric
   computed over an empty set.
+
+---
+
+## 14. The identities section
+
+The list of resolved contributors the reader selects their own identity from
+(ADR-0010 clause 2). It is **not a metric family**: ADR-0024 clause 5 fixes the
+family set and this is not in it. It is a top-level section of the report,
+`identities`, beside the generation metadata and the resolved configuration. It
+carries no version and no status of its own; the document version governs it
+(ADR-0031 clause 1). Adding it made the document version 1.1.
+
+**Population.** Every identity with at least one analysed commit. An identity
+whose commits are all excluded does not appear.
+
+| Field | Definition |
+|---|---|
+| `id` | The identity's stable digest: the first 16 hexadecimal characters of the SHA-256 of its canonical address, trimmed and lowercased. Stable across repositories for the same address (ADR-0033 clause 4). Absent on the aggregate entry. |
+| `display_name` | The identity's resolved name. Never a raw address (ADR-0033 clause 2): where the resolved name is empty or contains an address, and where anonymised output is requested, it is the `id`. On the aggregate entry it states how many identities the entry represents. |
+| `first_commit_date`, `last_commit_date` | Local dates of the identity's earliest and latest analysed commits. |
+| `commit_count` | The identity's analysed commits. |
+| `aggregate` | `true` on the aggregate entry, and absent on every other entry. |
+
+**Ordering.** Individual entries are ordered by `first_commit_date` ascending,
+ties broken by `id` ascending (ADR-0009 clause 3: no default ordering by output
+volume). The aggregate entry, when present, is last.
+
+**Bound.** The identities with the most analysed commits, up to the
+individually represented identities limit of section 12, appear individually
+(ADR-0018 clause 4). Ties in commit count are broken by earlier
+`first_commit_date`, then by `id`. Every remaining identity folds into one
+aggregate entry, whose dates are the earliest and latest of the identities it
+folds and whose `commit_count` is their sum.

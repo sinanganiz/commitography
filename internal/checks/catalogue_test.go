@@ -26,9 +26,54 @@ import (
 // TestReasonCodeCatalogue.
 
 const (
-	familyRecord  = "docs/decisions/0024-metric-family-interface.md"
-	limitsSection = "## 12. Cardinality limits, collected"
+	familyRecord      = "docs/decisions/0024-metric-family-interface.md"
+	limitsSection     = "## 12. Cardinality limits, collected"
+	identitiesSection = "## 14. The identities section"
 )
+
+// identityFields returns the fields section 14 defines for an identities
+// entry: the backticked names in the first column of its table headed "Field".
+func identityFields(section string) map[string]bool {
+	name := regexp.MustCompile("`([a-z][a-z0-9_]*)`")
+	out := map[string]bool{}
+	inTable := false
+	for _, line := range strings.Split(section, "\n") {
+		trimmed := strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(trimmed, "| Field |"):
+			inTable = true
+		case !strings.HasPrefix(trimmed, "|"):
+			inTable = false
+		case inTable && !strings.HasPrefix(trimmed, "|---"):
+			for _, n := range name.FindAllStringSubmatch(strings.Split(trimmed, "|")[1], -1) {
+				out[n[1]] = true
+			}
+		}
+	}
+	return out
+}
+
+// entryViolations compares an identities entry type with the fields section 14
+// defines, in both directions.
+func entryViolations(entry reflect.Type, fields map[string]bool) []string {
+	var out []string
+	inType := map[string]bool{}
+	for i := 0; i < entry.NumField(); i++ {
+		field := jsonName(entry.Field(i))
+		inType[field] = true
+		if !fields[field] {
+			out = append(out, "the identities entry has a field "+field+", which "+metricsCatalogue+
+				" section 14 does not define")
+		}
+	}
+	for _, field := range sortedKeys(fields) {
+		if !inType[field] {
+			out = append(out, metricsCatalogue+" section 14 defines the identities field "+field+
+				", which the report type does not carry")
+		}
+	}
+	return out
+}
 
 // catalogueFamilies returns the families docs/metrics.md defines, each with the
 // metric names its tables list. A family section is a level-two heading whose
@@ -225,9 +270,45 @@ func TestMetricCatalogueRejectsAnInventedMetric(t *testing.T) {
 	}
 }
 
+// TestMetricCatalogueIdentities requires the identities entry's fields to be
+// exactly those section 14 defines.
+func TestMetricCatalogueIdentities(t *testing.T) {
+	t.Parallel()
+	repo := openRepository(t)
+	fields := identityFields(catalogueSection(t, repo, identitiesSection))
+	if len(fields) == 0 {
+		fatal(t, 64, "no identities field was read from %s section 14", metricsCatalogue)
+	}
+	for _, v := range entryViolations(reflect.TypeOf(core.IdentityEntry{}), fields) {
+		report(t, 62, "%s", v)
+	}
+}
+
+// TestMetricCatalogueRejectsAnInventedIdentityField is the failure
+// demonstration for the identities half: an entry carrying a field section 14
+// does not define, or missing one it does, is reported.
+func TestMetricCatalogueRejectsAnInventedIdentityField(t *testing.T) {
+	t.Parallel()
+	type invented struct {
+		ID    string `json:"id"`
+		Email string `json:"email"`
+	}
+	got := strings.Join(entryViolations(reflect.TypeOf(invented{}),
+		map[string]bool{"id": true, "display_name": true}), "\n")
+	for _, want := range []string{"field email", "field display_name"} {
+		if !strings.Contains(got, want) {
+			report(t, 64, "the catalogue checker did not report the %s; it reported:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "field id") {
+		report(t, 64, "the catalogue checker reported the defined id:\n%s", got)
+	}
+}
+
 // TestMetricCatalogueGolden requires every metric and reason code in every
-// golden report to be one the catalogue defines, and every skipped family's
-// metrics to be empty (ADR-0032 clause 3).
+// golden report to be one the catalogue defines, every identities field to be
+// one section 14 defines, and every skipped family's metrics to be empty
+// (ADR-0032 clause 3).
 func TestMetricCatalogueGolden(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
@@ -235,6 +316,10 @@ func TestMetricCatalogueGolden(t *testing.T) {
 	codes := familyStatusCodes(catalogueSection(t, repo, reasonSection))
 	if len(codes) == 0 {
 		fatal(t, 64, "no family status code was read from %s section 13", metricsCatalogue)
+	}
+	fields := identityFields(catalogueSection(t, repo, identitiesSection))
+	if len(fields) == 0 {
+		fatal(t, 64, "no identities field was read from %s section 14", metricsCatalogue)
 	}
 	checked := 0
 	for _, file := range repo.tracked {
@@ -247,12 +332,21 @@ func TestMetricCatalogueGolden(t *testing.T) {
 				Reasons []string                   `json:"reasons"`
 				Metrics map[string]json.RawMessage `json:"metrics"`
 			} `json:"families"`
+			Identities []map[string]json.RawMessage `json:"identities"`
 		}
 		if err := json.Unmarshal([]byte(repo.read(t, 62, file)), &document); err != nil {
 			report(t, 62, "%s is not a report: %v", file, err)
 			continue
 		}
 		checked++
+		for i, entry := range document.Identities {
+			for _, field := range sortedKeys(entry) {
+				if !fields[field] {
+					report(t, 62, "%s carries the identities field %s in entry %d, which %s section 14 does not "+
+						"define", file, field, i, metricsCatalogue)
+				}
+			}
+		}
 		for _, name := range sortedKeys(document.Families) {
 			family := document.Families[name]
 			for _, metric := range sortedKeys(family.Metrics) {
@@ -391,5 +485,11 @@ func TestMetricCatalogueHelpers(t *testing.T) {
 
 	if got := recordFamilies("   | `temporal` | commit-records |\n   | Family | Inputs |\n"); len(got) != 1 || !got["temporal"] {
 		report(t, 64, "record families = %v, want temporal", got)
+	}
+
+	fields := identityFields("Prose `prose`.\n\n| Field | Definition |\n|---|---|\n| `one`, `two` | uses `ref` |\n\n" +
+		"| Rule | Value |\n|---|---|\n| `rule` | 1 |\n")
+	if strings.Join(sortedKeys(fields), " ") != "one two" {
+		report(t, 64, "identities fields = %v, want one and two", sortedKeys(fields))
 	}
 }

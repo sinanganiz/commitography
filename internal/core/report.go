@@ -55,6 +55,22 @@ type Repository struct {
 // its absence from a report is a schema violation; WP-0010 fills it.
 type Configuration struct{}
 
+// IdentityEntry is one entry of the identities section, docs/metrics.md
+// section 14: a resolved contributor the reader can select (ADR-0010
+// clause 2). It is not a metric family. It carries a digest and a display name
+// and never a raw address (ADR-0033 clause 2).
+type IdentityEntry struct {
+	// ID is the identity's stable digest. The aggregate entry has none.
+	ID              string `json:"id,omitzero"`
+	DisplayName     string `json:"display_name"`
+	FirstCommitDate string `json:"first_commit_date"`
+	LastCommitDate  string `json:"last_commit_date"`
+	CommitCount     int    `json:"commit_count"`
+	// Aggregate marks the one entry folding every identity beyond the
+	// individually represented limit (ADR-0018 clause 4).
+	Aggregate bool `json:"aggregate,omitzero"`
+}
+
 // Families holds every family of ADR-0024 clause 5, in that order, keyed by
 // family name. A struct rather than a map, so that no report can be built
 // without one of them.
