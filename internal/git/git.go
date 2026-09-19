@@ -10,7 +10,9 @@ import (
 	"context"
 	"errors"
 	"os/exec"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sinanganiz/commitography/internal/core"
 )
@@ -53,7 +55,46 @@ func Run(repoPath string, args ...string) (string, error) {
 
 // RunContext executes git with cancellation support and returns trimmed stdout.
 func RunContext(ctx context.Context, repoPath string, args ...string) (string, error) {
+	return run(ctx, CommandContext(ctx, repoPath, args...), args)
+}
+
+// ResolveDate returns the instant git resolves a date expression to, exactly
+// as git log --since or --until would; bound is "since" or "until".
+//
+// Git completes a bare date with the current time of day and resolves a
+// relative one against now, so one expression selects different commits at
+// different hours. The resolved instant does not, which is why a report
+// records it rather than the expression (ADR-0026 clause 4). Git reads "now"
+// here from GIT_TEST_DATE_NOW, the variable its date parser consults in place
+// of the process clock, set to now, so the injected clock governs git's
+// reading of a date as it governs everything else (ADR-0042 clause 4).
+func ResolveDate(ctx context.Context, repoPath, bound, expression string, now time.Time) (time.Time, error) {
+	var prefix string
+	switch bound {
+	case "since":
+		prefix = "--max-age="
+	case "until":
+		prefix = "--min-age="
+	default:
+		return time.Time{}, core.Internalf(nil, "resolving a date bound named %q, which is neither since nor until", bound)
+	}
+	args := []string{"rev-parse", "--" + bound + "=" + expression}
 	cmd := CommandContext(ctx, repoPath, args...)
+	cmd.Env = append(cmd.Environ(), "GIT_TEST_DATE_NOW="+strconv.FormatInt(now.Unix(), 10))
+	out, err := run(ctx, cmd, args)
+	if err != nil {
+		return time.Time{}, err
+	}
+	seconds, err := strconv.ParseInt(strings.TrimPrefix(out, prefix), 10, 64)
+	if err != nil || !strings.HasPrefix(out, prefix) {
+		return time.Time{}, core.Internalf(err, "reading the instant git resolved a --%s bound to", bound)
+	}
+	return time.Unix(seconds, 0).UTC(), nil
+}
+
+// run executes a prepared git command and returns trimmed stdout. args are the
+// command's arguments after the common prefix, for the error's context.
+func run(ctx context.Context, cmd *exec.Cmd, args []string) (string, error) {
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

@@ -75,6 +75,17 @@ type ProgressSink func(ProgressEvent)
 // Analyzer.Run implements.
 type RunFunc func(context.Context, Options, ProgressSink) (*Result, error)
 
+// parameters returns the run's explicit parameters, the last layer of the
+// analysis plane's resolution (ADR-0026 clause 6).
+func (o Options) parameters() config.Parameters {
+	p := config.Parameters{Anonymize: o.Anonymize, Since: o.Since, Until: o.Until, Year: o.Year}
+	if o.CountMergesSet {
+		countMerges := o.CountMerges
+		p.CountMerges = &countMerges
+	}
+	return p
+}
+
 // SuppliedPath returns the repository path in the form a message may name, or
 // the empty string when no message may name it at all.
 func (o Options) SuppliedPath() string {

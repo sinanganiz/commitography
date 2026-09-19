@@ -48,6 +48,27 @@ use_mailmap: true
 # email address, with or without this.
 anonymize: false
 
+# Date bounds. Anything git accepts after --since and --until, including a bare
+# date and a relative expression. Git completes a bare date with the current
+# time of day, so a report records the instant it resolved to rather than the
+# words below, and rerunning from that record reads the same commits.
+# since: 2025-01-01
+# until: 2025-12-31
+
+# Restrict the analysis to one calendar year. 0 analyses the whole history.
+# Setting it here filters the analysis; the year-in-review page is still chosen
+# with --wrapped.
+year: 0
+
+# The window work-type classification treats as recent, in days.
+recency_window_days: 30
+
+# Cardinality limits are part of the analysis, and a report states the ones it
+# ran under, but they are not yours to set: docs/metrics.md section 12 defines
+# them. A value that disagrees with it stops the run.
+# cardinality_limits:
+#   coupling_pairs: 200
+
 # Where the command writes its output. This is the one operational key: it
 # decides where a file goes, changes no number, and never enters a report.
 output_dir: ./out

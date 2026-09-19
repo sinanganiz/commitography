@@ -34,7 +34,12 @@ type Identity struct {
 // Analysis is the analysis plane (ADR-0026 clause 1): every value that changes
 // a metric value.
 type Analysis struct {
-	Identities            []Identity
+	Identities []Identity
+	// ExcludeAuthors and ExcludePaths are normalised as they are loaded:
+	// trimmed, author entries lowercased because they match without regard to
+	// case, empty entries dropped, and duplicates dropped after their first
+	// occurrence. A list that already holds the built-in entries therefore
+	// resolves to itself when it is loaded again.
 	ExcludeAuthors        []string
 	ExcludePaths          []string
 	OutlierThresholdLines int
@@ -42,6 +47,64 @@ type Analysis struct {
 	DateSource            string
 	UseMailmap            bool
 	Anonymize             bool
+	// Since and Until are the date bounds: the analysis reads only the commits
+	// git selects with --since and --until. As loaded, each is what the
+	// operator wrote. As resolved, it is the instant git resolved that to, in
+	// RFC 3339 and UTC, because git completes a bare date with the current time
+	// of day, and the same words would select different commits at another
+	// hour. Empty means no bound.
+	Since string
+	Until string
+	// Year, when non-zero, restricts the analysis to one calendar year of
+	// commit dates.
+	Year int
+	// RecencyWindowDays is the work-type recency window (ADR-0020 clause 4,
+	// docs/metrics.md section 1).
+	RecencyWindowDays int
+	// CardinalityLimits are the report's cardinality limits by name. They
+	// belong to this plane, so they enter the cache key (ADR-0053 clause 6),
+	// but no operator sets them: docs/metrics.md section 12 is their only
+	// definition (ADR-0062 clause 6). As loaded, the map holds what a file
+	// supplied, which core verifies against the catalogue; as resolved, it
+	// holds the catalogue's values. Nothing applies a supplied value.
+	CardinalityLimits map[string]int
+}
+
+// Parameters are the explicit parameters of one run, the last layer of
+// resolution (ADR-0026 clause 6): what a command line or a request set. The
+// zero value sets nothing.
+type Parameters struct {
+	// Anonymize turns anonymised output on. A parameter cannot turn off what
+	// the configuration turned on.
+	Anonymize bool
+	// CountMerges, when set, decides merge counting in place of the
+	// configuration.
+	CountMerges *bool
+	// Since, Until and Year replace the configured values when non-empty or
+	// non-zero.
+	Since string
+	Until string
+	Year  int
+}
+
+// Apply returns the analysis plane with the parameters applied over it.
+func (p Parameters) Apply(a Analysis) Analysis {
+	if p.Anonymize {
+		a.Anonymize = true
+	}
+	if p.CountMerges != nil {
+		a.CountMerges = *p.CountMerges
+	}
+	if since := strings.TrimSpace(p.Since); since != "" {
+		a.Since = since
+	}
+	if until := strings.TrimSpace(p.Until); until != "" {
+		a.Until = until
+	}
+	if p.Year != 0 {
+		a.Year = p.Year
+	}
+	return a
 }
 
 // Operational is the operational plane (ADR-0026 clause 1): every value that
@@ -183,6 +246,11 @@ func Default() Analysis {
 		DateSource:            DateSourceAuthor,
 		UseMailmap:            true,
 		Anonymize:             false,
+		Since:                 "",
+		Until:                 "",
+		Year:                  0,
+		RecencyWindowDays:     30,
+		CardinalityLimits:     nil,
 	}
 }
 
@@ -199,15 +267,20 @@ func DefaultOperational() Operational {
 // an empty value. That distinction is what makes `exclude_paths: []` mean
 // "drop the defaults" while omitting the key means "keep them".
 type fileConfig struct {
-	Identities            *[]Identity `yaml:"identities"`
-	ExcludeAuthors        *[]string   `yaml:"exclude_authors"`
-	ExcludePaths          *[]string   `yaml:"exclude_paths"`
-	OutlierThresholdLines *int        `yaml:"outlier_threshold_lines"`
-	CountMerges           *bool       `yaml:"count_merges"`
-	DateSource            *string     `yaml:"date_source"`
-	UseMailmap            *bool       `yaml:"use_mailmap"`
-	Anonymize             *bool       `yaml:"anonymize"`
-	OutputDir             *string     `yaml:"output_dir"`
+	Identities            *[]Identity     `yaml:"identities"`
+	ExcludeAuthors        *[]string       `yaml:"exclude_authors"`
+	ExcludePaths          *[]string       `yaml:"exclude_paths"`
+	OutlierThresholdLines *int            `yaml:"outlier_threshold_lines"`
+	CountMerges           *bool           `yaml:"count_merges"`
+	DateSource            *string         `yaml:"date_source"`
+	UseMailmap            *bool           `yaml:"use_mailmap"`
+	Anonymize             *bool           `yaml:"anonymize"`
+	Since                 *string         `yaml:"since"`
+	Until                 *string         `yaml:"until"`
+	Year                  *int            `yaml:"year"`
+	RecencyWindowDays     *int            `yaml:"recency_window_days"`
+	CardinalityLimits     *map[string]int `yaml:"cardinality_limits"`
+	OutputDir             *string         `yaml:"output_dir"`
 }
 
 // AnalysisKeys returns every key of the analysis plane a configuration file
@@ -216,6 +289,7 @@ func AnalysisKeys() []string {
 	return []string{
 		"identities", "exclude_authors", "exclude_paths", "outlier_threshold_lines",
 		"count_merges", "date_source", "use_mailmap", "anonymize",
+		"since", "until", "year", "recency_window_days", "cardinality_limits",
 	}
 }
 
@@ -280,7 +354,9 @@ func Load(files Files, explicitPath string, repoPath string, warn func(string, .
 }
 
 // applyTo folds file values over the defaults. List keys append to the
-// built-ins; setting one to an explicit empty list clears them.
+// built-ins; setting one to an explicit empty list clears them. Both exclusion
+// lists are normalised afterwards, so appending entries the list already holds
+// changes nothing.
 func (fc fileConfig) applyTo(s *Settings) {
 	cfg := &s.Analysis
 	if fc.Identities != nil {
@@ -300,6 +376,23 @@ func (fc fileConfig) applyTo(s *Settings) {
 			cfg.ExcludePaths = append(cfg.ExcludePaths, *fc.ExcludePaths...)
 		}
 	}
+	cfg.ExcludeAuthors = normaliseList(cfg.ExcludeAuthors, strings.ToLower)
+	cfg.ExcludePaths = normaliseList(cfg.ExcludePaths, func(s string) string { return s })
+	if fc.Since != nil {
+		cfg.Since = strings.TrimSpace(*fc.Since)
+	}
+	if fc.Until != nil {
+		cfg.Until = strings.TrimSpace(*fc.Until)
+	}
+	if fc.Year != nil {
+		cfg.Year = *fc.Year
+	}
+	if fc.RecencyWindowDays != nil {
+		cfg.RecencyWindowDays = *fc.RecencyWindowDays
+	}
+	if fc.CardinalityLimits != nil {
+		cfg.CardinalityLimits = *fc.CardinalityLimits
+	}
 	if fc.OutlierThresholdLines != nil {
 		cfg.OutlierThresholdLines = *fc.OutlierThresholdLines
 	}
@@ -318,6 +411,24 @@ func (fc fileConfig) applyTo(s *Settings) {
 	if fc.OutputDir != nil {
 		s.Operational.OutputDir = *fc.OutputDir
 	}
+}
+
+// normaliseList trims every entry, applies fold to it, drops the empty ones and
+// keeps the first occurrence of each. The order of what remains is the order
+// the entries were given in. It returns nil for a list with nothing left, which
+// resolves exactly as the explicit empty list does.
+func normaliseList(list []string, fold func(string) string) []string {
+	var out []string
+	seen := make(map[string]bool, len(list))
+	for _, entry := range list {
+		entry = fold(strings.TrimSpace(entry))
+		if entry == "" || seen[entry] {
+			continue
+		}
+		seen[entry] = true
+		out = append(out, entry)
+	}
+	return out
 }
 
 // warnUnknownKeys reports top-level keys commitography does not recognize.
@@ -359,6 +470,12 @@ func (c Analysis) Validate() error {
 	}
 	if c.OutlierThresholdLines <= 0 {
 		return fmt.Errorf("outlier_threshold_lines must be greater than 0, got %d", c.OutlierThresholdLines)
+	}
+	if c.RecencyWindowDays <= 0 {
+		return fmt.Errorf("recency_window_days must be greater than 0, got %d", c.RecencyWindowDays)
+	}
+	if c.Year < 0 || c.Year > 9999 {
+		return fmt.Errorf("year must be 0, for no year, or a calendar year from 1 to 9999, got %d", c.Year)
 	}
 	for i, id := range c.Identities {
 		if len(id.Emails) == 0 {

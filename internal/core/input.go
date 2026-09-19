@@ -23,10 +23,6 @@ type Input struct {
 	Resolver   *identity.Resolver
 	PathFilter *filter.PathFilter
 
-	// Year, when non-zero, restricts the analysis to one calendar year of
-	// author-local activity.
-	Year int
-
 	// Progress, when set, is called as each stage begins.
 	Progress func(stage, detail string, current, total int)
 
@@ -43,7 +39,9 @@ func (in Input) Analyzed() []model.Commit {
 		if c.Excluded {
 			continue
 		}
-		if in.Year != 0 && in.Date(c).Year() != in.Year {
+		// The year is an analysis value like any other (ADR-0026 clause 1): it
+		// decides which commits are analysed, so every metric depends on it.
+		if in.Config.Year != 0 && in.Date(c).Year() != in.Config.Year {
 			continue
 		}
 		out = append(out, c)

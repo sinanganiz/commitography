@@ -79,9 +79,12 @@ type Options struct {
 	SuppliedPath string
 
 	UseMailmap bool
-	Since      string // passed through to git log --since, empty means no bound
-	Until      string // passed through to git log --until, empty means no bound
-	Context    context.Context
+	// Since and Until are passed to git log --since and --until; empty means
+	// no bound. The pipeline passes the instants ResolveDateBounds returned,
+	// so the commits read do not depend on the hour of the run.
+	Since   string
+	Until   string
+	Context context.Context
 
 	// ToolVersion is recorded in the history artifact. It is injected, never
 	// read from build metadata here (ADR-0061 clause 4).

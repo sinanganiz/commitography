@@ -124,6 +124,128 @@ identities:
 	}
 }
 
+func TestDateBoundsYearAndRecencyWindow(t *testing.T) {
+	t.Parallel()
+	dir := writeConfig(t, `
+since: "2025-01-01"
+until: 2025-12-31T00:00:00Z
+year: 2025
+recency_window_days: 14
+`)
+	s, err := load("", dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	cfg := s.Analysis
+	if cfg.Since != "2025-01-01" || cfg.Until != "2025-12-31T00:00:00Z" {
+		t.Errorf("date bounds = %q and %q, want them as written", cfg.Since, cfg.Until)
+	}
+	if cfg.Year != 2025 || cfg.RecencyWindowDays != 14 {
+		t.Errorf("year = %d and recency window = %d, want 2025 and 14", cfg.Year, cfg.RecencyWindowDays)
+	}
+	if Default().RecencyWindowDays != 30 {
+		t.Errorf("the built-in recency window is %d, and ADR-0020 clause 4 makes it 30", Default().RecencyWindowDays)
+	}
+}
+
+func TestInvalidYearAndRecencyWindowAreErrors(t *testing.T) {
+	t.Parallel()
+	for _, body := range []string{"year: -1\n", "year: 10000\n", "recency_window_days: 0\n"} {
+		if _, err := load("", writeConfig(t, body)); err == nil {
+			t.Errorf("expected an error for %q", strings.TrimSpace(body))
+		}
+	}
+}
+
+// A cardinality limit is loaded so that it can be verified against the
+// catalogue, which core does; this package only carries what was supplied.
+func TestCardinalityLimitsAreLoadedAsSupplied(t *testing.T) {
+	t.Parallel()
+	s, err := load("", writeConfig(t, "cardinality_limits:\n  coupling_pairs: 200\n"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := s.Analysis.CardinalityLimits; len(got) != 1 || got["coupling_pairs"] != 200 {
+		t.Errorf("cardinality limits = %v, want the supplied one", got)
+	}
+}
+
+// Exclusion lists are normalised as they load, which is what makes a resolved
+// list resolve to itself: feeding back a list that already holds the built-in
+// entries appends them a second time, and de-duplication removes them again.
+func TestExclusionListsResolveToThemselves(t *testing.T) {
+	t.Parallel()
+	first, err := load("", writeConfig(t, "exclude_paths:\n  - \"generated/**\"\nexclude_authors:\n  - \"Release Robot\"\n"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	body := "exclude_paths:\n"
+	for _, p := range first.Analysis.ExcludePaths {
+		body += "  - \"" + p + "\"\n"
+	}
+	body += "exclude_authors:\n"
+	for _, a := range first.Analysis.ExcludeAuthors {
+		body += "  - \"" + a + "\"\n"
+	}
+	second, err := load("", writeConfig(t, body))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !reflect.DeepEqual(first.Analysis, second.Analysis) {
+		t.Errorf("a resolved configuration did not resolve to itself:\n first  %v\n second %v",
+			first.Analysis.ExcludePaths, second.Analysis.ExcludePaths)
+	}
+	if got := first.Analysis.ExcludeAuthors[len(first.Analysis.ExcludeAuthors)-1]; got != "release robot" {
+		t.Errorf("the author entry is %q, want it lowercased, since it matches without regard to case", got)
+	}
+}
+
+func TestEmptyAndDuplicateEntriesAreDropped(t *testing.T) {
+	t.Parallel()
+	s, err := load("", writeConfig(t, "exclude_paths:\n  - \"  \"\n  - \" generated/** \"\n  - \"generated/**\"\n"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got := s.Analysis.ExcludePaths; len(got) != len(DefaultExcludePaths())+1 || got[len(got)-1] != "generated/**" {
+		t.Errorf("exclude_paths = %v, want the defaults and one trimmed entry", got[len(DefaultExcludePaths()):])
+	}
+}
+
+// The explicit parameters are the last layer (ADR-0026 clause 6).
+func TestParametersApplyOverTheFile(t *testing.T) {
+	t.Parallel()
+	countMerges := false
+	base := Default()
+	base.CountMerges = true
+	base.Since = "2020-01-01"
+	base.Year = 2020
+
+	got := Parameters{
+		Anonymize:   true,
+		CountMerges: &countMerges,
+		Since:       " 2025-01-01 ",
+		Year:        2025,
+	}.Apply(base)
+
+	if !got.Anonymize || got.CountMerges || got.Since != "2025-01-01" || got.Year != 2025 {
+		t.Errorf("parameters did not replace the file's values: %+v", got)
+	}
+	if got.Until != base.Until {
+		t.Errorf("an unset parameter changed until to %q", got.Until)
+	}
+	// A parameter that is not given leaves the file in charge, and
+	// anonymisation cannot be turned off by one.
+	unchanged := Parameters{}.Apply(base)
+	if !reflect.DeepEqual(unchanged, base) {
+		t.Errorf("the zero parameters changed the configuration: %+v", unchanged)
+	}
+	on := base
+	on.Anonymize = true
+	if !(Parameters{}).Apply(on).Anonymize {
+		t.Error("the zero parameters turned anonymisation off")
+	}
+}
+
 func TestExplicitPathReplacesRepositoryConfig(t *testing.T) {
 	t.Parallel()
 	repoDir := writeConfig(t, "outlier_threshold_lines: 111\ncount_merges: true\n")

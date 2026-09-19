@@ -82,20 +82,25 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 		return nil, core.NewUserError(core.ReasonInvalidConfiguration, opts.suppliedConfigPath(),
 			configurationRemedy, "the configuration could not be read").Wrapping(err)
 	}
-	cfg := settings.Analysis
+	// The run's explicit parameters are the last layer (ADR-0026 clause 6).
+	cfg := opts.parameters().Apply(settings.Analysis)
 	operational := settings.Operational
 	operational.AllowShallow = opts.AllowShallow
-	if opts.Anonymize {
-		cfg.Anonymize = true
-	}
-	if opts.CountMergesSet {
-		cfg.CountMerges = opts.CountMerges
-	}
 	if err := cfg.Validate(); err != nil {
 		// Validate's message names the offending setting and its value and no
 		// path, so it is the offending value itself.
 		return nil, core.NewUserError(core.ReasonInvalidConfiguration, err.Error(),
 			configurationRemedy, "the configuration carries a value the analysis cannot use")
+	}
+	// Cardinality limits are verified, never applied (ADR-0062 clause 6); the
+	// resolved plane carries the catalogue's values whatever was supplied.
+	if err := core.VerifyCardinalityLimits(cfg.CardinalityLimits); err != nil {
+		return nil, core.NewUserError(core.ReasonInvalidConfiguration, err.Error(),
+			configurationRemedy, "the configuration supplies a cardinality limit the catalogue does not define")
+	}
+	cfg.CardinalityLimits = core.LimitValues()
+	if cfg.Since, cfg.Until, err = a.collector.ResolveDateBounds(ctx, repoPath, cfg.Since, cfg.Until); err != nil {
+		return nil, err
 	}
 
 	warnings := make([]string, 0)
@@ -111,8 +116,8 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 		SuppliedPath: opts.SuppliedPath(),
 		UseMailmap:   cfg.UseMailmap,
 		ToolVersion:  opts.ToolVersion,
-		Since:        opts.Since,
-		Until:        opts.Until,
+		Since:        cfg.Since,
+		Until:        cfg.Until,
 		Context:      ctx,
 		OnWarning:    collectWarn,
 		OnProgress: func(current, total int) {
@@ -142,11 +147,17 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	filtered := filter.Apply(history.Commits, cfg, resolver, pathFilter)
 	emit.emitCount(StageFiltering, fmt.Sprintf("%d excluded", filtered.TotalCommits-filtered.AnalyzedCommits), filtered.TotalCommits-filtered.AnalyzedCommits, filtered.TotalCommits)
 
-	if opts.Year != 0 {
-		inYear := countInYear(filtered.Commits, opts.Year, cfg)
+	// The year is an analysis value, from --wrapped or from the configuration,
+	// and filters every metric. Deviation, removed by WP-0017: ADR-0008
+	// clause 2 requires Wrapped to be generated from the same report as the
+	// dashboard, so the year must stop reaching the pipeline at all. Removing
+	// it changes what callers see, which is that package's to do.
+	if cfg.Year != 0 {
+		inYear := countInYear(filtered.Commits, cfg.Year, cfg)
 		if inYear < minWrappedCommits {
-			return nil, core.NewUserError(core.ReasonYearBelowThreshold, strconv.Itoa(opts.Year),
-				fmt.Sprintf("Choose a year with at least %d analysed commits, or drop --wrapped.", minWrappedCommits),
+			return nil, core.NewUserError(core.ReasonYearBelowThreshold, strconv.Itoa(cfg.Year),
+				fmt.Sprintf("Choose a year with at least %d analysed commits, or drop --wrapped and the year setting.",
+					minWrappedCommits),
 				"the requested year has %d analysed commits and the year in review needs %d",
 				inYear, minWrappedCommits)
 		}
@@ -160,7 +171,6 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 		Filtered:    filtered,
 		Resolver:    resolver,
 		PathFilter:  pathFilter,
-		Year:        opts.Year,
 		ToolVersion: opts.ToolVersion,
 		Progress: func(stage, detail string, current, total int) {
 			mapped := StageCode
@@ -194,8 +204,8 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	}
 
 	var previousYearCommits *int
-	if opts.Year != 0 {
-		previous := countInYear(filtered.Commits, opts.Year-1, cfg)
+	if cfg.Year != 0 {
+		previous := countInYear(filtered.Commits, cfg.Year-1, cfg)
 		if previous > 0 {
 			previousYearCommits = &previous
 		}
