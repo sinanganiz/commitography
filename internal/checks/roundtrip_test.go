@@ -231,6 +231,44 @@ exclude_authors:
 	}
 }
 
+// TestConfigRoundTripWithDisabledExclusions covers the one resolved exclusion
+// list that is not a superset of the built-in one: the empty list, which
+// ADR-0026 clause 6 gives its own meaning. Feeding it back has to disable the
+// built-in list again rather than restore it.
+func TestConfigRoundTripWithDisabledExclusions(t *testing.T) {
+	t.Parallel()
+	repo := openRepository(t)
+	dir := filepath.Join(repo.root, "testdata", "fixtures", "noise")
+	if _, err := os.Stat(dir); err != nil {
+		fatal(t, 64, "the noise fixture is missing; the gates generate it with `make fixtures`")
+	}
+	path := filepath.Join(t.TempDir(), "configuration.yml")
+	if err := os.WriteFile(path, []byte("exclude_paths: []\nexclude_authors: []\n"), 0o600); err != nil {
+		fatal(t, 26, "writing a configuration: %v", err)
+	}
+	produced := analyseWith(t, pipeline.Options{RepoPath: dir, ConfigPath: path}, core.FixedClock(checkTime()))
+
+	configuration := embeddedConfiguration(t, produced)
+	for _, key := range []string{"exclude_paths", "exclude_authors"} {
+		if list, _ := configuration[key].([]any); len(list) != 0 {
+			report(t, 26, "%s resolved to %d entries, and the configuration disabled the built-in list",
+				key, len(list))
+		}
+	}
+	// The noise fixture carries the generated files the built-in list
+	// excludes, so keeping that list produces a different report. Without that
+	// difference the round trip below would hold either way.
+	withDefaults := analyseWith(t, pipeline.Options{RepoPath: dir}, core.FixedClock(checkTime()))
+	if sameInputDifference(produced, withDefaults) == "" {
+		fatal(t, 64, "disabling the built-in exclusions changed nothing in the noise fixture, so reproducing "+
+			"it would prove nothing")
+	}
+	if diff := rerun(t, dir, produced, core.FixedClock(checkTime())); diff != "" {
+		report(t, 26, "a configuration that disables the built-in exclusions is not reproduced by its own "+
+			"embedded form (- first, + second):\n%s", diff)
+	}
+}
+
 // embeddedConfigurationText returns the configuration section as text.
 func embeddedConfigurationText(t *testing.T, produced string) string {
 	t.Helper()
