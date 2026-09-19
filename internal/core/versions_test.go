@@ -30,12 +30,15 @@ func TestEverySectionCarriesAVersion(t *testing.T) {
 	t.Parallel()
 	versions := (&Report{Sections: CurrentSectionVersions()}).Versions()
 	for _, section := range reportSections() {
-		version, ok := versions.Sections[section]
+		// The local is not called version: package core declares the link-time
+		// build metadata under that name, and the package variable checker
+		// reads an assignment to it as a write to that (ADR-0061 clause 4).
+		carried, ok := versions.Sections[section]
 		if !ok {
 			t.Errorf("the section %s carries no version", section)
 			continue
 		}
-		if version.Major == 0 && version.Minor == 0 {
+		if carried.Major == 0 && carried.Minor == 0 {
 			t.Errorf("the section %s carries the zero version", section)
 		}
 	}
