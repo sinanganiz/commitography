@@ -100,6 +100,8 @@ Repository-level by default; per-contributor breakdowns are opt-in behind
 	f.StringVarP(&opts.OutputDir, "output", "o", config.DefaultOperational().OutputDir, "Output directory")
 	f.StringVarP(&opts.ConfigPath, "config", "c", "", "Explicit config file path; replaces repository-local config")
 	f.IntVar(&opts.Wrapped, "wrapped", 0, "Generate the year-in-review page for the given year")
+	// --per-author and --no-blame reach no analysis value; see the deviation
+	// recorded on pipeline.Options, which WP-0017 removes.
 	f.BoolVar(&opts.PerAuthor, "per-author", false, "Include the per-contributor section")
 	f.BoolVar(&opts.Anonymize, "anonymize", false, "Replace names with pseudonyms and drop emails")
 	f.StringVar(&opts.Since, "since", "", "Lower date bound, passed to git")

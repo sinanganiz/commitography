@@ -28,13 +28,20 @@ type Options struct {
 	Until            string
 	Year             int
 	CheckConsistency bool
-	PerAuthor        bool
-	Anonymize        bool
-	NoBlame          bool
-	AllowShallow     bool
-	CountMerges      bool
-	CountMergesSet   bool
-	OnWarning        func(string)
+	// PerAuthor and NoBlame are accepted and read by nothing. Both are
+	// deviations this package records rather than removes (WP-0010 clause 9b),
+	// because removing either changes what a caller sees; WP-0017 removes
+	// them. ADR-0020 forbids a flag to skip blame from existing at all, and
+	// ADR-0009 clause 1 makes per-contributor output something the operator
+	// always has rather than something a run turns on. Neither is a
+	// configuration value, so neither has a plane (ADR-0026 clause 1).
+	PerAuthor      bool
+	Anonymize      bool
+	NoBlame        bool
+	AllowShallow   bool
+	CountMerges    bool
+	CountMergesSet bool
+	OnWarning      func(string)
 
 	// ToolVersion is the build's version, recorded in the report's generation
 	// metadata. The command reads it at composition (ADR-0061 clause 4).

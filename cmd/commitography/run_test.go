@@ -299,6 +299,37 @@ func TestWrappedProducesItsOwnPage(t *testing.T) {
 	}
 }
 
+// An unknown configuration key warns and never fails the run (ADR-0026
+// clause 7), and the warning reaches standard error, where the command's
+// diagnostics go (ADR-0034 clause 4).
+func TestUnknownConfigurationKeyWarnsOnStandardError(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "explicit.yml")
+	if err := os.WriteFile(path, []byte("hash_emails: true\ncount_merges: true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	opts := baseOptions(t, "basic")
+	opts.outputDirSet = true
+	opts.ConfigPath = path
+	opts.Quiet = false
+
+	var stderr strings.Builder
+	env := testEnvironment()
+	env.stderr = &stderr
+	analyzer, logger := composeRun(env, opts)
+	if err := Run(opts, analyzer, logger); err != nil {
+		t.Fatalf("an unknown key failed the run: %v", err)
+	}
+	if !strings.Contains(stderr.String(), "unknown configuration key") ||
+		!strings.Contains(stderr.String(), "hash_emails") {
+		t.Errorf("standard error does not report the unknown key:\n%s", stderr.String())
+	}
+	// The recognised key beside it still applied.
+	if !strings.Contains(readAll(t, opts.OutputDir), `"count_merges": true`) {
+		t.Error("the recognised key was not applied alongside the unknown one")
+	}
+}
+
 func TestBotsAreExcludedFromOutput(t *testing.T) {
 	t.Parallel()
 	opts := baseOptions(t, "bots")
