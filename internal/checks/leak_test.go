@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/core"
+	"github.com/sinanganiz/commitography/internal/core/config"
 	"github.com/sinanganiz/commitography/internal/pipeline"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 )
@@ -179,6 +180,30 @@ func fixtureAuthors(t *testing.T, dir string) (addresses, names []string) {
 	return addresses, names
 }
 
+// personalNames returns the names of the given set that identify a person.
+//
+// Anonymised output replaces a person's name with a pseudonym (ADR-0033
+// clause 5), and the scan holds every name a history records to that rule. A
+// class pattern is not held to it: an automation account's name, and the
+// built-in exclusion entries, identify nobody, and the configuration section
+// carries them literally for that reason (ADR-0068 clause 5). Without this,
+// the bots fixture would fail the scan for carrying the exclusion list that
+// excluded its bots.
+func personalNames(names []string) []string {
+	class := map[string]bool{}
+	for _, entry := range config.DefaultExcludeAuthors() {
+		class[entry] = true
+	}
+	var out []string
+	for _, name := range names {
+		if class[strings.ToLower(strings.TrimSpace(name))] || config.IsBotIdentity(name, "") {
+			continue
+		}
+		out = append(out, name)
+	}
+	return out
+}
+
 // TestLeakScanReport applies the artifact rule to the report of every fixture,
 // which is the artifact ADR-0021 makes the product's contract, with and
 // without anonymised output.
@@ -207,7 +232,7 @@ func TestLeakScanReport(t *testing.T) {
 
 			anonymised, _ := produceWith(t, repo, fixture, true)
 			scanArtifact(t, "the anonymised report of fixture "+fixture, anonymised,
-				append(append([]string(nil), withAddresses...), names...))
+				append(append([]string(nil), withAddresses...), personalNames(names)...))
 		})
 	}
 }
@@ -477,7 +502,7 @@ func TestLeakScanAPIResponses(t *testing.T) {
 	if anonymised.Code != http.StatusOK {
 		fatal(t, 33, "fetching the anonymised report: %d %s", anonymised.Code, anonymised.Body.String())
 	}
-	scanArtifact(t, "the anonymised report response", anonymised.Body.String(), names)
+	scanArtifact(t, "the anonymised report response", anonymised.Body.String(), personalNames(names))
 	call(http.MethodDelete, anonymisedPath, "")
 }
 
@@ -506,6 +531,12 @@ func TestLeakScanRejectsALeakedPath(t *testing.T) {
 				report(t, 64, "the artifact rule accepted %s, so it cannot catch one", tc.name)
 			}
 		})
+	}
+
+	// The name rule under anonymised output keeps its teeth: what it stops
+	// holding to it is the class patterns, not a person's name.
+	if got := personalNames([]string{"Ada Lovelace", "dependabot[bot]", "snyk-bot"}); len(got) != 1 || got[0] != "Ada Lovelace" {
+		report(t, 64, "the names held to the anonymisation rule are %v, want a person's name and no class pattern", got)
 	}
 
 	// The diagnostic rule permits the supplied path and nothing else, which is

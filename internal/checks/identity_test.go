@@ -344,6 +344,7 @@ func anonymisationDifferences(plain, anonymised string) []string {
 		return []string{fmt.Sprintf("anonymising changed the number of identities from %d to %d",
 			len(plainIdentities), len(anonymisedIdentities))}
 	}
+	out = append(out, configurationDifferences(a, b)...)
 	for i := range plainIdentities {
 		p, _ := plainIdentities[i].(map[string]any)
 		q, _ := anonymisedIdentities[i].(map[string]any)
@@ -370,6 +371,41 @@ func anonymisationDifferences(plain, anonymised string) []string {
 		}
 		if len(out) == 0 {
 			out = append(out, "anonymising changed the document beyond the display names")
+		}
+	}
+	return out
+}
+
+// configurationDifferences compares the configuration section of a report with
+// that of its anonymised counterpart, and removes from both what anonymised
+// output is entitled to change, so that the caller's comparison of the rest is
+// exact.
+//
+// Anonymising changes the section in two ways and no others: it states that it
+// was anonymised, and it replaces the values that carry a person's name with
+// the pseudonyms the identities section uses (ADR-0068 clause 4). Those values
+// are the name of each identity merge and the author exclusion entries. That
+// the names are gone is not judged here; the leak scan judges it, and
+// TestConfigRoundTripAnonymisedNamesAreResolvable judges what replaces them.
+func configurationDifferences(plain, anonymised map[string]any) []string {
+	p, _ := plain["configuration"].(map[string]any)
+	q, _ := anonymised["configuration"].(map[string]any)
+	if p == nil || q == nil {
+		return []string{"a report carries no configuration section"}
+	}
+	var out []string
+	if p["anonymize"] != false || q["anonymize"] != true {
+		out = append(out, fmt.Sprintf("the configuration sections state anonymize %v and %v, want false and true",
+			p["anonymize"], q["anonymize"]))
+	}
+	for _, section := range []map[string]any{p, q} {
+		delete(section, "anonymize")
+		delete(section, "exclude_authors")
+		merges, _ := section["identities"].([]any)
+		for _, merge := range merges {
+			if entry, ok := merge.(map[string]any); ok {
+				delete(entry, "name")
+			}
 		}
 	}
 	return out
@@ -408,27 +444,28 @@ func TestIdentityAnonymisedChangesOnlyDisplayNames(t *testing.T) {
 // each fail it.
 func TestIdentityAnonymisedRejectsAChange(t *testing.T) {
 	t.Parallel()
-	const plain = `{"metadata":{"generated_at":"a"},"identities":[` +
-		`{"id":"0123456789abcdef","display_name":"Ada","commit_count":2},` +
-		`{"display_name":"3 other identities","commit_count":4,"aggregate":true}],"families":{}}`
+	// The configuration section states which analysis it describes, so the
+	// plain report's says anonymize false and the anonymised one's says true.
+	document := func(generatedAt, name string, count int, configuration, families string) string {
+		return `{"metadata":{"generated_at":"` + generatedAt + `"},` +
+			`"configuration":{"anonymize":` + configuration + `,"count_merges":false},` +
+			`"identities":[{"id":"0123456789abcdef","display_name":"` + name + `","commit_count":` +
+			fmt.Sprint(count) + `},` +
+			`{"display_name":"3 other identities","commit_count":4,"aggregate":true}],` +
+			`"families":{` + families + `}}`
+	}
+	plain := document("a", "Ada", 2, "false", "")
 	for name, anonymised := range map[string]string{
-		"a name left in place": `{"metadata":{"generated_at":"b"},"identities":[` +
-			`{"id":"0123456789abcdef","display_name":"Ada","commit_count":2},` +
-			`{"display_name":"3 other identities","commit_count":4,"aggregate":true}],"families":{}}`,
-		"a count changed": `{"metadata":{"generated_at":"b"},"identities":[` +
-			`{"id":"0123456789abcdef","display_name":"0123456789abcdef","commit_count":3},` +
-			`{"display_name":"3 other identities","commit_count":4,"aggregate":true}],"families":{}}`,
-		"a family changed": `{"metadata":{"generated_at":"b"},"identities":[` +
-			`{"id":"0123456789abcdef","display_name":"0123456789abcdef","commit_count":2},` +
-			`{"display_name":"3 other identities","commit_count":4,"aggregate":true}],"families":{"x":1}}`,
+		"a name left in place":                         document("b", "Ada", 2, "true", ""),
+		"a count changed":                              document("b", "0123456789abcdef", 3, "true", ""),
+		"a family changed":                             document("b", "0123456789abcdef", 2, "true", `"x":1`),
+		"a configuration that denies being anonymised": document("b", "0123456789abcdef", 2, "false", ""),
 	} {
 		if len(anonymisationDifferences(plain, anonymised)) == 0 {
 			report(t, 64, "the anonymisation check accepted %s, so it cannot catch one", name)
 		}
 	}
-	permitted := `{"metadata":{"generated_at":"b"},"identities":[` +
-		`{"id":"0123456789abcdef","display_name":"0123456789abcdef","commit_count":2},` +
-		`{"display_name":"3 other identities","commit_count":4,"aggregate":true}],"families":{}}`
+	permitted := document("b", "0123456789abcdef", 2, "true", "")
 	if found := anonymisationDifferences(plain, permitted); len(found) != 0 {
 		report(t, 33, "the anonymisation check refused a correct anonymised report: %v", found)
 	}

@@ -311,7 +311,22 @@ func TestBotsAreExcludedFromOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(report), "dependabot") || strings.Contains(string(report), "renovate") {
+	// The configuration section is left out: it carries the exclusion list,
+	// which names the automation accounts it excludes, and naming them there
+	// is how the report says they were excluded.
+	var document map[string]json.RawMessage
+	if err := json.Unmarshal(report, &document); err != nil {
+		t.Fatalf("reading the report: %v", err)
+	}
+	delete(document, "configuration")
+	rest, err := json.Marshal(document)
+	if err != nil {
+		t.Fatalf("encoding the report: %v", err)
+	}
+	if strings.Contains(string(rest), "dependabot") || strings.Contains(string(rest), "renovate") {
 		t.Error("a bot identity leaked into the report")
+	}
+	if !strings.Contains(string(report), "dependabot") {
+		t.Error("the configuration section does not name the accounts the analysis excluded")
 	}
 }

@@ -78,10 +78,29 @@ func TestReportSchemaRejectsMalformedReports(t *testing.T) {
 	families := func(d map[string]any) map[string]any { return d["families"].(map[string]any) }
 	family := func(d map[string]any, name string) map[string]any { return families(d)[name].(map[string]any) }
 	identity := func(d map[string]any) map[string]any { return d["identities"].([]any)[0].(map[string]any) }
+	configuration := func(d map[string]any) map[string]any { return d["configuration"].(map[string]any) }
 	cases := map[string]func(d map[string]any){
 		"the configuration section is absent": func(d map[string]any) { delete(d, "configuration") },
-		"a family is absent":                  func(d map[string]any) { delete(families(d), "static-analysis") },
-		"a top-level key is invented":         func(d map[string]any) { d["warnings"] = []any{} },
+		"the configuration section is empty":  func(d map[string]any) { d["configuration"] = map[string]any{} },
+		"an analysis value is dropped from the configuration": func(d map[string]any) {
+			delete(configuration(d), "date_source")
+		},
+		"an operational key appears in the configuration": func(d map[string]any) {
+			configuration(d)["output_dir"] = "./out"
+		},
+		"the configuration invents a date source": func(d map[string]any) {
+			configuration(d)["date_source"] = "committer_local"
+		},
+		"a cardinality limit is missing from the configuration": func(d map[string]any) {
+			delete(configuration(d)["cardinality_limits"].(map[string]any), "coupling_pairs")
+		},
+		"a configured identity carries an address": func(d map[string]any) {
+			configuration(d)["identities"] = []any{
+				map[string]any{"name": "Ada", "emails": []any{"ada@example.com"}, "email": "ada@example.com"},
+			}
+		},
+		"a family is absent":          func(d map[string]any) { delete(families(d), "static-analysis") },
+		"a top-level key is invented": func(d map[string]any) { d["warnings"] = []any{} },
 		"a skipped family carries a metric": func(d map[string]any) {
 			family(d, "ownership")["metrics"] = map[string]any{"bus_factor": 0.0}
 		},

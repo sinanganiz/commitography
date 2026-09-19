@@ -26,8 +26,10 @@ import "time"
 //	1.2  each identity's source address count and merge candidates added, and
 //	     the family status code unresolved_identity (docs/metrics.md sections
 //	     13 and 14)
+//	1.3  the configuration section filled with the resolved analysis
+//	     configuration (ADR-0026 clause 2)
 func DocumentVersion() Version {
-	return Version{Major: 1, Minor: 2}
+	return Version{Major: 1, Minor: 3}
 }
 
 // Report is the complete analysis artifact: one repository, at one commit,
@@ -37,8 +39,10 @@ type Report struct {
 	// Metadata is the one section whose values differ between two runs over
 	// the same commit and configuration. Comparison tooling excludes it by
 	// path.
-	Metadata      Metadata      `json:"metadata"`
-	Repository    Repository    `json:"repository"`
+	Metadata   Metadata   `json:"metadata"`
+	Repository Repository `json:"repository"`
+	// Configuration is the resolved analysis configuration the report was
+	// produced under (ADR-0026 clause 2). configuration.go defines it.
 	Configuration Configuration `json:"configuration"`
 	// Identities is the list of resolved contributors a reader selects from
 	// (ADR-0010 clause 2). It is a reference section, not a family.
@@ -59,11 +63,6 @@ type Repository struct {
 	Name   string `json:"name"`
 	Commit string `json:"commit"`
 }
-
-// Configuration is the section that carries the resolved analysis
-// configuration the report was produced under. Its place is fixed here and
-// its absence from a report is a schema violation; WP-0010 fills it.
-type Configuration struct{}
 
 // IdentityEntry is one entry of the identities section, docs/metrics.md
 // section 14: a resolved contributor the reader can select (ADR-0010

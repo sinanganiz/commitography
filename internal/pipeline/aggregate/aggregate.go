@@ -53,6 +53,11 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 		},
 		Identities: buildIdentities(in, analyzed),
 	}
+	// The configuration section is written after the identities section,
+	// because anonymised output writes an identity's pseudonym in place of a
+	// configured name, and a pseudonym only means something where the reader
+	// can see the entry it names (ADR-0068 clause 4).
+	r.Configuration = core.EmbedConfiguration(in.Config, in.Resolver, r.Identities)
 	f := &r.Families
 
 	progress(in, "metrics", "temporal", 0, 0)

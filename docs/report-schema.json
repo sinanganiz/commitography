@@ -71,9 +71,84 @@
     "configuration": {
       "type": "object",
       "additionalProperties": false,
-      "description": "The resolved analysis configuration the report was produced under. Required; filled by WP-0010.",
-      "required": [],
-      "properties": {}
+      "description": "The fully resolved analysis configuration the report was produced under (ADR-0026 clauses 2 and 3): the resolved result only, with no layer and no precedence. Its keys are the analysis plane's keys, so it is a configuration file: passing it back to the command reproduces this report outside the metadata section (clause 4). No operational value appears here, and every value that identifies a person is a reference rather than a raw address (ADR-0068). Filled in document version 1.3.",
+      "required": [
+        "identities",
+        "exclude_authors",
+        "exclude_paths",
+        "outlier_threshold_lines",
+        "count_merges",
+        "date_source",
+        "use_mailmap",
+        "anonymize",
+        "since",
+        "until",
+        "year",
+        "recency_window_days",
+        "cardinality_limits"
+      ],
+      "properties": {
+        "identities": {
+          "type": "array",
+          "description": "The identity merges the analysis applied. Each address is the identity digest that refers to it (ADR-0068 clause 2).",
+          "items": {
+            "$ref": "#/$defs/configuredIdentity"
+          }
+        },
+        "exclude_authors": {
+          "type": "array",
+          "description": "The resolved author exclusion list: the built-in entries and those the configuration added, in order. An entry is a name, a class pattern such as a bot name suffix, or an identity reference; under anonymised output a name that excluded a person is written as a reference to that identity (ADR-0068 clauses 4 and 5).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude_paths": {
+          "type": "array",
+          "description": "The resolved path exclusion list, in order.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "outlier_threshold_lines": {
+          "type": "integer",
+          "description": "Effective lines above which a commit is bulk (docs/metrics.md section 1)."
+        },
+        "count_merges": {
+          "type": "boolean"
+        },
+        "date_source": {
+          "type": "string",
+          "enum": [
+            "author",
+            "committer"
+          ]
+        },
+        "use_mailmap": {
+          "type": "boolean"
+        },
+        "anonymize": {
+          "type": "boolean"
+        },
+        "since": {
+          "type": "string",
+          "description": "The instant git resolved the lower date bound to, in RFC 3339, or empty for no bound. The instant is recorded rather than the expression: git completes a bare date with the current time of day, so the expression would select different commits at another hour."
+        },
+        "until": {
+          "type": "string",
+          "description": "The instant git resolved the upper date bound to, in RFC 3339, or empty for no bound."
+        },
+        "year": {
+          "type": "integer",
+          "description": "The calendar year the analysis was restricted to, or 0 for the whole history."
+        },
+        "recency_window_days": {
+          "type": "integer",
+          "description": "The work-type recency window (docs/metrics.md section 1)."
+        },
+        "cardinality_limits": {
+          "$ref": "#/$defs/cardinalityLimits"
+        }
+      }
     },
     "identities": {
       "type": "array",
@@ -552,6 +627,80 @@
     }
   },
   "$defs": {
+    "configuredIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One identity merge, as the configuration section carries it.",
+      "required": [
+        "emails"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name the configuration gave the identity, or, under anonymised output, the pseudonym the identities section uses for it. Absent where the configured name carries an address, and where anonymised output has no entry a reader could resolve the pseudonym against (ADR-0068 clause 4)."
+        },
+        "emails": {
+          "type": "array",
+          "description": "The identity's addresses, each as the digest that refers to it. The first is the canonical one, which is the identity's id in the identities section.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "cardinalityLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The cardinality limits the report was produced under, by name. They belong to the analysis plane, so a report states them and they enter the cache key (ADR-0053 clause 6), and docs/metrics.md section 12 is their only definition: a configuration that supplies one is verified against it, never applied (ADR-0062 clause 6).",
+      "required": [
+        "identities",
+        "most_modified_files",
+        "extensions",
+        "directory_activity_entries",
+        "coupling_pairs",
+        "coupling_graph_nodes",
+        "coupling_graph_edges",
+        "identities_per_directory",
+        "hotspot_entries",
+        "churn_files",
+        "bulk_commits_listed"
+      ],
+      "properties": {
+        "identities": {
+          "type": "integer"
+        },
+        "most_modified_files": {
+          "type": "integer"
+        },
+        "extensions": {
+          "type": "integer"
+        },
+        "directory_activity_entries": {
+          "type": "integer"
+        },
+        "coupling_pairs": {
+          "type": "integer"
+        },
+        "coupling_graph_nodes": {
+          "type": "integer"
+        },
+        "coupling_graph_edges": {
+          "type": "integer"
+        },
+        "identities_per_directory": {
+          "type": "integer"
+        },
+        "hotspot_entries": {
+          "type": "integer"
+        },
+        "churn_files": {
+          "type": "integer"
+        },
+        "bulk_commits_listed": {
+          "type": "integer"
+        }
+      }
+    },
     "version": {
       "type": "object",
       "additionalProperties": false,
