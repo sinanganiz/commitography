@@ -325,7 +325,8 @@ clause 2):
 `cardinality_limit`, `low_classification_confidence`, `shallow_clone`,
 `limit_reached_commits`, `limit_reached_size`, `limit_reached_duration`,
 `limit_reached_memory`, `symlink_escaped_root`, `capability_unavailable_in_mode`,
-`external_service_unavailable`, `binary_file_skipped`, `history_rewritten`.
+`external_service_unavailable`, `binary_file_skipped`, `history_rewritten`,
+`unresolved_identity`.
 
 User error codes, carried by an error that refuses a run or a request
 (ADR-0041 clause 2):

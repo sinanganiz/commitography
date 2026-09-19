@@ -155,3 +155,60 @@ func TestIdentitiesOverNoCommitIsAnEmptyList(t *testing.T) {
 		t.Errorf("identities over no commit encode as %s (%v), want []", encoded, err)
 	}
 }
+
+func TestAnUnresolvableAuthorDegradesTheIdentityAttributedFamilies(t *testing.T) {
+	t.Parallel()
+	cfg := config.Default()
+	commits := []model.Commit{authored("Ada", "ada@example.com", 1), authored("Nobody", "  ", 2)}
+	resolver := identity.NewResolver(cfg, commits)
+	for i := range commits {
+		commits[i].IdentityID = resolver.Resolve(commits[i].AuthorName, commits[i].AuthorEmail)
+	}
+	in := core.Input{Config: cfg, Resolver: resolver}
+	if !unresolvedAuthor(in, commits) {
+		t.Fatal("a commit carrying no address was treated as resolved")
+	}
+	if unresolvedAuthor(in, commits[:1]) {
+		t.Fatal("a commit carrying an address was treated as unresolved")
+	}
+
+	// The identity-attributed families are computed here, as they will be
+	// once their packages exist, so the degradation can be observed.
+	var f core.Families
+	f.Temporal = core.Computed(core.Version{Major: 1}, core.TemporalMetrics{})
+	f.Ownership = core.Computed(core.Version{Major: 1}, core.OwnershipMetrics{})
+	f.Worktype = core.Computed(core.Version{Major: 1}, core.WorktypeMetrics{})
+	f.AIArchaeology = core.Skipped[core.AIArchaeologyMetrics](core.Version{}, core.ReasonNotImplemented)
+	degradeIdentityAttributed(&f)
+
+	for name, got := range map[string]struct {
+		status  core.Status
+		reasons []core.Reason
+	}{
+		"ownership": {f.Ownership.Status, f.Ownership.Reasons},
+		"worktype":  {f.Worktype.Status, f.Worktype.Reasons},
+	} {
+		if got.status != core.StatusDegraded || len(got.reasons) != 1 || got.reasons[0] != core.ReasonUnresolvedIdentity {
+			t.Errorf("%s = %s %v, want degraded with unresolved_identity", name, got.status, got.reasons)
+		}
+	}
+	if f.Ownership.Confidence != core.ConfidenceLow {
+		t.Errorf("ownership confidence = %q, want low", f.Ownership.Confidence)
+	}
+	if f.Temporal.Status != core.StatusOK {
+		t.Errorf("temporal attributes nothing to identities, but became %s", f.Temporal.Status)
+	}
+	if f.AIArchaeology.Status != core.StatusSkipped {
+		t.Errorf("a skipped family became %s", f.AIArchaeology.Status)
+	}
+
+	// The unresolved author is not dropped from the identities section.
+	got := buildIdentities(in, commits)
+	total := 0
+	for _, e := range got {
+		total += e.CommitCount
+	}
+	if total != len(commits) {
+		t.Errorf("the identities section counts %d commits of %d", total, len(commits))
+	}
+}

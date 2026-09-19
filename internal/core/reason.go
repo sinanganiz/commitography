@@ -36,6 +36,7 @@ const (
 	ReasonExternalServiceUnavailable  Reason = "external_service_unavailable"
 	ReasonBinaryFileSkipped           Reason = "binary_file_skipped"
 	ReasonHistoryRewritten            Reason = "history_rewritten"
+	ReasonUnresolvedIdentity          Reason = "unresolved_identity"
 )
 
 // User error codes, carried by an error that refuses a run or a request
@@ -77,6 +78,7 @@ func Reasons() []Reason {
 		ReasonExternalServiceUnavailable,
 		ReasonBinaryFileSkipped,
 		ReasonHistoryRewritten,
+		ReasonUnresolvedIdentity,
 		ReasonInvalidInvocation,
 		ReasonInvalidConfiguration,
 		ReasonGitUnavailable,

@@ -588,7 +588,8 @@
           "capability_unavailable_in_mode",
           "external_service_unavailable",
           "binary_file_skipped",
-          "history_rewritten"
+          "history_rewritten",
+          "unresolved_identity"
         ]
       }
     },

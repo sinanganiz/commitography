@@ -130,3 +130,32 @@ func displayName(in core.Input, id string, address *regexp.Regexp) string {
 	}
 	return resolved.DisplayName
 }
+
+// unresolvedAuthor reports whether any analysed commit's author could not be
+// resolved into an identity: its commit carries no address, so neither
+// .mailmap nor configuration can place it, and it cannot be told apart from
+// any other such author.
+func unresolvedAuthor(in core.Input, analyzed []model.Commit) bool {
+	if in.Resolver == nil {
+		return false
+	}
+	for _, c := range analyzed {
+		if resolved, ok := in.Resolver.Lookup(c.IdentityID); !ok || !resolved.Resolved() {
+			return true
+		}
+	}
+	return false
+}
+
+// degradeIdentityAttributed marks degraded, with reason unresolved_identity,
+// every family whose values are attributed to identities: ownership's lines by
+// identity and bus factor, worktype's editor-by-owner breakdown, and
+// ai-archaeology's identity ratio (docs/metrics.md sections 7 to 9). The
+// commits of an unresolved author are counted, so the values present may be
+// attributed wrongly, which is low confidence (ADR-0032 clause 2). A family
+// that is skipped stays skipped: it computed nothing to distrust.
+func degradeIdentityAttributed(f *core.Families) {
+	f.Ownership.Degrade(core.ReasonUnresolvedIdentity, core.ConfidenceLow)
+	f.Worktype.Degrade(core.ReasonUnresolvedIdentity, core.ConfidenceLow)
+	f.AIArchaeology.Degrade(core.ReasonUnresolvedIdentity, core.ConfidenceLow)
+}

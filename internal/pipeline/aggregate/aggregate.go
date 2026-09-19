@@ -85,6 +85,13 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 	f.AIArchaeology = core.Skipped[core.AIArchaeologyMetrics](core.Version{}, core.ReasonNotImplemented)
 	f.StaticAnalysis = core.Skipped[core.StaticAnalysisMetrics](core.Version{}, core.ReasonNotImplemented)
 
+	// An author that cannot be resolved into an identity is neither dropped
+	// nor split: every family attributing values to identities is marked
+	// degraded instead (ADR-0032, docs/metrics.md section 13).
+	if unresolvedAuthor(in, analyzed) {
+		degradeIdentityAttributed(f)
+	}
+
 	// An analysis the operator let proceed on a shallow clone has computed
 	// every family over an incomplete history (docs/metrics.md section 13).
 	if in.Repository.IsShallow {
