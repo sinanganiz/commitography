@@ -27,7 +27,10 @@ import (
 //     identity.Address, in an unexported field, and has no marshalling path
 //     (TestIdentityRawAddressUnserialisable);
 //   - clause 4: the same address has the same digest in two different
-//     repositories (TestIdentityDigestAcrossFixtures).
+//     repositories (TestIdentityDigestAcrossFixtures);
+//   - clause 5: anonymised output replaces every display name with the
+//     identity's id, its stable pseudonym, and changes nothing else
+//     (TestIdentityAnonymisedChangesOnlyDisplayNames).
 //
 // The artifacts themselves are scanned by the leak scan in leak_test.go.
 //
@@ -319,5 +322,114 @@ func TestIdentityDigestAcrossFixtures(t *testing.T) {
 	}
 	if seen["basic"] == seen["merges"] {
 		fatal(t, 64, "the two fixtures analysed the same commit, so they are not two repositories")
+	}
+}
+
+// anonymisationDifferences compares a report with its anonymised counterpart
+// under ADR-0033 clause 5: every individual identity's display name is
+// replaced by its id, the stable pseudonym, and nothing else in the document
+// differs, the aggregate entry's name included.
+func anonymisationDifferences(plain, anonymised string) []string {
+	var a, b map[string]any
+	if err := json.Unmarshal([]byte(plain), &a); err != nil {
+		return []string{"the report is not JSON: " + err.Error()}
+	}
+	if err := json.Unmarshal([]byte(anonymised), &b); err != nil {
+		return []string{"the anonymised report is not JSON: " + err.Error()}
+	}
+	var out []string
+	plainIdentities, _ := a["identities"].([]any)
+	anonymisedIdentities, _ := b["identities"].([]any)
+	if len(plainIdentities) != len(anonymisedIdentities) {
+		return []string{fmt.Sprintf("anonymising changed the number of identities from %d to %d",
+			len(plainIdentities), len(anonymisedIdentities))}
+	}
+	for i := range plainIdentities {
+		p, _ := plainIdentities[i].(map[string]any)
+		q, _ := anonymisedIdentities[i].(map[string]any)
+		if p == nil || q == nil {
+			return []string{fmt.Sprintf("identity %d is not an object", i)}
+		}
+		if q["aggregate"] != true {
+			if q["display_name"] != q["id"] {
+				out = append(out, fmt.Sprintf("identity %d is named %v under anonymised output, not its id %v",
+					i, q["display_name"], q["id"]))
+			}
+			// The names are compared through the pseudonym, so what remains is
+			// everything else.
+			p["display_name"], q["display_name"] = nil, nil
+		}
+	}
+	delete(a, "metadata")
+	delete(b, "metadata")
+	if !reflect.DeepEqual(a, b) {
+		for key := range a {
+			if !reflect.DeepEqual(a[key], b[key]) {
+				out = append(out, "anonymising changed "+key+", which carries no display name")
+			}
+		}
+		if len(out) == 0 {
+			out = append(out, "anonymising changed the document beyond the display names")
+		}
+	}
+	return out
+}
+
+// TestIdentityAnonymisedChangesOnlyDisplayNames applies anonymisationDifferences
+// to every fixture's report.
+func TestIdentityAnonymisedChangesOnlyDisplayNames(t *testing.T) {
+	t.Parallel()
+	repo := openRepository(t)
+	fixtures := generatedFixtures(t, repo)
+	compared := 0
+	for _, fixture := range fixtures {
+		plain, refused := produce(t, repo, fixture)
+		if refused {
+			continue
+		}
+		anonymised, _ := produceWith(t, repo, fixture, true)
+		compared++
+		for _, difference := range anonymisationDifferences(plain, anonymised) {
+			report(t, 33, "fixture %s: %s; anonymised output replaces display names with stable pseudonyms "+
+				"and changes nothing else (clause 5)", fixture, difference)
+		}
+		if plain == anonymised && strings.Contains(plain, `"display_name"`) {
+			report(t, 33, "fixture %s: anonymised output is identical to the plain report, so no name was replaced",
+				fixture)
+		}
+	}
+	if compared == 0 {
+		fatal(t, 64, "no fixture produced a report, so anonymised output was not compared")
+	}
+}
+
+// TestIdentityAnonymisedRejectsAChange is the failure demonstration for the
+// check above: a name left in place, and a value other than a name changed,
+// each fail it.
+func TestIdentityAnonymisedRejectsAChange(t *testing.T) {
+	t.Parallel()
+	const plain = `{"metadata":{"generated_at":"a"},"identities":[` +
+		`{"id":"0123456789abcdef","display_name":"Ada","commit_count":2},` +
+		`{"display_name":"3 other identities","commit_count":4,"aggregate":true}],"families":{}}`
+	for name, anonymised := range map[string]string{
+		"a name left in place": `{"metadata":{"generated_at":"b"},"identities":[` +
+			`{"id":"0123456789abcdef","display_name":"Ada","commit_count":2},` +
+			`{"display_name":"3 other identities","commit_count":4,"aggregate":true}],"families":{}}`,
+		"a count changed": `{"metadata":{"generated_at":"b"},"identities":[` +
+			`{"id":"0123456789abcdef","display_name":"0123456789abcdef","commit_count":3},` +
+			`{"display_name":"3 other identities","commit_count":4,"aggregate":true}],"families":{}}`,
+		"a family changed": `{"metadata":{"generated_at":"b"},"identities":[` +
+			`{"id":"0123456789abcdef","display_name":"0123456789abcdef","commit_count":2},` +
+			`{"display_name":"3 other identities","commit_count":4,"aggregate":true}],"families":{"x":1}}`,
+	} {
+		if len(anonymisationDifferences(plain, anonymised)) == 0 {
+			report(t, 64, "the anonymisation check accepted %s, so it cannot catch one", name)
+		}
+	}
+	permitted := `{"metadata":{"generated_at":"b"},"identities":[` +
+		`{"id":"0123456789abcdef","display_name":"0123456789abcdef","commit_count":2},` +
+		`{"display_name":"3 other identities","commit_count":4,"aggregate":true}],"families":{}}`
+	if found := anonymisationDifferences(plain, permitted); len(found) != 0 {
+		report(t, 33, "the anonymisation check refused a correct anonymised report: %v", found)
 	}
 }

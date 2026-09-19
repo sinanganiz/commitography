@@ -16,6 +16,7 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/pipeline"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 )
 
 // The leak scan (ADR-0063 table 2), applying ADR-0067 clause 6: one scan, two
@@ -39,6 +40,15 @@ import (
 // writes (TestLeakScanLog). The command's stage names are its own words and
 // carry no value from the run; the lines it adds that do are the output path,
 // which the log test drives in the form the operator types.
+//
+// Beside the generic shapes, every scan of an analysis forbids the exact
+// addresses the analysed history records, before and after .mailmap
+// (fixtureAuthors). An address the email pattern does not recognise, such as
+// one without a dotted domain, is still an address the artifact must not
+// carry. The report and the API are scanned under anonymised output too, where
+// the author names the history records are forbidden as well (ADR-0033
+// clause 5). Exported images do not exist yet; WP-0057 brings them under this
+// scan.
 
 // machineValues are the strings that identify this machine: the roots the run
 // works under, the operator's home, the temporary directory, and the host's
@@ -139,8 +149,39 @@ func scanDiagnostic(t *testing.T, what, content string, supplied []string, forbi
 	}
 }
 
+// fixtureAuthors returns what a fixture's history records about its authors:
+// every address, before and after .mailmap, and every name. These are the raw
+// identities of ADR-0033 clause 1, which no artifact carries; the names are
+// forbidden only where anonymised output was requested. Values shorter than
+// four characters are left out, because they would match unrelated text. A
+// fixture whose history cannot be read, such as one with no commit, records
+// nothing, and a caller that needs a value checks for one.
+func fixtureAuthors(t *testing.T, dir string) (addresses, names []string) {
+	t.Helper()
+	history, err := newCollector().Collect(collect.Options{RepoPath: dir, UseMailmap: true})
+	if err != nil {
+		return nil, nil
+	}
+	seen := map[string]bool{}
+	add := func(list *[]string, value string) {
+		for _, form := range []string{strings.TrimSpace(value), strings.ToLower(strings.TrimSpace(value))} {
+			if len(form) >= 4 && !seen[form] {
+				seen[form] = true
+				*list = append(*list, form)
+			}
+		}
+	}
+	for _, c := range history.Commits {
+		add(&addresses, c.AuthorEmail)
+		add(&addresses, c.AuthorSourceEmail)
+		add(&names, c.AuthorName)
+	}
+	return addresses, names
+}
+
 // TestLeakScanReport applies the artifact rule to the report of every fixture,
-// which is the artifact ADR-0021 makes the product's contract.
+// which is the artifact ADR-0021 makes the product's contract, with and
+// without anonymised output.
 func TestLeakScanReport(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
@@ -157,7 +198,16 @@ func TestLeakScanReport(t *testing.T) {
 				// judges it under the other rule.
 				return
 			}
-			scanArtifact(t, "the report of fixture "+fixture, content, forbidden)
+			addresses, names := fixtureAuthors(t, filepath.Join(repo.root, "testdata", "fixtures", fixture))
+			if len(addresses) == 0 {
+				fatal(t, 64, "the history of fixture %s records no address, so the scan for one proves nothing", fixture)
+			}
+			withAddresses := append(append([]string(nil), forbidden...), addresses...)
+			scanArtifact(t, "the report of fixture "+fixture, content, withAddresses)
+
+			anonymised, _ := produceWith(t, repo, fixture, true)
+			scanArtifact(t, "the anonymised report of fixture "+fixture, anonymised,
+				append(append([]string(nil), withAddresses...), names...))
 		})
 	}
 }
@@ -267,6 +317,8 @@ func TestLeakScanLog(t *testing.T) {
 	for _, fixture := range fixtures {
 		t.Run(fixture, func(t *testing.T) {
 			supplied := filepath.Join("..", "..", "testdata", "fixtures", fixture)
+			addresses, _ := fixtureAuthors(t, filepath.Join(repo.root, "testdata", "fixtures", fixture))
+			forbidden := append(append([]string(nil), forbidden...), addresses...)
 			var log bytes.Buffer
 			logger := core.NewLogger(&log, core.FixedClock(checkTime()), core.LoggerOptions{Verbose: true})
 			_, err := newAnalyzer().Run(context.Background(), pipeline.Options{
@@ -300,7 +352,11 @@ func TestLeakScanAPIResponses(t *testing.T) {
 		fatal(t, 64, "the basic fixture is missing; the gates generate it with `make fixtures`")
 	}
 	outside := t.TempDir()
-	forbidden := machineValues(t, repo, outside)
+	addresses, names := fixtureAuthors(t, filepath.Join(root, "basic"))
+	if len(addresses) == 0 || len(names) == 0 {
+		fatal(t, 64, "the history of the basic fixture records no author, so the scan for one proves nothing")
+	}
+	forbidden := append(machineValues(t, repo, outside), addresses...)
 
 	app, err := newApp([]string{root})
 	if err != nil {
@@ -361,49 +417,68 @@ func TestLeakScanAPIResponses(t *testing.T) {
 
 	// A successful analysis, its status polled to a terminal state, and its
 	// report: the largest responses and the ones carrying analysis output.
-	body, err := json.Marshal(map[string]any{"repoPath": filepath.Join(root, "basic")})
-	if err != nil {
-		fatal(t, 67, "encoding a request: %v", err)
-	}
-	created := call(http.MethodPost, "/api/v1/jobs", string(body))
-	if created.Code != http.StatusAccepted {
-		fatal(t, 67, "starting an analysis of the basic fixture: %d %s", created.Code, created.Body.String())
-	}
-	var start struct{ ID string }
-	if err := json.Unmarshal(created.Body.Bytes(), &start); err != nil || start.ID == "" {
-		fatal(t, 67, "reading the created job's identifier: %v", err)
-	}
+	// It returns the job's path once the analysis has succeeded.
+	analyse := func(request map[string]any) string {
+		t.Helper()
+		body, err := json.Marshal(request)
+		if err != nil {
+			fatal(t, 67, "encoding a request: %v", err)
+		}
+		created := call(http.MethodPost, "/api/v1/jobs", string(body))
+		if created.Code != http.StatusAccepted {
+			fatal(t, 67, "starting an analysis of the basic fixture: %d %s", created.Code, created.Body.String())
+		}
+		var start struct{ ID string }
+		if err := json.Unmarshal(created.Body.Bytes(), &start); err != nil || start.ID == "" {
+			fatal(t, 67, "reading the created job's identifier: %v", err)
+		}
 
-	// The poll is bounded by a count rather than by a deadline, so that the
-	// checker reads no clock (ADR-0042) and needs no exclusion for doing so.
-	const (
-		pollInterval = 50 * time.Millisecond
-		maxPolls     = 1200
-	)
-	statusPath := "/api/v1/jobs/" + start.ID
-	for poll := 0; ; poll++ {
-		response := call(http.MethodGet, statusPath, "")
-		var status struct {
-			Status string `json:"status"`
-		}
-		if err := json.Unmarshal(response.Body.Bytes(), &status); err != nil {
-			fatal(t, 67, "reading the job status: %v", err)
-		}
-		if status.Status != "queued" && status.Status != "running" {
-			if status.Status != "succeeded" {
-				fatal(t, 67, "the analysis of the basic fixture ended %s: %s", status.Status, response.Body.String())
+		// The poll is bounded by a count rather than by a deadline, so that
+		// the checker reads no clock (ADR-0042) and needs no exclusion for
+		// doing so.
+		const (
+			pollInterval = 50 * time.Millisecond
+			maxPolls     = 1200
+		)
+		statusPath := "/api/v1/jobs/" + start.ID
+		for poll := 0; ; poll++ {
+			response := call(http.MethodGet, statusPath, "")
+			var status struct {
+				Status string `json:"status"`
 			}
-			break
+			if err := json.Unmarshal(response.Body.Bytes(), &status); err != nil {
+				fatal(t, 67, "reading the job status: %v", err)
+			}
+			if status.Status != "queued" && status.Status != "running" {
+				if status.Status != "succeeded" {
+					fatal(t, 67, "the analysis of the basic fixture ended %s: %s", status.Status, response.Body.String())
+				}
+				return statusPath
+			}
+			if poll == maxPolls {
+				fatal(t, 67, "the analysis of the basic fixture did not finish within %d polls", maxPolls)
+			}
+			time.Sleep(pollInterval)
 		}
-		if poll == maxPolls {
-			fatal(t, 67, "the analysis of the basic fixture did not finish within %d polls", maxPolls)
-		}
-		time.Sleep(pollInterval)
 	}
 
+	statusPath := analyse(map[string]any{"repoPath": filepath.Join(root, "basic")})
 	call(http.MethodGet, statusPath+"/report", "")
 	call(http.MethodPost, statusPath+"/cancel", "")
 	call(http.MethodDelete, statusPath, "")
+
+	// The same analysis with anonymised output, whose report must not carry
+	// the names the history records either (ADR-0033 clause 5).
+	anonymisedPath := analyse(map[string]any{
+		"repoPath": filepath.Join(root, "basic"),
+		"options":  map[string]any{"anonymize": true},
+	})
+	anonymised := call(http.MethodGet, anonymisedPath+"/report", "")
+	if anonymised.Code != http.StatusOK {
+		fatal(t, 33, "fetching the anonymised report: %d %s", anonymised.Code, anonymised.Body.String())
+	}
+	scanArtifact(t, "the anonymised report response", anonymised.Body.String(), names)
+	call(http.MethodDelete, anonymisedPath, "")
 }
 
 // TestLeakScanRejectsALeakedPath is the failure demonstration ADR-0064
