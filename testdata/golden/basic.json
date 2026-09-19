@@ -1,7 +1,7 @@
 {
   "document_version": {
     "major": 1,
-    "minor": 0
+    "minor": 1
   },
   "metadata": {
     "generated_at": "<generated-at>",
@@ -12,6 +12,36 @@
     "commit": "3e75c9c7359e3e5f996743ec8943dffa09411104"
   },
   "configuration": {},
+  "identities": [
+    {
+      "id": "b5fc85e55755f9e0",
+      "display_name": "Ada Lovelace",
+      "first_commit_date": "2025-10-01",
+      "last_commit_date": "2026-02-22",
+      "commit_count": 13
+    },
+    {
+      "id": "b533d4547eaa5a0f",
+      "display_name": "Grace Hopper",
+      "first_commit_date": "2025-10-04",
+      "last_commit_date": "2026-02-25",
+      "commit_count": 13
+    },
+    {
+      "id": "edc27572d82acf1c",
+      "display_name": "Ada L.",
+      "first_commit_date": "2025-10-07",
+      "last_commit_date": "2026-02-16",
+      "commit_count": 12
+    },
+    {
+      "id": "61356ceff7537431",
+      "display_name": "Alan Turing",
+      "first_commit_date": "2025-10-10",
+      "last_commit_date": "2026-02-18",
+      "commit_count": 12
+    }
+  ],
   "families": {
     "temporal": {
       "version": {

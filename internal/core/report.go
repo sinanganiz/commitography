@@ -16,11 +16,15 @@ package core
 import "time"
 
 // DocumentVersion is the version of the report's structure: its top-level
-// shape, status fields and metadata section (ADR-0031 clause 1). A minor
-// increment is additive only; within a major version no field is removed and
-// no field's meaning changes.
+// shape, identity representation, status fields and metadata section
+// (ADR-0031 clause 1). A minor increment is additive only; within a major
+// version no field is removed and no field's meaning changes.
+//
+//	1.0  the document docs/metrics.md defines
+//	1.1  the identities section added, representing an identity by its digest
+//	     and display name (docs/metrics.md section 14)
 func DocumentVersion() Version {
-	return Version{Major: 1, Minor: 0}
+	return Version{Major: 1, Minor: 1}
 }
 
 // Report is the complete analysis artifact: one repository, at one commit,
@@ -33,7 +37,10 @@ type Report struct {
 	Metadata      Metadata      `json:"metadata"`
 	Repository    Repository    `json:"repository"`
 	Configuration Configuration `json:"configuration"`
-	Families      Families      `json:"families"`
+	// Identities is the list of resolved contributors a reader selects from
+	// (ADR-0010 clause 2). It is a reference section, not a family.
+	Identities []IdentityEntry `json:"identities"`
+	Families   Families        `json:"families"`
 }
 
 // Metadata holds the generation values that legitimately vary: when the

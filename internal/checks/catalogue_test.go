@@ -270,8 +270,9 @@ func TestMetricCatalogueRejectsAnInventedMetric(t *testing.T) {
 	}
 }
 
-// TestMetricCatalogueIdentities requires the identities entry's fields to be
-// exactly those section 14 defines.
+// TestMetricCatalogueIdentities requires the identities section to be a
+// top-level section of the report and not a family, and its entry's fields to
+// be exactly those section 14 defines.
 func TestMetricCatalogueIdentities(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
@@ -281,6 +282,19 @@ func TestMetricCatalogueIdentities(t *testing.T) {
 	}
 	for _, v := range entryViolations(reflect.TypeOf(core.IdentityEntry{}), fields) {
 		report(t, 62, "%s", v)
+	}
+
+	top, ok := reflect.TypeOf(core.Report{}).FieldByName("Identities")
+	if !ok || jsonName(top) != "identities" || top.Type != reflect.TypeOf([]core.IdentityEntry{}) {
+		report(t, 10, "the report type has no top-level identities section of entries, so no reader can "+
+			"select from the resolved contributors")
+	}
+	families := reflect.TypeOf(core.Families{})
+	for i := 0; i < families.NumField(); i++ {
+		if jsonName(families.Field(i)) == "identities" {
+			report(t, 24, "the report type carries identities as a family; %s clause 5 fixes the family set "+
+				"and it is not in it", familyRecord)
+		}
 	}
 }
 

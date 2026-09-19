@@ -19,3 +19,14 @@ func TestHashEmailIsStableAndCaseInsensitive(t *testing.T) {
 		t.Error("an empty address should hash to nothing")
 	}
 }
+
+func TestIdentityDigestGivesEveryIdentityAnID(t *testing.T) {
+	t.Parallel()
+	if IdentityDigest("ada@example.com") != HashEmail("ada@example.com") {
+		t.Error("an identity with an address is not identified by the address's digest")
+	}
+	// The SHA-256 of the empty string, truncated.
+	if got := IdentityDigest(""); got != "e3b0c44298fc1c14" {
+		t.Errorf("IdentityDigest(\"\") = %q, want the digest of the empty address", got)
+	}
+}

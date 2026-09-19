@@ -77,6 +77,7 @@ func TestReportSchemaRejectsMalformedReports(t *testing.T) {
 
 	families := func(d map[string]any) map[string]any { return d["families"].(map[string]any) }
 	family := func(d map[string]any, name string) map[string]any { return families(d)[name].(map[string]any) }
+	identity := func(d map[string]any) map[string]any { return d["identities"].([]any)[0].(map[string]any) }
 	cases := map[string]func(d map[string]any){
 		"the configuration section is absent": func(d map[string]any) { delete(d, "configuration") },
 		"a family is absent":                  func(d map[string]any) { delete(families(d), "static-analysis") },
@@ -98,7 +99,18 @@ func TestReportSchemaRejectsMalformedReports(t *testing.T) {
 		"a metric is invented": func(d map[string]any) {
 			family(d, "temporal")["metrics"].(map[string]any)["hour_weekday_grid"] = []any{}
 		},
-		"the family version is absent": func(d map[string]any) { delete(family(d, "files"), "version") },
+		"the family version is absent":     func(d map[string]any) { delete(family(d, "files"), "version") },
+		"the identities section is absent": func(d map[string]any) { delete(d, "identities") },
+		"identities are placed as a family": func(d map[string]any) {
+			families(d)["identities"] = d["identities"]
+		},
+		"an identity carries an address": func(d map[string]any) {
+			identity(d)["email"] = "someone@example.com"
+		},
+		"an identity has no id": func(d map[string]any) { delete(identity(d), "id") },
+		"an identity claims to be the aggregate while keeping its id": func(d map[string]any) {
+			identity(d)["aggregate"] = true
+		},
 	}
 	for name, breakIt := range cases {
 		var document map[string]any

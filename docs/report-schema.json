@@ -10,6 +10,7 @@
     "metadata",
     "repository",
     "configuration",
+    "identities",
     "families"
   ],
   "properties": {
@@ -73,6 +74,20 @@
       "description": "The resolved analysis configuration the report was produced under. Required; filled by WP-0010.",
       "required": [],
       "properties": {}
+    },
+    "identities": {
+      "type": "array",
+      "description": "The resolved contributors a reader selects from (ADR-0010 clause 2), docs/metrics.md section 14. Not a metric family. Individual entries are ordered by first commit date ascending, ties broken by id (ADR-0009 clause 3); at most 200 appear individually, and the rest fold into one aggregate entry, last (ADR-0018 clause 4). No entry carries a raw address (ADR-0033 clause 2). Added in document version 1.1.",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/identity"
+          },
+          {
+            "$ref": "#/$defs/aggregateIdentity"
+          }
+        ]
+      }
     },
     "families": {
       "type": "object",
@@ -864,6 +879,76 @@
               }
             }
           }
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One resolved contributor.",
+      "required": [
+        "id",
+        "display_name",
+        "first_commit_date",
+        "last_commit_date",
+        "commit_count"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The identity's stable digest: the first 16 hexadecimal characters of the SHA-256 of its canonical address (ADR-0033 clause 4)."
+        },
+        "display_name": {
+          "type": "string",
+          "description": "The resolved name, or the id where the name is empty or contains an address, or where anonymised output was requested."
+        },
+        "first_commit_date": {
+          "type": "string",
+          "description": "A local calendar date, YYYY-MM-DD."
+        },
+        "last_commit_date": {
+          "type": "string",
+          "description": "A local calendar date, YYYY-MM-DD."
+        },
+        "commit_count": {
+          "type": "integer",
+          "description": "The identity's analysed commits."
+        }
+      }
+    },
+    "aggregateIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The one entry folding every identity beyond the individually represented limit. It has no id.",
+      "required": [
+        "display_name",
+        "first_commit_date",
+        "last_commit_date",
+        "commit_count",
+        "aggregate"
+      ],
+      "properties": {
+        "display_name": {
+          "type": "string",
+          "description": "States how many identities the entry represents."
+        },
+        "first_commit_date": {
+          "type": "string",
+          "description": "A local calendar date, YYYY-MM-DD."
+        },
+        "last_commit_date": {
+          "type": "string",
+          "description": "A local calendar date, YYYY-MM-DD."
+        },
+        "commit_count": {
+          "type": "integer",
+          "description": "The folded identities' analysed commits, summed."
+        },
+        "aggregate": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
         }
       }
     }

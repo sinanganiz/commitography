@@ -1,7 +1,7 @@
 {
   "document_version": {
     "major": 1,
-    "minor": 0
+    "minor": 1
   },
   "metadata": {
     "generated_at": "<generated-at>",
@@ -12,6 +12,15 @@
     "commit": "5fc7a0b4361542db9a56d1e3af9795dbc46facd4"
   },
   "configuration": {},
+  "identities": [
+    {
+      "id": "b533d4547eaa5a0f",
+      "display_name": "Grace Hopper",
+      "first_commit_date": "2017-03-01",
+      "last_commit_date": "2023-06-01",
+      "commit_count": 12
+    }
+  ],
   "families": {
     "temporal": {
       "version": {

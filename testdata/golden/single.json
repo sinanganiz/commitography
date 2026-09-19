@@ -1,7 +1,7 @@
 {
   "document_version": {
     "major": 1,
-    "minor": 0
+    "minor": 1
   },
   "metadata": {
     "generated_at": "<generated-at>",
@@ -12,6 +12,15 @@
     "commit": "b947e202f9ef14904893b55794fae0331c49d592"
   },
   "configuration": {},
+  "identities": [
+    {
+      "id": "b5fc85e55755f9e0",
+      "display_name": "Ada Lovelace",
+      "first_commit_date": "2025-10-01",
+      "last_commit_date": "2025-10-01",
+      "commit_count": 1
+    }
+  ],
   "families": {
     "temporal": {
       "version": {

@@ -3,7 +3,9 @@
 // (ADR-0024, ADR-0040). Every family of ADR-0024 clause 5 is placed in the
 // document with a status (ADR-0032 clause 1); a family with no implementation
 // yet is skipped with reason not_implemented. Generation values go to the
-// metadata section alone (ADR-0021 clause 6).
+// metadata section alone (ADR-0021 clause 6). Beside the families it writes
+// the identities section, the resolved contributors a reader selects from
+// (ADR-0010 clause 2, docs/metrics.md section 14).
 package aggregate
 
 import (
@@ -49,6 +51,7 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 			Name:   in.Repository.Name,
 			Commit: in.Repository.HeadCommit,
 		},
+		Identities: buildIdentities(in, analyzed),
 	}
 	f := &r.Families
 
