@@ -20,7 +20,7 @@ func TestUnconfiguredDisplayNameComesFromMostRecentCommit(t *testing.T) {
 	if got := len(r.Identities()); got != 1 {
 		t.Fatalf("case differences split one person into %d identities", got)
 	}
-	id, _ := r.Lookup("p@example.com")
+	id, _ := r.Lookup(Digest("p@example.com"))
 	if id.DisplayName != "New Name" {
 		t.Errorf("DisplayName = %q, want %q", id.DisplayName, "New Name")
 	}
@@ -38,10 +38,10 @@ func TestIdentitiesSortedByDescendingCommitCount(t *testing.T) {
 	commits = append(commits, model.Commit{AuthorName: "C", AuthorEmail: "c@x.com"})
 
 	got := NewResolver(config.Default(), commits).Identities()
-	want := []string{"a@x.com", "b@x.com", "c@x.com"}
+	want := []string{Digest("a@x.com"), Digest("b@x.com"), Digest("c@x.com")}
 	for i, id := range got {
-		if id.ID != want[i] {
-			t.Errorf("position %d = %q, want %q", i, id.ID, want[i])
+		if id.Digest != want[i] {
+			t.Errorf("position %d = %q, want %q", i, id.Digest, want[i])
 		}
 	}
 }
@@ -49,7 +49,7 @@ func TestIdentitiesSortedByDescendingCommitCount(t *testing.T) {
 func TestResolveIsStableForUnknownAddresses(t *testing.T) {
 	t.Parallel()
 	r := NewResolver(config.Default(), nil)
-	if got := r.Resolve("Someone", "  Someone@Example.COM "); got != "someone@example.com" {
-		t.Errorf("Resolve = %q, want the normalized address", got)
+	if got := r.Resolve("Someone", "  Someone@Example.COM "); got != Digest("someone@example.com") {
+		t.Errorf("Resolve = %q, want the digest of the normalized address", got)
 	}
 }

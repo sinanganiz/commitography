@@ -1,9 +1,19 @@
 // Package identity collapses the several name/email pairs a single person
 // commits under into one canonical contributor. Unresolved identities silently
 // corrupt every aggregate, so this runs before anything is counted.
+//
+// This is the internal working layer of ADR-0033 clause 1: it holds raw
+// addresses, and nothing it hands out carries one. An identity is known outside
+// this package by its stable digest alone (clause 4); the addresses behind it
+// are held as Address values in unexported fields, which have no marshalling
+// path (clause 3). Resolution applies .mailmap first, which git does while the
+// history is read, and configuration second, here, before anything is
+// aggregated.
 package identity
 
 import (
+	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"time"
@@ -14,20 +24,48 @@ import (
 
 // Identity is one resolved contributor.
 type Identity struct {
-	ID          string // canonical key
+	// Digest is the stable digest of the identity's canonical address, and the
+	// identity's key everywhere outside this package (ADR-0033 clause 4).
+	Digest      string
 	DisplayName string
-	Emails      []string
 	IsBot       bool
+
+	// canonical is the address the identity is keyed by: the first configured
+	// address of a configured identity, and otherwise the one its commits
+	// carry. It is empty for an identity whose commits carry no address.
+	canonical Address
+	// addresses is every address that resolves to this identity: configured
+	// ones and observed ones, sorted.
+	addresses []Address
+}
+
+// Resolved reports whether the identity rests on an address. An identity
+// whose commits carry no address cannot be told apart from any other such
+// author, so it is kept as one entry but is not a resolved identity
+// (ADR-0032; docs/metrics.md section 13, unresolved_identity).
+func (id Identity) Resolved() bool { return !id.canonical.Empty() }
+
+// Format prints the digest and the display name under every verb, never the
+// addresses, so an identity placed in a log line shows no address.
+func (id Identity) Format(f fmt.State, _ rune) {
+	_, _ = io.WriteString(f, "{"+id.Digest+" "+id.DisplayName+"}")
 }
 
 // Resolver maps raw commit authorship onto canonical identities.
 type Resolver struct {
-	// emailToID maps a normalized email to its canonical identity ID.
-	emailToID map[string]string
-	// byID holds the resolved identity for each canonical ID.
-	byID map[string]*Identity
-	// counts is the number of commits observed per canonical ID.
+	// byAddress maps a normalised address to its identity's digest.
+	byAddress map[Address]string
+	// byDigest holds the resolved identity for each digest.
+	byDigest map[string]*Identity
+	// counts is the number of commits observed per digest.
 	counts map[string]int
+}
+
+// Format prints the number of identities under every verb. Without it, fmt
+// would print the resolver's maps, whose keys are addresses reached through
+// unexported fields, where fmt does not consult Address's own Format.
+func (r Resolver) Format(f fmt.State, _ rune) {
+	_, _ = fmt.Fprintf(f, "{%d identities}", len(r.byDigest))
 }
 
 // NewResolver builds a resolver from config and the observed commit set.
@@ -37,42 +75,43 @@ type Resolver struct {
 // addresses the user has grouped explicitly, plus everything left over.
 func NewResolver(cfg config.Config, commits []model.Commit) *Resolver {
 	r := &Resolver{
-		emailToID: make(map[string]string),
-		byID:      make(map[string]*Identity),
+		byAddress: make(map[Address]string),
+		byDigest:  make(map[string]*Identity),
 		counts:    make(map[string]int),
 	}
 
-	// Configured identities come first: the canonical ID is the first email in
+	// Configured identities come first: the canonical address is the first in
 	// the list, and every listed address resolves to it.
 	for _, id := range cfg.Identities {
 		if len(id.Emails) == 0 {
 			continue
 		}
-		canonical := NormalizeEmail(id.Emails[0])
-		if canonical == "" {
+		canonical := ParseAddress(id.Emails[0])
+		if canonical.Empty() {
 			continue
 		}
-		entry, ok := r.byID[canonical]
+		digest := canonical.Digest()
+		entry, ok := r.byDigest[digest]
 		if !ok {
-			entry = &Identity{ID: canonical, DisplayName: id.Name}
-			r.byID[canonical] = entry
+			entry = &Identity{Digest: digest, DisplayName: id.Name, canonical: canonical}
+			r.byDigest[digest] = entry
 		}
 		if id.Name != "" {
 			entry.DisplayName = id.Name
 		}
 		for _, email := range id.Emails {
-			normalized := NormalizeEmail(email)
-			if normalized == "" {
+			address := ParseAddress(email)
+			if address.Empty() {
 				continue
 			}
-			r.emailToID[normalized] = canonical
-			entry.Emails = appendUnique(entry.Emails, normalized)
+			r.byAddress[address] = digest
+			entry.addresses = appendUnique(entry.addresses, address)
 		}
 	}
 
-	configured := make(map[string]bool, len(r.byID))
-	for id := range r.byID {
-		configured[id] = true
+	configured := make(map[string]bool, len(r.byDigest))
+	for digest := range r.byDigest {
+		configured[digest] = true
 	}
 
 	// Everything else is keyed by its own address. The display name of an
@@ -81,73 +120,72 @@ func NewResolver(cfg config.Config, commits []model.Commit) *Resolver {
 	latest := make(map[string]time.Time)
 	for i := range commits {
 		c := &commits[i]
-		email := NormalizeEmail(c.AuthorEmail)
-		id, ok := r.emailToID[email]
+		address := ParseAddress(c.AuthorEmail)
+		digest, ok := r.byAddress[address]
 		if !ok {
-			id = email
-			r.emailToID[email] = id
+			digest = address.Digest()
+			r.byAddress[address] = digest
 		}
-		entry, ok := r.byID[id]
+		entry, ok := r.byDigest[digest]
 		if !ok {
-			entry = &Identity{ID: id}
-			r.byID[id] = entry
+			entry = &Identity{Digest: digest, canonical: address}
+			r.byDigest[digest] = entry
 		}
-		entry.Emails = appendUnique(entry.Emails, email)
-		r.counts[id]++
+		entry.addresses = appendUnique(entry.addresses, address)
+		r.counts[digest]++
 
-		if !configured[id] {
-			if when, seen := latest[id]; !seen || c.AuthorDate.After(when) {
-				latest[id] = c.AuthorDate
+		if !configured[digest] {
+			if when, seen := latest[digest]; !seen || c.AuthorDate.After(when) {
+				latest[digest] = c.AuthorDate
 				entry.DisplayName = c.AuthorName
 			}
 		}
 	}
 
-	for _, entry := range r.byID {
-		if entry.DisplayName == "" {
-			entry.DisplayName = entry.ID
-		}
-		sort.Strings(entry.Emails)
+	for _, entry := range r.byDigest {
+		sort.Slice(entry.addresses, func(i, j int) bool {
+			return entry.addresses[i].value < entry.addresses[j].value
+		})
 		entry.IsBot = isBot(cfg, entry)
 	}
 
 	return r
 }
 
-// Resolve returns the canonical identity ID for a commit's author.
-func (r *Resolver) Resolve(name, email string) string {
-	normalized := NormalizeEmail(email)
-	if id, ok := r.emailToID[normalized]; ok {
-		return id
+// Resolve returns the digest of the identity a commit's author resolves to.
+func (r *Resolver) Resolve(_, email string) string {
+	address := ParseAddress(email)
+	if digest, ok := r.byAddress[address]; ok {
+		return digest
 	}
-	return normalized
+	return address.Digest()
 }
 
-// Lookup returns the resolved identity for a canonical ID.
-func (r *Resolver) Lookup(id string) (Identity, bool) {
-	entry, ok := r.byID[id]
+// Lookup returns the resolved identity for a digest.
+func (r *Resolver) Lookup(digest string) (Identity, bool) {
+	entry, ok := r.byDigest[digest]
 	if !ok {
 		return Identity{}, false
 	}
 	return *entry, true
 }
 
-// Commits returns the number of commits observed for a canonical ID.
-func (r *Resolver) Commits(id string) int { return r.counts[id] }
+// Commits returns the number of commits observed for a digest.
+func (r *Resolver) Commits(digest string) int { return r.counts[digest] }
 
 // Identities returns all resolved identities, sorted by descending commit
-// count. Ties break on ID so the order is stable across runs.
+// count. Ties break on digest so the order is stable across runs.
 func (r *Resolver) Identities() []Identity {
-	out := make([]Identity, 0, len(r.byID))
-	for _, entry := range r.byID {
+	out := make([]Identity, 0, len(r.byDigest))
+	for _, entry := range r.byDigest {
 		out = append(out, *entry)
 	}
 	sort.Slice(out, func(i, j int) bool {
-		ci, cj := r.counts[out[i].ID], r.counts[out[j].ID]
+		ci, cj := r.counts[out[i].Digest], r.counts[out[j].Digest]
 		if ci != cj {
 			return ci > cj
 		}
-		return out[i].ID < out[j].ID
+		return out[i].Digest < out[j].Digest
 	})
 	return out
 }
@@ -164,28 +202,22 @@ func isBot(cfg config.Config, id *Identity) bool {
 		if strings.ToLower(id.DisplayName) == excluded {
 			return true
 		}
-		for _, email := range id.Emails {
-			if email == excluded {
+		for _, address := range id.addresses {
+			if address.value == excluded {
 				return true
 			}
 		}
 	}
-	for _, email := range id.Emails {
-		if config.IsBotIdentity(id.DisplayName, email) {
+	for _, address := range id.addresses {
+		if config.IsBotIdentity(id.DisplayName, address.value) {
 			return true
 		}
 	}
 	return config.IsBotIdentity(id.DisplayName, "")
 }
 
-// NormalizeEmail trims surrounding whitespace and lowercases an address so
-// that casing differences never split one person into two contributors.
-func NormalizeEmail(email string) string {
-	return strings.ToLower(strings.TrimSpace(email))
-}
-
-func appendUnique(list []string, value string) []string {
-	if value == "" {
+func appendUnique(list []Address, value Address) []Address {
+	if value.Empty() {
 		return list
 	}
 	for _, existing := range list {

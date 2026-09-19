@@ -61,7 +61,7 @@ func TestIdentitiesAreOrderedByFirstCommitDateNotVolume(t *testing.T) {
 		if e.DisplayName == "Ada" && (e.LastCommitDate != "2026-01-10" || e.CommitCount != 2) {
 			t.Errorf("Ada = %+v, want last 2026-01-10 and 2 commits", e)
 		}
-		if e.ID != core.HashEmail(strings.ToLower(e.DisplayName)+"@example.com") {
+		if e.ID != core.IdentityDigest(strings.ToLower(e.DisplayName)+"@example.com") {
 			t.Errorf("%s has id %q, want the digest of the address", e.DisplayName, e.ID)
 		}
 		if e.Aggregate {
@@ -142,7 +142,7 @@ func TestIdentitiesAnonymisedCarryNoName(t *testing.T) {
 func TestIdentitiesWithoutAnAddressStillHaveAnID(t *testing.T) {
 	t.Parallel()
 	got := identitiesOf(t, config.Default(), []model.Commit{authored("Nobody", "", 1)})
-	if len(got) != 1 || len(got[0].ID) != len(core.HashEmail("a@example.com")) {
+	if len(got) != 1 || len(got[0].ID) != len(core.IdentityDigest("a@example.com")) {
 		t.Errorf("identities = %+v, want one entry with a digest id", got)
 	}
 }

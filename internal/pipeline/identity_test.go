@@ -49,8 +49,8 @@ func TestConfiguredIdentityMergesTwoEmails(t *testing.T) {
 	commits := collectFixture(t, "basic", false)
 
 	plain := identity.NewResolver(config.Default(), commits)
-	a := plain.Commits(identity.NormalizeEmail("ada@example.com"))
-	b := plain.Commits(identity.NormalizeEmail("ada.lovelace@corp.example.com"))
+	a := plain.Commits(identity.Digest("ada@example.com"))
+	b := plain.Commits(identity.Digest("ada.lovelace@corp.example.com"))
 	if a == 0 || b == 0 {
 		t.Fatalf("fixture should have commits under both addresses, got %d and %d", a, b)
 	}
@@ -62,22 +62,22 @@ func TestConfiguredIdentityMergesTwoEmails(t *testing.T) {
 	}}
 
 	merged := identity.NewResolver(cfg, commits)
-	if got := merged.Commits("ada@example.com"); got != a+b {
+	if got := merged.Commits(identity.Digest("ada@example.com")); got != a+b {
 		t.Errorf("merged identity has %d commits, want %d", got, a+b)
 	}
 	if len(merged.Identities()) != len(plain.Identities())-1 {
 		t.Errorf("merging two addresses should reduce the identity count by one")
 	}
 
-	id, ok := merged.Lookup("ada@example.com")
+	id, ok := merged.Lookup(identity.Digest("ada@example.com"))
 	if !ok {
 		t.Fatal("merged identity not found")
 	}
 	if id.DisplayName != "Ada Lovelace" {
 		t.Errorf("DisplayName = %q, want the configured name", id.DisplayName)
 	}
-	if len(id.Emails) != 2 {
-		t.Errorf("merged identity holds %d emails, want 2", len(id.Emails))
+	if got := merged.Resolve("", "ada.lovelace@corp.example.com"); got != id.Digest {
+		t.Errorf("the second address resolves to %q, want the merged identity %q", got, id.Digest)
 	}
 }
 

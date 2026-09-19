@@ -40,7 +40,7 @@ func buildIdentities(in core.Input, analyzed []model.Commit) []core.IdentityEntr
 		if !ok {
 			tally = &identityTally{
 				entry: core.IdentityEntry{
-					ID:          core.IdentityDigest(c.IdentityID),
+					ID:          c.IdentityID,
 					DisplayName: displayName(in, c.IdentityID, address),
 				},
 				first: when,
@@ -117,13 +117,14 @@ func aggregateEntry(folded []core.IdentityEntry) core.IdentityEntry {
 
 // displayName returns the name the report may carry for an identity: its
 // resolved name, or its digest where the name is empty or contains an address,
-// and where anonymised output was requested.
-func displayName(in core.Input, canonical string, address *regexp.Regexp) string {
-	id := core.IdentityDigest(canonical)
+// and where anonymised output was requested. The digest is the identity's
+// stable pseudonym (ADR-0033 clause 5): the same in every run and every
+// repository, and derived from nothing a reader can reverse.
+func displayName(in core.Input, id string, address *regexp.Regexp) string {
 	if in.Config.Anonymize || in.Resolver == nil {
 		return id
 	}
-	resolved, ok := in.Resolver.Lookup(canonical)
+	resolved, ok := in.Resolver.Lookup(id)
 	if !ok || resolved.DisplayName == "" || address.MatchString(resolved.DisplayName) {
 		return id
 	}
