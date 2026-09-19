@@ -1,7 +1,7 @@
 # WP-0010: Configuration planes and resolution
 
 **Area:** core
-**Implements:** ADR-0026, ADR-0021, ADR-0062, ADR-0068, ADR-0053
+**Implements:** ADR-0026, ADR-0021, ADR-0062, ADR-0068, ADR-0069, ADR-0070, ADR-0053
 **Requires:** WP-0008
 
 ## Goal
@@ -45,6 +45,16 @@ the report or affects any metric.
    it. Intermediate layers and their precedence are not represented in the
    report; they may be logged. Filling a reserved section is a **document minor
    version increment** (ADR-0031 clause 1); record it.
+5aa. **Apply ADR-0069 to the merge candidate signals.** They are computed only
+   from values the analysed commits record; a value present only in the
+   configuration produces no candidate. Update `docs/metrics.md` section 14 to
+   say so. This changes how the identities section's values are derived, so its
+   **section version increments** (ADR-0070 clause 1), and the version enters
+   the cache key (clause 3).
+5ab. **Give every top-level non-family section a version** and add them to the
+   cache key: generation metadata, the resolved configuration, and identities
+   (ADR-0070). Add the checker that fails when a section's derivation changes
+   without its version moving.
 5a. Apply ADR-0068: every identifying value in the embedded configuration is a
    reference. Addresses become identity digests; the loader accepts a digest
    wherever it accepts an address. Under anonymisation, operator-supplied
@@ -77,11 +87,42 @@ the report or affects any metric.
    the same report as the dashboard, so the year must eventually stop reaching
    the pipeline. Removing any of the three changes caller-visible behaviour and
    belongs to WP-0017. This package embeds the year as an analysis value and
-   records that it will leave. ADR-0033 replaced optional hashing with a
-   layered rule in which the report never carries a raw address, so the key
-   offers a choice that no longer exists. Removing it is not a behavioural
-   change under the new identity representation; it is removing a switch with
-   one reachable position.
+   records that it will leave.
+
+## Settled details
+
+These are decided, not left to judgement.
+
+1. **Date bounds are embedded as the moment git resolved them**, as an RFC 3339
+   UTC timestamp, not as the string the operator typed. Git fills a bare date in
+   with the current time of day, so the same string selects a different commit
+   set at a different hour and the round trip would not hold. Every input form
+   git accepts today is still accepted on the way in.
+2. **`--allow-shallow` is operational.** It decides whether a run proceeds and
+   changes no metric value; shallowness already reaches the report as family
+   status. Reproducing a shallow-clone report therefore needs the flag as well
+   as the embedded configuration, and the round-trip guarantee is over the
+   analysis plane only.
+3. **The loader recognises a `cardinality_limits` key**, verifies it against
+   `docs/metrics.md` section 12 and never applies it. Clause 1b defines the key;
+   the out-of-scope ban on new keys does not cover it.
+4. **Flattened exclusion lists are de-duplicated on load**, so feeding back a
+   list that already contains the built-in entries reproduces it exactly. An
+   explicit empty list still disables the built-ins.
+5. **An `exclude_authors` entry containing `@` matches addresses only.** Today
+   it also matches a display name equal to that text, which a digest cannot
+   reproduce. This is a behaviour change; state it in the commit body and update
+   any golden it moves.
+6. **Under anonymisation**, configured display names become the pseudonyms the
+   identities section uses for identities listed individually, and are omitted
+   for those folded into the aggregate entry. Class patterns such as a `[bot]`
+   suffix and the built-in exclusion entries stay literal (ADR-0068 clause 5).
+7. **The configuration digest is computed over the pre-anonymisation form** —
+   addresses as digests, names as written — because the cache key must exist
+   before any history is read and a pseudonym needs the history.
+8. **Key names** are `since`, `until`, `year`, `recency_window_days` and
+   `cardinality_limits`. A year set in the file filters the analysis; it does
+   not select Wrapped output, which only the command-line flag does.
 
 ## Out of scope
 - Storage or the cache itself (WP-0033).
@@ -98,7 +139,8 @@ the report or affects any metric.
 ## Files
 **May create or modify:** `internal/core/**`, `internal/**`, `cmd/**`,
 `internal/checks/**`, `testdata/**` golden files, `docs/report-schema.json`
-**for the configuration section only**, and `.commitography.yml`.
+**for the configuration and identities sections only**, `docs/metrics.md`
+**for section 14 only**, and `.commitography.yml`.
 **Must not touch:** `docs/decisions/**`, `docs/metrics.md`, `docs/legacy/**`,
 `internal/pipeline/interpret/taxonomy/**`, `web/**`.
 
@@ -132,6 +174,12 @@ the report or affects any metric.
   absent from the identities section.
 - `.commitography.yml` no longer disables the built-in exclusion lists, and its
   header describes what the file actually does.
+- A configured address that no analysed commit uses produces no merge candidate,
+  and candidates are byte-identical with anonymisation on and off.
+- Every top-level non-family section carries a version, and every section
+  version is in the cache key.
+- A report produced with `--since 2025-01-01` reproduces exactly when rerun from
+  its embedded configuration at any later hour.
 - `hash_emails` is absent from the configuration types, the documentation and
   the example configuration, and supplying it warns rather than failing.
 

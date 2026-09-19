@@ -92,6 +92,8 @@ a superseding record is written first.
 | [0066](0066-layout-gaps.md) | The git package's position, and subpackages under core | Accepted |
 | [0067](0067-diagnostics-versus-artifacts.md) | Paths in diagnostics, by destination | Accepted |
 | [0068](0068-configuration-identity-references.md) | The embedded configuration carries identity references, not identities | Accepted |
+| [0069](0069-candidate-evidence-from-history.md) | Merge candidates are evidence from the analysed history | Accepted |
+| [0070](0070-section-versions.md) | Top-level report sections carry their own version | Accepted |
 
 ADR-0047 is superseded by ADR-0065. ADR-0056 is superseded by ADR-0063.
 
@@ -109,7 +111,8 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 | 3 | 0014, 0017, 0024, 0033, 0037, 0038, 0043, 0045, 0049, 0056, 0058, 0059, 0063 |
 | 4 | 0009, 0011, 0012, 0015, 0027, 0032, 0035, 0040, 0046, 0052, 0057, 0061, 0062 |
 | 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053, 0060, 0064 |
-| 6 | 0023, 0047, 0051, 0054, 0065, 0066, 0067, 0068 |
+| 6 | 0023, 0047, 0051, 0054, 0065, 0066, 0067, 0068, 0070 |
+| 7 | 0069 |
 
 Two records carry partial dependencies stated in prose rather than as a
 whole-record dependency, and are therefore placed earlier than their text
@@ -158,6 +161,10 @@ checked without reading the full set. The governing record is authoritative.
   not define, and no cardinality limit is operator-settable. (0062, 0053)
 - No raw address appears in the embedded configuration; identifying values are
   digests, and pseudonyms under anonymisation. (0068)
+- No merge candidate is derived from a value the analysed commits do not record.
+  (0069)
+- No top-level section's derivation changes without its version moving, and
+  every section version is in the cache key. (0070)
 - No build metadata is derived from the clock; two builds of one commit are
   identical. (0063)
 - No check runs over the working tree; tracked files only. (0063)
