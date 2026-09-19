@@ -97,7 +97,7 @@ to be amended mid-flight.
 | [0006](0006-error-model.md) | foundation | Error model and reason codes | ADR-0041, ADR-0032, ADR-0062, ADR-0064, ADR-0067 | WP-0005 | Done |
 | [0007](0007-dependency-wiring.md) | foundation | Dependency wiring and ambient state removal | ADR-0042, ADR-0061, ADR-0021, ADR-0044, ADR-0067 | WP-0005 | Done |
 | [0008](0008-report-document.md) | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032, ADR-0062, ADR-0010 | WP-0005, WP-0006 | Done |
-| [0009](0009-identity-and-privacy.md) | core | Identity model and privacy layers | ADR-0033, ADR-0010, ADR-0032, ADR-0062 | WP-0008 | Ready |
+| [0009](0009-identity-and-privacy.md) | core | Identity model and privacy layers | ADR-0033, ADR-0010, ADR-0032, ADR-0062 | WP-0008 | Done |
 | [0010](0010-configuration-planes.md) | core | Configuration planes and resolution | ADR-0026, ADR-0021, ADR-0062 | WP-0008 | Ready |
 | [0011](0011-git-chokepoint.md) | pipeline | Git invocation chokepoint | ADR-0065, ADR-0044, ADR-0066, ADR-0041 | WP-0005, WP-0006, WP-0007 | Ready |
 | 0012 | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052 | WP-0011, WP-0009, WP-0010 | Draft |
