@@ -32,8 +32,16 @@ type Identity struct {
 
 	// canonical is the address the identity is keyed by: the first configured
 	// address of a configured identity, and otherwise the one its commits
-	// carry. It is empty for an identity whose commits carry no address.
+	// carry. It is empty for an identity whose commits carry no address, and
+	// for one the configuration named by digest alone.
 	canonical Address
+	// rests records that the identity rests on an address, whether or not this
+	// layer ever saw that address in raw form.
+	rests bool
+	// references is every address digest that resolves to this identity: the
+	// digest of each address below, and each digest a configuration gave in
+	// place of an address (ADR-0068 clause 2). Sorted.
+	references []string
 	// addresses is every address that resolves to this identity: configured
 	// ones and observed ones, sorted.
 	addresses []Address
@@ -51,7 +59,7 @@ func (id Identity) SourceAddresses() int { return len(id.sources) }
 // whose commits carry no address cannot be told apart from any other such
 // author, so it is kept as one entry but is not a resolved identity
 // (ADR-0032; docs/metrics.md section 13, unresolved_identity).
-func (id Identity) Resolved() bool { return !id.canonical.Empty() }
+func (id Identity) Resolved() bool { return id.rests }
 
 // Format prints the digest and the display name under every verb, never the
 // addresses, so an identity placed in a log line shows no address.
@@ -63,6 +71,10 @@ func (id Identity) Format(f fmt.State, _ rune) {
 type Resolver struct {
 	// byAddress maps a normalised address to its identity's digest.
 	byAddress map[Address]string
+	// byReference maps an address digest to its identity's digest, which is
+	// how a configuration that names an address by digest resolves (ADR-0068
+	// clause 3).
+	byReference map[string]string
 	// byDigest holds the resolved identity for each digest.
 	byDigest map[string]*Identity
 	// counts is the number of commits observed per digest.
@@ -83,37 +95,43 @@ func (r Resolver) Format(f fmt.State, _ rune) {
 // addresses the user has grouped explicitly, plus everything left over.
 func NewResolver(cfg config.Analysis, commits []model.Commit) *Resolver {
 	r := &Resolver{
-		byAddress: make(map[Address]string),
-		byDigest:  make(map[string]*Identity),
-		counts:    make(map[string]int),
+		byAddress:   make(map[Address]string),
+		byReference: make(map[string]string),
+		byDigest:    make(map[string]*Identity),
+		counts:      make(map[string]int),
 	}
 
 	// Configured identities come first: the canonical address is the first in
-	// the list, and every listed address resolves to it.
+	// the list, and every listed address resolves to it. Each may be written
+	// as an address or as the digest a report shows in its place, and the two
+	// resolve alike (ADR-0068 clause 3).
 	for _, id := range cfg.Identities {
 		if len(id.Emails) == 0 {
 			continue
 		}
-		canonical := ParseAddress(id.Emails[0])
-		if canonical.Empty() {
+		digest, canonical, ok := parseReference(id.Emails[0])
+		if !ok {
 			continue
 		}
-		digest := canonical.Digest()
-		entry, ok := r.byDigest[digest]
-		if !ok {
-			entry = &Identity{Digest: digest, DisplayName: id.Name, canonical: canonical}
+		entry, exists := r.byDigest[digest]
+		if !exists {
+			entry = &Identity{Digest: digest, DisplayName: id.Name, canonical: canonical, rests: true}
 			r.byDigest[digest] = entry
 		}
 		if id.Name != "" {
 			entry.DisplayName = id.Name
 		}
 		for _, email := range id.Emails {
-			address := ParseAddress(email)
-			if address.Empty() {
+			reference, address, ok := parseReference(email)
+			if !ok {
 				continue
 			}
-			r.byAddress[address] = digest
-			entry.addresses = appendUnique(entry.addresses, address)
+			r.byReference[reference] = digest
+			entry.references = appendUniqueString(entry.references, reference)
+			if !address.Empty() {
+				r.byAddress[address] = digest
+				entry.addresses = appendUnique(entry.addresses, address)
+			}
 		}
 	}
 
@@ -132,21 +150,26 @@ func NewResolver(cfg config.Analysis, commits []model.Commit) *Resolver {
 		digest, ok := r.byAddress[address]
 		if !ok {
 			digest = address.Digest()
+			// A configuration that named this address by its digest resolves
+			// the commit exactly as one that named the address would.
+			if configured, ok := r.byReference[digest]; ok {
+				digest = configured
+			}
 			r.byAddress[address] = digest
 		}
 		entry, ok := r.byDigest[digest]
 		if !ok {
-			entry = &Identity{Digest: digest, canonical: address}
+			entry = &Identity{Digest: digest, canonical: address, rests: !address.Empty()}
 			r.byDigest[digest] = entry
 		}
-		entry.addresses = appendUnique(entry.addresses, address)
+		entry.addAddress(address)
 		source := ParseAddress(c.AuthorSourceEmail)
 		if source.Empty() {
 			// A record that predates the source address, or a commit
 			// .mailmap did not touch, has the one address.
 			source = address
 		}
-		entry.addresses = appendUnique(entry.addresses, source)
+		entry.addAddress(source)
 		entry.sources = appendUnique(entry.sources, source)
 		r.counts[digest]++
 
@@ -161,10 +184,20 @@ func NewResolver(cfg config.Analysis, commits []model.Commit) *Resolver {
 	for _, entry := range r.byDigest {
 		sortAddresses(entry.addresses)
 		sortAddresses(entry.sources)
+		sort.Strings(entry.references)
 		entry.IsBot = isBot(cfg, entry)
 	}
 
 	return r
+}
+
+// addAddress records an address and the digest that refers to it.
+func (id *Identity) addAddress(address Address) {
+	if address.Empty() {
+		return
+	}
+	id.addresses = appendUnique(id.addresses, address)
+	id.references = appendUniqueString(id.references, address.Digest())
 }
 
 // Resolve returns the digest of the identity a commit's author resolves to.
@@ -173,7 +206,25 @@ func (r *Resolver) Resolve(_, email string) string {
 	if digest, ok := r.byAddress[address]; ok {
 		return digest
 	}
-	return address.Digest()
+	digest := address.Digest()
+	if configured, ok := r.byReference[digest]; ok {
+		return configured
+	}
+	return digest
+}
+
+// MatchedBy returns the digest of every identity an exclusion entry matches,
+// in digest order. Anonymised output uses it to write an entry that names a
+// person as references to the identities it named (ADR-0068 clause 4).
+func (r *Resolver) MatchedBy(entry string) []string {
+	var out []string
+	for digest, id := range r.byDigest {
+		if matchesEntry(entry, id) {
+			out = append(out, digest)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // Lookup returns the resolved identity for a digest.
@@ -210,17 +261,8 @@ func (r *Resolver) Identities() []Identity {
 // patterns for host-generated bot accounts.
 func isBot(cfg config.Analysis, id *Identity) bool {
 	for _, excluded := range cfg.ExcludeAuthors {
-		excluded = strings.ToLower(strings.TrimSpace(excluded))
-		if excluded == "" {
-			continue
-		}
-		if strings.ToLower(id.DisplayName) == excluded {
+		if matchesEntry(excluded, id) {
 			return true
-		}
-		for _, address := range id.addresses {
-			if address.value == excluded {
-				return true
-			}
 		}
 	}
 	for _, address := range id.addresses {
@@ -231,8 +273,88 @@ func isBot(cfg config.Analysis, id *Identity) bool {
 	return config.IsBotIdentity(id.DisplayName, "")
 }
 
+// matchesEntry reports whether an exclusion entry names an identity. What the
+// entry is decides what it is compared with:
+//
+//   - a reference names one identity: its digest, a digest that resolves to
+//     it, or the pseudonym anonymised output gives it, which is that same
+//     digest (ADR-0068 clauses 2 and 4);
+//   - an entry containing @ is an address, or is written as its digest, and
+//     matches addresses only. A display name that merely looks like an address
+//     is not one, and an address cannot be compared with a name once it is a
+//     digest;
+//   - anything else is a name or a class pattern, compared with the display
+//     name and, for the address forms git allows that carry no @, with the
+//     addresses themselves.
+func matchesEntry(entry string, id *Identity) bool {
+	entry = strings.ToLower(strings.TrimSpace(entry))
+	if entry == "" {
+		return false
+	}
+	name := strings.ToLower(strings.TrimSpace(id.DisplayName))
+	switch {
+	case IsReference(entry):
+		return id.Digest == entry || containsString(id.references, entry) || name == entry
+	case strings.Contains(entry, "@"):
+		return containsString(id.references, Digest(entry))
+	default:
+		if name == entry {
+			return true
+		}
+		for _, address := range id.addresses {
+			if address.value == entry {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// parseReference reads a configured value that may be an address or the digest
+// a report shows in its place (ADR-0068 clause 3). It returns the digest that
+// refers to it, the address itself where one was given, and whether the value
+// names anything at all.
+func parseReference(value string) (reference string, address Address, ok bool) {
+	if trimmed := strings.ToLower(strings.TrimSpace(value)); IsReference(trimmed) {
+		return trimmed, Address{}, true
+	}
+	address = ParseAddress(value)
+	if address.Empty() {
+		return "", Address{}, false
+	}
+	return address.Digest(), address, true
+}
+
+// Reference returns the form the embedded configuration carries for a value
+// that names a person by address: the address's digest, or the digest itself
+// where one was given. It returns the empty string for a value that names
+// nothing.
+func Reference(value string) string {
+	reference, _, ok := parseReference(value)
+	if !ok {
+		return ""
+	}
+	return reference
+}
+
 func sortAddresses(list []Address) {
 	sort.Slice(list, func(i, j int) bool { return list[i].value < list[j].value })
+}
+
+func appendUniqueString(list []string, value string) []string {
+	if value == "" || containsString(list, value) {
+		return list
+	}
+	return append(list, value)
+}
+
+func containsString(list []string, value string) bool {
+	for _, existing := range list {
+		if existing == value {
+			return true
+		}
+	}
+	return false
 }
 
 func appendUnique(list []Address, value Address) []Address {

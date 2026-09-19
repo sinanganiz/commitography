@@ -74,6 +74,21 @@ func (a Address) MarshalBinary() ([]byte, error) { return nil, Unserialisable{} 
 // GobEncode refuses.
 func (a Address) GobEncode() ([]byte, error) { return nil, Unserialisable{} }
 
+// IsReference reports whether a value is written as an identity digest rather
+// than as an address: the exact shape Digest produces, and the shape a report
+// carries in place of an address (ADR-0068 clause 2).
+func IsReference(value string) bool {
+	if len(value) != digestLength {
+		return false
+	}
+	for _, c := range value {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
 // Digest returns the stable digest of an address: the first 16 hexadecimal
 // characters of the SHA-256 of the address after trimming and lowercasing
 // (docs/metrics.md section 14). It depends on nothing but the address, so the
