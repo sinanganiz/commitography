@@ -73,7 +73,7 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 			opts.OnWarning(fmt.Sprintf(format, args...))
 		}
 	}
-	cfg, err := config.Load(a.files, opts.ConfigPath, repoPath, configWarn)
+	settings, err := config.Load(a.files, opts.ConfigPath, repoPath, configWarn)
 	if err != nil {
 		// The configuration package may not import core (ADR-0066 clause 3),
 		// so its errors are classified here, by their single consumer. Its
@@ -82,6 +82,9 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 		return nil, core.NewUserError(core.ReasonInvalidConfiguration, opts.suppliedConfigPath(),
 			configurationRemedy, "the configuration could not be read").Wrapping(err)
 	}
+	cfg := settings.Analysis
+	operational := settings.Operational
+	operational.AllowShallow = opts.AllowShallow
 	if opts.Anonymize {
 		cfg.Anonymize = true
 	}
@@ -202,7 +205,8 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	result := &Result{
 		Report:              report,
 		Repository:          history.Repository,
-		Config:              cfg,
+		Analysis:            cfg,
+		Operational:         operational,
 		Warnings:            append([]string(nil), warnings...),
 		PreviousYearCommits: previousYearCommits,
 	}
@@ -311,7 +315,7 @@ func progressWindow(stage string) (start, end float64, ok bool) {
 	}
 }
 
-func countInYear(commits []model.Commit, year int, cfg config.Config) int {
+func countInYear(commits []model.Commit, year int, cfg config.Analysis) int {
 	count := 0
 	for _, commit := range commits {
 		if commit.Excluded {

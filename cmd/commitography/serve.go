@@ -8,11 +8,16 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/sinanganiz/commitography/internal/core/config"
 	"github.com/sinanganiz/commitography/internal/server"
 )
 
 func newServeCommand(env environment) *cobra.Command {
-	var options server.Options
+	// The listen address and the allowed roots are operational values
+	// (ADR-0026 clause 1): they decide how the server runs and never reach a
+	// report.
+	operational := config.DefaultOperational()
+	var open bool
 
 	cmd := &cobra.Command{
 		Use:           "serve",
@@ -20,6 +25,11 @@ func newServeCommand(env environment) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			options := server.Options{
+				ListenAddress: operational.ListenAddress,
+				AllowedRoots:  operational.AllowedRoots,
+				Open:          open,
+			}
 			app, serveOptions, logger, err := composeServe(env, options)
 			if err != nil {
 				return err
@@ -39,8 +49,8 @@ func newServeCommand(env environment) *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&options.ListenAddress, "listen", "127.0.0.1:8080", "HTTP listen address")
-	flags.BoolVar(&options.Open, "open", false, "Open the dashboard in the default browser")
-	flags.StringArrayVar(&options.AllowedRoots, "allowed-root", nil, "Allowed repository root; repeatable")
+	flags.StringVar(&operational.ListenAddress, "listen", operational.ListenAddress, "HTTP listen address")
+	flags.BoolVar(&open, "open", false, "Open the dashboard in the default browser")
+	flags.StringArrayVar(&operational.AllowedRoots, "allowed-root", nil, "Allowed repository root; repeatable")
 	return cmd
 }

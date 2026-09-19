@@ -18,7 +18,7 @@ type Input struct {
 	Context    context.Context
 	RepoPath   string
 	Repository model.RepositoryInfo
-	Config     config.Config
+	Config     config.Analysis
 	Filtered   filter.Result
 	Resolver   *identity.Resolver
 	PathFilter *filter.PathFilter

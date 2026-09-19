@@ -37,7 +37,7 @@ type PathFilter struct {
 }
 
 // NewPathFilter compiles the exclusion patterns and reads .gitattributes.
-func NewPathFilter(files Files, cfg config.Config, repoPath string) (*PathFilter, error) {
+func NewPathFilter(files Files, cfg config.Analysis, repoPath string) (*PathFilter, error) {
 	f := &PathFilter{cache: make(map[string]bool)}
 
 	for _, pattern := range cfg.ExcludePaths {

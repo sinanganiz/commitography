@@ -35,7 +35,7 @@ type BulkCommit struct {
 
 // Apply annotates commits with identity, exclusion, and bulk flags. The input
 // slice is not modified; the returned commits are a copy.
-func Apply(commits []model.Commit, cfg config.Config, r *identity.Resolver, pf *PathFilter) Result {
+func Apply(commits []model.Commit, cfg config.Analysis, r *identity.Resolver, pf *PathFilter) Result {
 	out := make([]model.Commit, len(commits))
 	copy(out, commits)
 
@@ -89,7 +89,7 @@ func Apply(commits []model.Commit, cfg config.Config, r *identity.Resolver, pf *
 // CommitDate returns the timestamp a commit is attributed to, honouring the
 // configured date source. Author date is the default because rebase rewrites
 // the committer date and squash destroys it entirely.
-func CommitDate(c model.Commit, cfg config.Config) time.Time {
+func CommitDate(c model.Commit, cfg config.Analysis) time.Time {
 	if cfg.DateSource == config.DateSourceCommitter {
 		return c.CommitterDate
 	}

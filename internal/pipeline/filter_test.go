@@ -11,7 +11,7 @@ import (
 )
 
 // analyze runs the full identity + filter pipeline over a fixture.
-func analyze(t *testing.T, name string, cfg config.Config) (filter.Result, *filter.PathFilter) {
+func analyze(t *testing.T, name string, cfg config.Analysis) (filter.Result, *filter.PathFilter) {
 	t.Helper()
 	repo := fixture(t, name)
 	h, err := newCollector().Collect(collect.Options{RepoPath: repo, UseMailmap: cfg.UseMailmap})

@@ -53,10 +53,10 @@ func TestErrorClassAtPackageBoundaries(t *testing.T) {
 		return err
 	}
 
-	// A configuration file whose theme is invalid. The value is rejected by
-	// internal/core/config, which cannot classify it itself.
+	// A configuration file whose date source is invalid. The value is rejected
+	// by internal/core/config, which cannot classify it itself.
 	badConfig := filepath.Join(t.TempDir(), "bad.yml")
-	if err := os.WriteFile(badConfig, []byte("theme: midnight\n"), 0o600); err != nil {
+	if err := os.WriteFile(badConfig, []byte("date_source: midnight\n"), 0o600); err != nil {
 		fatal(t, 41, "writing a configuration fixture: %v", err)
 	}
 	badPattern := filepath.Join(t.TempDir(), "pattern.yml")

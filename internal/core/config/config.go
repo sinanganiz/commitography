@@ -1,5 +1,9 @@
-// Package config resolves commitography's effective settings from built-in
-// defaults, an optional YAML file, and command-line overrides.
+// Package config resolves commitography's settings into the two planes of
+// ADR-0026 clause 1. The analysis plane is every value that changes a metric:
+// it is embedded in each report, fully resolved, and passing it back
+// reproduces that report (clauses 2 and 4). The operational plane is every
+// value that decides how the product runs and changes no number: it never
+// reaches a report or a metric.
 package config
 
 import (
@@ -27,19 +31,49 @@ type Identity struct {
 	Emails []string `yaml:"emails"`
 }
 
-// Config is the effective configuration for one analysis run.
-type Config struct {
-	Identities            []Identity `yaml:"identities"`
-	ExcludeAuthors        []string   `yaml:"exclude_authors"`
-	ExcludePaths          []string   `yaml:"exclude_paths"`
-	OutlierThresholdLines int        `yaml:"outlier_threshold_lines"`
-	CountMerges           bool       `yaml:"count_merges"`
-	DateSource            string     `yaml:"date_source"`
-	UseMailmap            bool       `yaml:"use_mailmap"`
-	Anonymize             bool       `yaml:"anonymize"`
-	HashEmails            bool       `yaml:"hash_emails"`
-	OutputDir             string     `yaml:"output_dir"`
-	Theme                 string     `yaml:"theme"`
+// Analysis is the analysis plane (ADR-0026 clause 1): every value that changes
+// a metric value.
+type Analysis struct {
+	Identities            []Identity
+	ExcludeAuthors        []string
+	ExcludePaths          []string
+	OutlierThresholdLines int
+	CountMerges           bool
+	DateSource            string
+	UseMailmap            bool
+	Anonymize             bool
+}
+
+// Operational is the operational plane (ADR-0026 clause 1): every value that
+// decides how the product runs and changes no metric value. None of it reaches
+// a report.
+//
+// Storage location, recurrence, mode and resource limits belong here too, and
+// join it with the packages that create them.
+type Operational struct {
+	// OutputDir is where the command writes its file. It is the one
+	// operational value a configuration file may set.
+	OutputDir string
+	// AllowShallow lets an analysis proceed on a shallow clone. It decides
+	// whether a run happens and changes no value; the report records
+	// shallowness as family status.
+	AllowShallow bool
+	// ListenAddress and AllowedRoots are the server's.
+	ListenAddress string
+	AllowedRoots  []string
+}
+
+// OperationalKeys returns the name of every operational value, spelled as a
+// configuration file or a report would spell it. None of them may appear in a
+// report.
+func OperationalKeys() []string {
+	return []string{"output_dir", "allow_shallow", "listen_address", "allowed_roots"}
+}
+
+// Settings is what loading a configuration produces: both planes.
+type Settings struct {
+	Analysis    Analysis
+	Operational Operational
 }
 
 // Date sources.
@@ -138,9 +172,9 @@ func IsBotIdentity(name, email string) bool {
 		strings.HasSuffix(name, botSuffix)
 }
 
-// Default returns the built-in configuration.
-func Default() Config {
-	return Config{
+// Default returns the built-in analysis plane.
+func Default() Analysis {
+	return Analysis{
 		Identities:            nil,
 		ExcludeAuthors:        DefaultExcludeAuthors(),
 		ExcludePaths:          DefaultExcludePaths(),
@@ -149,16 +183,21 @@ func Default() Config {
 		DateSource:            DateSourceAuthor,
 		UseMailmap:            true,
 		Anonymize:             false,
-		HashEmails:            true,
-		OutputDir:             "./out",
-		Theme:                 "default",
 	}
 }
 
-// fileConfig mirrors Config with pointer fields, so that a key which is absent
-// from the file is distinguishable from one set to an empty value. That
-// distinction is what makes `exclude_paths: []` mean "drop the defaults" while
-// omitting the key means "keep them".
+// DefaultOperational returns the built-in operational plane.
+func DefaultOperational() Operational {
+	return Operational{
+		OutputDir:     "./out",
+		ListenAddress: "127.0.0.1:8080",
+	}
+}
+
+// fileConfig is what a configuration file may set, with pointer fields, so
+// that a key which is absent from the file is distinguishable from one set to
+// an empty value. That distinction is what makes `exclude_paths: []` mean
+// "drop the defaults" while omitting the key means "keep them".
 type fileConfig struct {
 	Identities            *[]Identity `yaml:"identities"`
 	ExcludeAuthors        *[]string   `yaml:"exclude_authors"`
@@ -168,34 +207,44 @@ type fileConfig struct {
 	DateSource            *string     `yaml:"date_source"`
 	UseMailmap            *bool       `yaml:"use_mailmap"`
 	Anonymize             *bool       `yaml:"anonymize"`
-	HashEmails            *bool       `yaml:"hash_emails"`
 	OutputDir             *string     `yaml:"output_dir"`
-	Theme                 *string     `yaml:"theme"`
 }
 
-// knownKey reports whether key is a top-level key fileConfig reads.
+// AnalysisKeys returns every key of the analysis plane a configuration file
+// may set, in the order a report embeds them.
+func AnalysisKeys() []string {
+	return []string{
+		"identities", "exclude_authors", "exclude_paths", "outlier_threshold_lines",
+		"count_merges", "date_source", "use_mailmap", "anonymize",
+	}
+}
+
+// knownKey reports whether key is a top-level key a configuration file may
+// set: every analysis key, and the one operational key.
 func knownKey(key string) bool {
-	switch key {
-	case "identities", "exclude_authors", "exclude_paths", "outlier_threshold_lines",
-		"count_merges", "date_source", "use_mailmap", "anonymize", "hash_emails",
-		"output_dir", "theme":
+	if key == "output_dir" {
 		return true
+	}
+	for _, known := range AnalysisKeys() {
+		if key == known {
+			return true
+		}
 	}
 	return false
 }
 
-// Load resolves configuration from defaults, file, and flag overrides.
+// Load resolves both planes from the built-in defaults and one file.
 //
-// Resolution order, later winning: built-in defaults, the repository's own
-// .commitography.yml, then the file named by explicitPath which replaces the
-// repository-local file rather than merging with it. Command-line flags are
-// applied by the caller afterwards.
+// Resolution order, later winning (ADR-0026 clause 6): built-in defaults, the
+// repository's own .commitography.yml, then the file named by explicitPath
+// which replaces the repository-local file rather than merging with it. The
+// explicit parameters of a run are the last layer, applied by the caller.
 //
 // Files are read through files, and non-fatal diagnostics go to warn, which is
 // call-local so that more than one analysis can run in a process. There is no
 // package-level sink (ADR-0042 clause 2).
-func Load(files Files, explicitPath string, repoPath string, warn func(string, ...any)) (Config, error) {
-	cfg := Default()
+func Load(files Files, explicitPath string, repoPath string, warn func(string, ...any)) (Settings, error) {
+	settings := Settings{Analysis: Default(), Operational: DefaultOperational()}
 	if warn == nil {
 		warn = func(string, ...any) {}
 	}
@@ -208,31 +257,32 @@ func Load(files Files, explicitPath string, repoPath string, warn func(string, .
 		}
 	}
 	if path == "" {
-		return cfg, cfg.Validate()
+		return settings, settings.Analysis.Validate()
 	}
 
 	data, err := files.ReadFile(path)
 	if err != nil {
-		return cfg, fmt.Errorf("reading %s: %w", path, err)
+		return settings, fmt.Errorf("reading %s: %w", path, err)
 	}
 
 	warnUnknownKeys(data, warn)
 
 	var fc fileConfig
 	if err := yaml.Unmarshal(data, &fc); err != nil {
-		return cfg, fmt.Errorf("parsing %s: %w", path, err)
+		return settings, fmt.Errorf("parsing %s: %w", path, err)
 	}
-	fc.applyTo(&cfg)
+	fc.applyTo(&settings)
 
-	if err := cfg.Validate(); err != nil {
-		return cfg, fmt.Errorf("%s: %w", path, err)
+	if err := settings.Analysis.Validate(); err != nil {
+		return settings, fmt.Errorf("%s: %w", path, err)
 	}
-	return cfg, nil
+	return settings, nil
 }
 
 // applyTo folds file values over the defaults. List keys append to the
 // built-ins; setting one to an explicit empty list clears them.
-func (fc fileConfig) applyTo(cfg *Config) {
+func (fc fileConfig) applyTo(s *Settings) {
+	cfg := &s.Analysis
 	if fc.Identities != nil {
 		cfg.Identities = append(cfg.Identities, *fc.Identities...)
 	}
@@ -265,19 +315,14 @@ func (fc fileConfig) applyTo(cfg *Config) {
 	if fc.Anonymize != nil {
 		cfg.Anonymize = *fc.Anonymize
 	}
-	if fc.HashEmails != nil {
-		cfg.HashEmails = *fc.HashEmails
-	}
 	if fc.OutputDir != nil {
-		cfg.OutputDir = *fc.OutputDir
-	}
-	if fc.Theme != nil {
-		cfg.Theme = *fc.Theme
+		s.Operational.OutputDir = *fc.OutputDir
 	}
 }
 
 // warnUnknownKeys reports top-level keys commitography does not recognize.
-// A typo in a configuration file should be visible without being fatal.
+// A typo in a configuration file should be visible without being fatal, and so
+// should a key that no longer exists, such as hash_emails or theme.
 func warnUnknownKeys(data []byte, warn func(string, ...any)) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(data, &doc); err != nil {
@@ -305,7 +350,7 @@ func warnUnknownKeys(data []byte, warn func(string, ...any)) {
 }
 
 // Validate checks the invariants every downstream stage relies on.
-func (c Config) Validate() error {
+func (c Analysis) Validate() error {
 	switch c.DateSource {
 	case DateSourceAuthor, DateSourceCommitter:
 	default:
@@ -314,9 +359,6 @@ func (c Config) Validate() error {
 	}
 	if c.OutlierThresholdLines <= 0 {
 		return fmt.Errorf("outlier_threshold_lines must be greater than 0, got %d", c.OutlierThresholdLines)
-	}
-	if c.Theme != "default" {
-		return fmt.Errorf("theme must be %q, got %q", "default", c.Theme)
 	}
 	for i, id := range c.Identities {
 		if len(id.Emails) == 0 {

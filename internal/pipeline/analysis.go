@@ -100,9 +100,13 @@ func (o Options) suppliedConfigPath() string {
 // Result contains the report and collection metadata returned by the shared
 // analysis service.
 type Result struct {
-	Report              *core.Report
-	Repository          model.RepositoryInfo
-	Config              config.Config
+	Report     *core.Report
+	Repository model.RepositoryInfo
+	// Analysis is the resolved analysis plane the report embeds (ADR-0026
+	// clause 2). Operational is the resolved operational plane, which the
+	// report never carries; the adapter reads what it needs from it.
+	Analysis            config.Analysis
+	Operational         config.Operational
 	Warnings            []string
 	PreviousYearCommits *int
 	EndRepository       *model.RepositoryInfo

@@ -1,9 +1,17 @@
 # Commitography configuration.
 #
-# Every key below is optional. Values shown are the built-in defaults, except
-# for `identities`, `exclude_authors` and `exclude_paths`, which are merged with
-# (appended to) the built-in lists rather than replacing them. To suppress a
-# built-in list entirely, set it to an explicit empty list, e.g. `exclude_paths: []`.
+# Every key is optional; a key left out keeps its built-in value. The scalar
+# values shown below are the built-in values, so this file as written changes
+# nothing.
+#
+# The three list keys work differently. `identities` has no built-in entries.
+# `exclude_authors` and `exclude_paths` add to built-in lists of automation
+# accounts and generated paths: entries you list are appended to them. Setting
+# either to an explicit empty list, `exclude_paths: []`, disables its built-in
+# list entirely, which is why both are commented out here.
+#
+# Every key except `output_dir` is part of the analysis and changes what the
+# report measures. `output_dir` only decides where the output is written.
 
 # Merge several git identities belonging to one person. The first email in each
 # list is the canonical identifier.
@@ -13,12 +21,15 @@ identities: []
 #       - jane@example.com
 #       - jane.doe@corp.example.com
 
-# Additional authors to exclude, matched case-insensitively against display
-# names and email addresses.
-exclude_authors: []
+# Additional authors to exclude, appended to the built-in list, matched
+# case-insensitively against display names and email addresses.
+# exclude_authors:
+#   - release-robot
 
-# Additional paths to exclude from line-based metrics. Glob syntax with `**`.
-exclude_paths: []
+# Additional paths to exclude from line-based metrics, appended to the built-in
+# list. Glob syntax with `**`.
+# exclude_paths:
+#   - "generated/**"
 
 # A commit changing more lines than this is flagged as a bulk commit and left
 # out of line-based metrics. It still counts toward commit and temporal metrics.
@@ -33,14 +44,10 @@ date_source: author
 # Apply the repository's .mailmap when reading history.
 use_mailmap: true
 
-# Replace contributor names with stable pseudonyms and drop emails entirely.
+# Replace contributor names with stable pseudonyms. Reports never carry an
+# email address, with or without this.
 anonymize: false
 
-# Replace emails with a truncated SHA-256 digest.
-hash_emails: true
-
-# Where the dashboard is written.
+# Where the command writes its output. This is the one operational key: it
+# decides where a file goes, changes no number, and never enters a report.
 output_dir: ./out
-
-# Visual theme. Only `default` is available.
-theme: default

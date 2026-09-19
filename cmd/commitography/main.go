@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/sinanganiz/commitography/internal/core"
+	"github.com/sinanganiz/commitography/internal/core/config"
 )
 
 // buildInfo is the link-time build metadata, read once at composition and
@@ -96,7 +97,7 @@ Repository-level by default; per-contributor breakdowns are opt-in behind
 	cmd.SetErr(env.stderr)
 
 	f := cmd.Flags()
-	f.StringVarP(&opts.OutputDir, "output", "o", "./out", "Output directory")
+	f.StringVarP(&opts.OutputDir, "output", "o", config.DefaultOperational().OutputDir, "Output directory")
 	f.StringVarP(&opts.ConfigPath, "config", "c", "", "Explicit config file path; replaces repository-local config")
 	f.IntVar(&opts.Wrapped, "wrapped", 0, "Generate the year-in-review page for the given year")
 	f.BoolVar(&opts.PerAuthor, "per-author", false, "Include the per-contributor section")

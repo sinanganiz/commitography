@@ -98,7 +98,7 @@ func Run(opts Options, analyzer *pipeline.Analyzer, progress *core.Logger) error
 	// ADR-0067 clause 3 does not admit. It reaches standard error only, never
 	// an artifact. Removing it changes what the command prints, which WP-0007
 	// could not do; the leak scan's log half does not drive this line.
-	outputDir := result.Config.OutputDir
+	outputDir := result.Operational.OutputDir
 	if opts.outputDirSet {
 		outputDir = opts.OutputDir
 	}

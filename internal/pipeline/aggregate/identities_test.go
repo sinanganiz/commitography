@@ -27,7 +27,7 @@ func authored(name, email string, day int) model.Commit {
 
 // identitiesOf resolves commits the way the pipeline does and builds the
 // identities section over all of them.
-func identitiesOf(t *testing.T, cfg config.Config, commits []model.Commit) []core.IdentityEntry {
+func identitiesOf(t *testing.T, cfg config.Analysis, commits []model.Commit) []core.IdentityEntry {
 	t.Helper()
 	resolver := identity.NewResolver(cfg, commits)
 	for i := range commits {

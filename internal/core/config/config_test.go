@@ -28,24 +28,27 @@ func (osFiles) Stat(name string) (fs.FileInfo, error) { return os.Stat(name) }
 func (osFiles) ReadFile(name string) ([]byte, error)  { return os.ReadFile(name) }
 
 // load reads configuration with warnings discarded.
-func load(explicitPath, repoPath string) (Config, error) {
+func load(explicitPath, repoPath string) (Settings, error) {
 	return Load(osFiles{}, explicitPath, repoPath, func(string, ...any) {})
 }
 
 func TestLoadWithoutFileYieldsDefaults(t *testing.T) {
 	t.Parallel()
-	cfg, err := load("", t.TempDir())
+	s, err := load("", t.TempDir())
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if !reflect.DeepEqual(cfg, Default()) {
+	if !reflect.DeepEqual(s.Analysis, Default()) {
 		t.Errorf("Load without a file did not return Default()")
 	}
-	if len(cfg.ExcludePaths) != len(DefaultExcludePaths()) {
-		t.Errorf("ExcludePaths has %d entries, want %d", len(cfg.ExcludePaths), len(DefaultExcludePaths()))
+	if !reflect.DeepEqual(s.Operational, DefaultOperational()) {
+		t.Errorf("Load without a file did not return DefaultOperational()")
 	}
-	if len(cfg.ExcludeAuthors) != len(DefaultExcludeAuthors()) {
-		t.Errorf("ExcludeAuthors has %d entries, want %d", len(cfg.ExcludeAuthors), len(DefaultExcludeAuthors()))
+	if len(s.Analysis.ExcludePaths) != len(DefaultExcludePaths()) {
+		t.Errorf("ExcludePaths has %d entries, want %d", len(s.Analysis.ExcludePaths), len(DefaultExcludePaths()))
+	}
+	if len(s.Analysis.ExcludeAuthors) != len(DefaultExcludeAuthors()) {
+		t.Errorf("ExcludeAuthors has %d entries, want %d", len(s.Analysis.ExcludeAuthors), len(DefaultExcludeAuthors()))
 	}
 }
 
@@ -57,10 +60,11 @@ exclude_paths:
 exclude_authors:
   - "release-robot"
 `)
-	cfg, err := load("", dir)
+	s, err := load("", dir)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
+	cfg := s.Analysis
 	if len(cfg.ExcludePaths) != len(DefaultExcludePaths())+1 {
 		t.Errorf("ExcludePaths has %d entries, want %d", len(cfg.ExcludePaths), len(DefaultExcludePaths())+1)
 	}
@@ -75,15 +79,15 @@ exclude_authors:
 func TestExplicitEmptyListClearsDefaults(t *testing.T) {
 	t.Parallel()
 	dir := writeConfig(t, "exclude_paths: []\n")
-	cfg, err := load("", dir)
+	s, err := load("", dir)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if len(cfg.ExcludePaths) != 0 {
-		t.Errorf("exclude_paths: [] left %d exclusions in place", len(cfg.ExcludePaths))
+	if len(s.Analysis.ExcludePaths) != 0 {
+		t.Errorf("exclude_paths: [] left %d exclusions in place", len(s.Analysis.ExcludePaths))
 	}
 	// The other list must be untouched by the empty one.
-	if len(cfg.ExcludeAuthors) != len(DefaultExcludeAuthors()) {
+	if len(s.Analysis.ExcludeAuthors) != len(DefaultExcludeAuthors()) {
 		t.Error("clearing exclude_paths also affected exclude_authors")
 	}
 }
@@ -96,7 +100,6 @@ count_merges: true
 date_source: committer
 use_mailmap: false
 anonymize: true
-hash_emails: false
 output_dir: ./report
 identities:
   - name: Ada Lovelace
@@ -104,14 +107,17 @@ identities:
       - ada@example.com
       - ada.lovelace@corp.example.com
 `)
-	cfg, err := load("", dir)
+	s, err := load("", dir)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
+	cfg := s.Analysis
 	if cfg.OutlierThresholdLines != 500 || !cfg.CountMerges ||
-		cfg.DateSource != DateSourceCommitter || cfg.UseMailmap ||
-		!cfg.Anonymize || cfg.HashEmails || cfg.OutputDir != "./report" {
-		t.Errorf("scalar overrides not applied: %+v", cfg)
+		cfg.DateSource != DateSourceCommitter || cfg.UseMailmap || !cfg.Anonymize {
+		t.Errorf("analysis overrides not applied: %+v", cfg)
+	}
+	if s.Operational.OutputDir != "./report" {
+		t.Errorf("output_dir = %q, want ./report on the operational plane", s.Operational.OutputDir)
 	}
 	if len(cfg.Identities) != 1 || len(cfg.Identities[0].Emails) != 2 {
 		t.Errorf("identities not parsed: %+v", cfg.Identities)
@@ -120,16 +126,21 @@ identities:
 
 func TestExplicitPathReplacesRepositoryConfig(t *testing.T) {
 	t.Parallel()
-	repoDir := writeConfig(t, "outlier_threshold_lines: 111\n")
+	repoDir := writeConfig(t, "outlier_threshold_lines: 111\ncount_merges: true\n")
 	otherDir := writeConfig(t, "outlier_threshold_lines: 222\n")
 	explicit := filepath.Join(otherDir, FileName)
 
-	cfg, err := load(explicit, repoDir)
+	s, err := load(explicit, repoDir)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.OutlierThresholdLines != 222 {
-		t.Errorf("threshold = %d, want 222 from the explicit file", cfg.OutlierThresholdLines)
+	if s.Analysis.OutlierThresholdLines != 222 {
+		t.Errorf("threshold = %d, want 222 from the explicit file", s.Analysis.OutlierThresholdLines)
+	}
+	// Replacing is not merging: a key only the repository file sets is not
+	// carried over.
+	if s.Analysis.CountMerges {
+		t.Error("count_merges from the repository file survived an explicit file that does not set it")
 	}
 }
 
@@ -145,11 +156,45 @@ func TestInvalidDateSourceIsAnError(t *testing.T) {
 	}
 }
 
-func TestInvalidThresholdAndThemeAreErrors(t *testing.T) {
+func TestInvalidThresholdIsAnError(t *testing.T) {
 	t.Parallel()
-	for _, body := range []string{"outlier_threshold_lines: 0\n", "theme: neon\n"} {
-		if _, err := load("", writeConfig(t, body)); err == nil {
-			t.Errorf("expected an error for %q", strings.TrimSpace(body))
+	if _, err := load("", writeConfig(t, "outlier_threshold_lines: 0\n")); err == nil {
+		t.Error("expected an error for outlier_threshold_lines: 0")
+	}
+}
+
+// hash_emails and theme were removed: the first offered a choice ADR-0033
+// removed, and the second was validated and never read. Supplying either is an
+// unknown key, which warns and never fails (ADR-0026 clause 7).
+func TestRemovedKeysWarnRatherThanFail(t *testing.T) {
+	t.Parallel()
+	for _, body := range []string{"hash_emails: false\n", "theme: neon\n"} {
+		var warnings []string
+		s, err := Load(osFiles{}, "", writeConfig(t, body), func(format string, args ...any) {
+			warnings = append(warnings, format)
+		})
+		if err != nil {
+			t.Errorf("%q failed the run: %v", strings.TrimSpace(body), err)
+		}
+		if len(warnings) != 1 {
+			t.Errorf("%q raised %d warnings, want 1", strings.TrimSpace(body), len(warnings))
+		}
+		if !reflect.DeepEqual(s.Analysis, Default()) {
+			t.Errorf("%q changed the analysis plane", strings.TrimSpace(body))
+		}
+	}
+}
+
+func TestOperationalKeysNameEveryOperationalValue(t *testing.T) {
+	t.Parallel()
+	if got, want := len(OperationalKeys()), reflect.TypeOf(Operational{}).NumField(); got != want {
+		t.Errorf("OperationalKeys names %d values, and Operational has %d", got, want)
+	}
+	for _, key := range OperationalKeys() {
+		for _, analysis := range AnalysisKeys() {
+			if key == analysis {
+				t.Errorf("%s is named on both planes", key)
+			}
 		}
 	}
 }
@@ -159,13 +204,13 @@ func TestUnknownKeyWarnsButDoesNotFail(t *testing.T) {
 	var warnings []string
 	dir := writeConfig(t, "excludePaths:\n  - foo\ncount_merges: true\n")
 
-	cfg, err := Load(osFiles{}, "", dir, func(format string, args ...any) {
+	s, err := Load(osFiles{}, "", dir, func(format string, args ...any) {
 		warnings = append(warnings, format)
 	})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if !cfg.CountMerges {
+	if !s.Analysis.CountMerges {
 		t.Error("recognized keys should still be applied alongside an unknown one")
 	}
 	if len(warnings) != 1 {

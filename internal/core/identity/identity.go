@@ -81,7 +81,7 @@ func (r Resolver) Format(f fmt.State, _ rune) {
 // Git's --use-mailmap has already been applied at collection time when
 // UseMailmap is set, so the resolver only has to handle what mailmap could not:
 // addresses the user has grouped explicitly, plus everything left over.
-func NewResolver(cfg config.Config, commits []model.Commit) *Resolver {
+func NewResolver(cfg config.Analysis, commits []model.Commit) *Resolver {
 	r := &Resolver{
 		byAddress: make(map[Address]string),
 		byDigest:  make(map[string]*Identity),
@@ -208,7 +208,7 @@ func (r *Resolver) Identities() []Identity {
 // isBot reports whether an identity is an automation account, either by
 // appearing in the configured exclusion list or by matching the built-in
 // patterns for host-generated bot accounts.
-func isBot(cfg config.Config, id *Identity) bool {
+func isBot(cfg config.Analysis, id *Identity) bool {
 	for _, excluded := range cfg.ExcludeAuthors {
 		excluded = strings.ToLower(strings.TrimSpace(excluded))
 		if excluded == "" {
