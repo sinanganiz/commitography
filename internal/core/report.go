@@ -23,8 +23,11 @@ import "time"
 //	1.0  the document docs/metrics.md defines
 //	1.1  the identities section added, representing an identity by its digest
 //	     and display name (docs/metrics.md section 14)
+//	1.2  each identity's source address count and merge candidates added, and
+//	     the family status code unresolved_identity (docs/metrics.md sections
+//	     13 and 14)
 func DocumentVersion() Version {
-	return Version{Major: 1, Minor: 1}
+	return Version{Major: 1, Minor: 2}
 }
 
 // Report is the complete analysis artifact: one repository, at one commit,
@@ -73,9 +76,25 @@ type IdentityEntry struct {
 	FirstCommitDate string `json:"first_commit_date"`
 	LastCommitDate  string `json:"last_commit_date"`
 	CommitCount     int    `json:"commit_count"`
+	// SourceAddressCount is how many distinct addresses, as the commits
+	// record them, are folded into the identity. The count is exported; the
+	// addresses are not (ADR-0033 clause 2).
+	SourceAddressCount int `json:"source_address_count"`
+	// MergeCandidates are the other identities a signal suggests may be the
+	// same person. They are suggestions: nothing applies them (ADR-0010
+	// clause 4). Every individual entry carries the list, empty where there is
+	// none; the aggregate entry has none.
+	MergeCandidates []MergeCandidate `json:"merge_candidates,omitzero"`
 	// Aggregate marks the one entry folding every identity beyond the
 	// individually represented limit (ADR-0018 clause 4).
 	Aggregate bool `json:"aggregate,omitzero"`
+}
+
+// MergeCandidate is one suggestion on an identities entry: another entry, by
+// id, and the signal that connects the two (docs/metrics.md section 14).
+type MergeCandidate struct {
+	ID     string `json:"id"`
+	Signal string `json:"signal"`
 }
 
 // Families holds every family of ADR-0024 clause 5, in that order, keyed by

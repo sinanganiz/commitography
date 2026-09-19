@@ -39,13 +39,13 @@ func TestAddressHasNoSerialisedForm(t *testing.T) {
 	}
 }
 
-func TestAddressParts(t *testing.T) {
+func TestAddressLocalPart(t *testing.T) {
 	t.Parallel()
 	a := ParseAddress("First.Last+tag@Mail.Example.com")
-	if a.localPart() != "first.last+tag" || a.domain() != "mail.example.com" {
-		t.Errorf("parts = %q, %q", a.localPart(), a.domain())
+	if a.localPart() != "first.last+tag" {
+		t.Errorf("local part = %q", a.localPart())
 	}
-	if b := ParseAddress("no-at-sign"); b.localPart() != "" || b.domain() != "" {
-		t.Errorf("an address without @ has parts %q, %q", b.localPart(), b.domain())
+	if b := ParseAddress("no-at-sign"); b.localPart() != "" {
+		t.Errorf("an address without @ has the local part %q", b.localPart())
 	}
 }

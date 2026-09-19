@@ -1,7 +1,7 @@
 {
   "document_version": {
     "major": 1,
-    "minor": 1
+    "minor": 2
   },
   "metadata": {
     "generated_at": "<generated-at>",
@@ -18,7 +18,9 @@
       "display_name": "Grace Hopper",
       "first_commit_date": "2017-03-01",
       "last_commit_date": "2023-06-01",
-      "commit_count": 12
+      "commit_count": 12,
+      "source_address_count": 1,
+      "merge_candidates": []
     }
   ],
   "families": {

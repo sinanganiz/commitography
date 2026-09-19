@@ -123,7 +123,7 @@ func TestReadHistoryRejectsForeignSchemaVersion(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error for an unsupported schema version")
 	}
-	want := "the history artifact's schema version 999 is not the 1 this build reads"
+	want := fmt.Sprintf("the history artifact's schema version 999 is not the %d this build reads", model.SchemaVersion)
 	if err.Error() != want {
 		t.Errorf("error = %q, want %q", err.Error(), want)
 	}

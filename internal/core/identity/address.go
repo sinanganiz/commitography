@@ -54,15 +54,6 @@ func (a Address) localPart() string {
 	return a.value[:at]
 }
 
-// domain returns everything after the last @.
-func (a Address) domain() string {
-	at := strings.LastIndex(a.value, "@")
-	if at < 0 {
-		return ""
-	}
-	return a.value[at+1:]
-}
-
 // Format prints a placeholder under every verb, so that a raw address placed
 // in a log line or an error message by accident shows as redacted rather than
 // as itself.

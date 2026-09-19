@@ -12,7 +12,7 @@ func TestParseLogRejoinsSubjectContainingRecordSeparator(t *testing.T) {
 	t.Parallel()
 	const hash = "4e45512de2d76e0366c5e7ac5d02119419bfc9ea"
 	stream := "\x01" + hash +
-		"\x1fRaymond Hettinger\x1fpython@rcn.com" +
+		"\x1fRaymond Hettinger\x1fpython@rcn.com\x1fpython@rcn.com" +
 		"\x1f2010-04-10T16:57:36Z\x1f2010-04-10T16:57:36Z" +
 		"\x1f55b21389ef6f6f535dd04b710605ba3b605f7c3a" +
 		"\x1fIssue 8361: Remove assert" +
@@ -83,7 +83,7 @@ func TestParseLogReportsProgress(t *testing.T) {
 	t.Parallel()
 	const hash = "4e45512de2d76e0366c5e7ac5d02119419bfc9ea"
 	stream := "\x01" + hash +
-		"\x1fName\x1fname@example.com" +
+		"\x1fName\x1fname@example.com\x1fname@example.com" +
 		"\x1f2020-01-01T00:00:00Z\x1f2020-01-01T00:00:00Z" +
 		"\x1f\x1fsubject\n"
 

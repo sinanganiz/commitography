@@ -364,7 +364,8 @@ The list of resolved contributors the reader selects their own identity from
 family set and this is not in it. It is a top-level section of the report,
 `identities`, beside the generation metadata and the resolved configuration. It
 carries no version and no status of its own; the document version governs it
-(ADR-0031 clause 1). Adding it made the document version 1.1.
+(ADR-0031 clause 1). Adding it made the document version 1.1; adding
+`source_address_count` and `merge_candidates` made it 1.2.
 
 **Population.** Every identity with at least one analysed commit. An identity
 whose commits are all excluded does not appear.
@@ -375,6 +376,8 @@ whose commits are all excluded does not appear.
 | `display_name` | The identity's resolved name. Never a raw address (ADR-0033 clause 2): where the resolved name is empty or contains an address, and where anonymised output is requested, it is the `id`. On the aggregate entry it states how many identities the entry represents. |
 | `first_commit_date`, `last_commit_date` | Local dates of the identity's earliest and latest analysed commits. |
 | `commit_count` | The identity's analysed commits. |
+| `source_address_count` | The number of distinct addresses, trimmed and lowercased, that the identity's commits record before `.mailmap` and configuration fold them into it, over every commit collected for the analysis, analysed or excluded. The addresses themselves are never exported (ADR-0033 clause 2). On the aggregate entry, the sum over the identities it folds. |
+| `merge_candidates` | Suggestions that another individual entry may be the same person (ADR-0010 clause 4), each an object with the other entry's `id` and the `signal` that produced it: `display_name` (identical resolved names after lowercasing and collapsing whitespace), `local_part` (an identical local part of an address that is not a noreply address), or `noreply` (the account name in a GitHub or GitLab noreply address equals the other identity's local part, noreply account name, or display name without spaces). Signals are computed from the raw data of the internal layer (ADR-0033 clause 1) and compare every address of an identity, configured or recorded. Only individual entries are compared, so every `id` named is an entry of the section. Ordered by `id`, then `signal`; a pair connected by two signals appears once per signal, on both entries. Empty where there is none, and absent on the aggregate entry. Nothing applies a suggestion; a person decides. |
 | `aggregate` | `true` on the aggregate entry, and absent on every other entry. |
 
 **Ordering.** Individual entries are ordered by `first_commit_date` ascending,

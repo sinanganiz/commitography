@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/core"
+	"github.com/sinanganiz/commitography/internal/core/identity"
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
@@ -49,6 +50,11 @@ func buildIdentities(in core.Input, analyzed []model.Commit) []core.IdentityEntr
 			tallies[c.IdentityID] = tally
 		}
 		tally.entry.CommitCount++
+		if tally.entry.CommitCount == 1 && in.Resolver != nil {
+			if resolved, ok := in.Resolver.Lookup(c.IdentityID); ok {
+				tally.entry.SourceAddressCount = resolved.SourceAddresses()
+			}
+		}
 		if when.Before(tally.first) {
 			tally.first = when
 		}
@@ -88,10 +94,33 @@ func buildIdentities(in core.Input, analyzed []model.Commit) []core.IdentityEntr
 		}
 		return a.ID < b.ID
 	})
+	withCandidates(in, shown)
 	if len(folded) == 0 {
 		return shown
 	}
 	return append(shown, aggregateEntry(folded))
+}
+
+// withCandidates gives every individual entry its merge candidates, computed
+// in the identity layer, where the raw data they compare is (ADR-0033
+// clause 1). Candidates are sought among the individual entries only, so every
+// id a candidate names is an entry the reader can see.
+func withCandidates(in core.Input, shown []core.IdentityEntry) {
+	ids := make([]string, len(shown))
+	for i, e := range shown {
+		ids[i] = e.ID
+	}
+	var found map[string][]identity.Candidate
+	if in.Resolver != nil {
+		found = in.Resolver.Candidates(ids)
+	}
+	for i := range shown {
+		shown[i].MergeCandidates = []core.MergeCandidate{}
+		for _, c := range found[shown[i].ID] {
+			shown[i].MergeCandidates = append(shown[i].MergeCandidates,
+				core.MergeCandidate{ID: c.Digest, Signal: string(c.Signal)})
+		}
+	}
 }
 
 // aggregateEntry folds identities into the one entry that stands for all of
@@ -105,6 +134,7 @@ func aggregateEntry(folded []core.IdentityEntry) core.IdentityEntry {
 	}
 	for _, e := range folded {
 		out.CommitCount += e.CommitCount
+		out.SourceAddressCount += e.SourceAddressCount
 		if e.FirstCommitDate < out.FirstCommitDate {
 			out.FirstCommitDate = e.FirstCommitDate
 		}

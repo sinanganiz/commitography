@@ -212,3 +212,65 @@ func TestAnUnresolvableAuthorDegradesTheIdentityAttributedFamilies(t *testing.T)
 		t.Errorf("the identities section counts %d commits of %d", total, len(commits))
 	}
 }
+
+func TestIdentitiesCarrySourceAddressesAndCandidates(t *testing.T) {
+	t.Parallel()
+	folded := authored("Ada", "ada@example.com", 2)
+	folded.AuthorSourceEmail = "ada.lovelace@corp.example.com"
+	commits := []model.Commit{
+		authored("Ada", "ada@example.com", 1),
+		folded,
+		authored("Ada", "ada@elsewhere.example.org", 3),
+		authored("Grace", "grace@example.com", 4),
+	}
+	for _, anonymise := range []bool{false, true} {
+		cfg := config.Default()
+		cfg.Anonymize = anonymise
+		got := identitiesOf(t, cfg, append([]model.Commit(nil), commits...))
+		byID := map[string]core.IdentityEntry{}
+		for _, e := range got {
+			byID[e.ID] = e
+		}
+		ada := byID[core.IdentityDigest("ada@example.com")]
+		other := byID[core.IdentityDigest("ada@elsewhere.example.org")]
+		grace := byID[core.IdentityDigest("grace@example.com")]
+		if ada.SourceAddressCount != 2 || other.SourceAddressCount != 1 || grace.SourceAddressCount != 1 {
+			t.Errorf("source address counts = %d, %d, %d; want 2, 1, 1",
+				ada.SourceAddressCount, other.SourceAddressCount, grace.SourceAddressCount)
+		}
+		want := []core.MergeCandidate{{ID: other.ID, Signal: "display_name"}, {ID: other.ID, Signal: "local_part"}}
+		if fmt.Sprint(ada.MergeCandidates) != fmt.Sprint(want) {
+			t.Errorf("anonymised %v: Ada's candidates = %v, want %v", anonymise, ada.MergeCandidates, want)
+		}
+		if grace.MergeCandidates == nil || len(grace.MergeCandidates) != 0 {
+			t.Errorf("Grace's candidates = %#v, want an empty list", grace.MergeCandidates)
+		}
+		if len(got) != 3 {
+			t.Errorf("computing candidates changed the identities: %d entries, want 3", len(got))
+		}
+	}
+}
+
+func TestTheAggregateEntrySumsSourceAddressesAndHasNoCandidates(t *testing.T) {
+	t.Parallel()
+	var commits []model.Commit
+	for i := 0; i < core.LimitIdentities+2; i++ {
+		commits = append(commits, authored("Same Name", fmt.Sprintf("p%03d@example.com", i), i))
+	}
+	got := identitiesOf(t, config.Default(), commits)
+	last := got[len(got)-1]
+	if !last.Aggregate || last.SourceAddressCount != 2 || last.MergeCandidates != nil {
+		t.Errorf("aggregate entry = %+v, want two source addresses and no candidate list", last)
+	}
+	for _, e := range got[:len(got)-1] {
+		for _, c := range e.MergeCandidates {
+			if c.ID == "" {
+				t.Errorf("a candidate names no id: %+v", e)
+			}
+		}
+		if len(e.MergeCandidates) != core.LimitIdentities-1 {
+			t.Errorf("entry %s has %d candidates, want one for every other individual entry", e.ID, len(e.MergeCandidates))
+			break
+		}
+	}
+}

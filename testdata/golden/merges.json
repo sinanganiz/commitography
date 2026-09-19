@@ -1,7 +1,7 @@
 {
   "document_version": {
     "major": 1,
-    "minor": 1
+    "minor": 2
   },
   "metadata": {
     "generated_at": "<generated-at>",
@@ -18,21 +18,27 @@
       "display_name": "Ada Lovelace",
       "first_commit_date": "2025-10-01",
       "last_commit_date": "2025-10-01",
-      "commit_count": 1
+      "commit_count": 1,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "b533d4547eaa5a0f",
       "display_name": "Grace Hopper",
       "first_commit_date": "2025-10-03",
       "last_commit_date": "2025-10-11",
-      "commit_count": 5
+      "commit_count": 5,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "61356ceff7537431",
       "display_name": "Alan Turing",
       "first_commit_date": "2025-10-23",
       "last_commit_date": "2025-10-31",
-      "commit_count": 5
+      "commit_count": 5,
+      "source_address_count": 1,
+      "merge_candidates": []
     }
   ],
   "families": {

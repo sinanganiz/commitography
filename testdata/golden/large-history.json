@@ -1,7 +1,7 @@
 {
   "document_version": {
     "major": 1,
-    "minor": 1
+    "minor": 2
   },
   "metadata": {
     "generated_at": "<generated-at>",
@@ -18,84 +18,108 @@
       "display_name": "Developer 3",
       "first_commit_date": "2012-01-23",
       "last_commit_date": "2025-09-29",
-      "commit_count": 1667
+      "commit_count": 1667,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "53d9ebd0b3b5e5e8",
       "display_name": "Developer 5",
       "first_commit_date": "2012-01-23",
       "last_commit_date": "2025-09-29",
-      "commit_count": 1667
+      "commit_count": 1667,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "d7bc52aff3d44d7d",
       "display_name": "Developer 1",
       "first_commit_date": "2012-01-23",
       "last_commit_date": "2025-09-29",
-      "commit_count": 1667
+      "commit_count": 1667,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "e755d72cd5c235fe",
       "display_name": "Developer 2",
       "first_commit_date": "2012-01-23",
       "last_commit_date": "2025-09-29",
-      "commit_count": 1667
+      "commit_count": 1667,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "2f982c5c058299c7",
       "display_name": "Developer 8",
       "first_commit_date": "2012-01-24",
       "last_commit_date": "2025-09-30",
-      "commit_count": 1667
+      "commit_count": 1667,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "36fe048d96018b5e",
       "display_name": "Developer 4",
       "first_commit_date": "2012-01-24",
       "last_commit_date": "2025-09-30",
-      "commit_count": 1667
+      "commit_count": 1667,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "467d92f43523bfc1",
       "display_name": "Developer 6",
       "first_commit_date": "2012-01-24",
       "last_commit_date": "2025-09-30",
-      "commit_count": 1667
+      "commit_count": 1667,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "fd93ec3ed47ca788",
       "display_name": "Developer 7",
       "first_commit_date": "2012-01-24",
       "last_commit_date": "2025-09-30",
-      "commit_count": 1667
+      "commit_count": 1667,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "29ff827821639861",
       "display_name": "Developer 10",
       "first_commit_date": "2012-01-25",
       "last_commit_date": "2025-09-28",
-      "commit_count": 1666
+      "commit_count": 1666,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "8636ca9757eeb78b",
       "display_name": "Developer 9",
       "first_commit_date": "2012-01-25",
       "last_commit_date": "2025-09-28",
-      "commit_count": 1666
+      "commit_count": 1666,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "cfb2112c0a4885ca",
       "display_name": "Developer 11",
       "first_commit_date": "2012-01-25",
       "last_commit_date": "2025-09-28",
-      "commit_count": 1666
+      "commit_count": 1666,
+      "source_address_count": 1,
+      "merge_candidates": []
     },
     {
       "id": "2b0e6d6180a769b8",
       "display_name": "Developer 0",
       "first_commit_date": "2012-01-26",
       "last_commit_date": "2025-09-29",
-      "commit_count": 1666
+      "commit_count": 1666,
+      "source_address_count": 1,
+      "merge_candidates": []
     }
   ],
   "families": {

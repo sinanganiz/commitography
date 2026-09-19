@@ -111,6 +111,20 @@ func TestReportSchemaRejectsMalformedReports(t *testing.T) {
 		"an identity claims to be the aggregate while keeping its id": func(d map[string]any) {
 			identity(d)["aggregate"] = true
 		},
+		"an identity has no source address count": func(d map[string]any) {
+			delete(identity(d), "source_address_count")
+		},
+		"an identity has no merge candidate list": func(d map[string]any) {
+			delete(identity(d), "merge_candidates")
+		},
+		"a merge candidate names an invented signal": func(d map[string]any) {
+			identity(d)["merge_candidates"] = []any{map[string]any{"id": "0123456789abcdef", "signal": "same_team"}}
+		},
+		"a merge candidate carries an address": func(d map[string]any) {
+			identity(d)["merge_candidates"] = []any{
+				map[string]any{"id": "0123456789abcdef", "signal": "local_part", "email": "someone@example.com"},
+			}
+		},
 	}
 	for name, breakIt := range cases {
 		var document map[string]any

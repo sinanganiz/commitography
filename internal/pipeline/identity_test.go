@@ -44,6 +44,34 @@ func TestResolverReconcilesWithShortlogOnMailmapFixture(t *testing.T) {
 	}
 }
 
+// Resolution applies .mailmap first, while the history is read, and
+// configuration second, over what .mailmap produced; the identity keeps count
+// of every source address folded into it by either.
+func TestMailmapResolvesBeforeConfiguration(t *testing.T) {
+	t.Parallel()
+	commits := collectFixture(t, "mailmap", true)
+
+	mapped := identity.NewResolver(config.Default(), commits)
+	ada, ok := mapped.Lookup(identity.Digest("ada@example.com"))
+	if !ok || ada.SourceAddresses() != 2 || ada.DisplayName != "Ada Lovelace" {
+		t.Fatalf("after .mailmap, Ada = %v with %d source addresses, want Ada Lovelace with 2", ada, ada.SourceAddresses())
+	}
+	if _, ok := mapped.Lookup(identity.Digest("ada.lovelace@corp.example.com")); ok {
+		t.Error("the address .mailmap folded is still an identity of its own")
+	}
+
+	// Configuration groups the address .mailmap resolved to, not the one it
+	// replaced, and names the result.
+	cfg := config.Default()
+	cfg.Identities = []config.Identity{{Name: "A. Lovelace", Emails: []string{"ada@example.com", "alan@example.com"}}}
+	grouped := identity.NewResolver(cfg, commits)
+	both, ok := grouped.Lookup(identity.Digest("ada@example.com"))
+	if !ok || both.SourceAddresses() != 3 || both.DisplayName != "A. Lovelace" {
+		t.Errorf("after configuration, the identity = %v with %d source addresses, want A. Lovelace with 3",
+			both, both.SourceAddresses())
+	}
+}
+
 func TestConfiguredIdentityMergesTwoEmails(t *testing.T) {
 	t.Parallel()
 	commits := collectFixture(t, "basic", false)

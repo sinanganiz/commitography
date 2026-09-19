@@ -27,11 +27,15 @@ const (
 	fieldSep  = "\x1f"
 
 	// headerFields is the number of %-placeholders in the pretty format below.
-	headerFields = 7
+	headerFields = 8
 
 	// prettyFormat lays out one record header per commit: hash, author name,
-	// author email, author date, committer date, parents, subject.
-	prettyFormat = "format:%x01%H%x1f%aN%x1f%aE%x1f%aI%x1f%cI%x1f%P%x1f%s"
+	// author email, the author email as the commit records it, author date,
+	// committer date, parents, subject. The name and the first email have
+	// .mailmap applied, which is the first step of identity resolution
+	// (docs/metrics.md section 1); the second email is the source address
+	// before it, which the identity layer counts (section 14).
+	prettyFormat = "format:%x01%H%x1f%aN%x1f%aE%x1f%ae%x1f%aI%x1f%cI%x1f%P%x1f%s"
 
 	// maxParseFailureRatio is the share of unparsable records above which the
 	// history is considered untrustworthy rather than merely imperfect.
@@ -427,17 +431,17 @@ func parseRecord(chunk string) (model.Commit, error) {
 		return c, fmt.Errorf("expected %d header fields, got %d", headerFields, len(fields))
 	}
 
-	authorDate, authorOffset, err := parseGitTime(fields[3])
+	authorDate, authorOffset, err := parseGitTime(fields[4])
 	if err != nil {
 		return c, fmt.Errorf("commit %s: author date: %w", short(fields[0]), err)
 	}
-	committerDate, committerOffset, err := parseGitTime(fields[4])
+	committerDate, committerOffset, err := parseGitTime(fields[5])
 	if err != nil {
 		return c, fmt.Errorf("commit %s: committer date: %w", short(fields[0]), err)
 	}
 
 	var parents []string
-	if p := strings.TrimSpace(fields[5]); p != "" {
+	if p := strings.TrimSpace(fields[6]); p != "" {
 		parents = strings.Split(p, " ")
 	}
 
@@ -445,13 +449,14 @@ func parseRecord(chunk string) (model.Commit, error) {
 		Hash:                     fields[0],
 		AuthorName:               fields[1],
 		AuthorEmail:              fields[2],
+		AuthorSourceEmail:        fields[3],
 		AuthorDate:               authorDate,
 		AuthorTZOffsetMinutes:    authorOffset,
 		CommitterDate:            committerDate,
 		CommitterTZOffsetMinutes: committerOffset,
 		Parents:                  parents,
 		IsMerge:                  len(parents) > 1,
-		Subject:                  fields[6],
+		Subject:                  fields[7],
 		Files:                    parseNumstat(rest),
 	}
 	return c, nil

@@ -77,7 +77,7 @@
     },
     "identities": {
       "type": "array",
-      "description": "The resolved contributors a reader selects from (ADR-0010 clause 2), docs/metrics.md section 14. Not a metric family. Individual entries are ordered by first commit date ascending, ties broken by id (ADR-0009 clause 3); at most 200 appear individually, and the rest fold into one aggregate entry, last (ADR-0018 clause 4). No entry carries a raw address (ADR-0033 clause 2). Added in document version 1.1.",
+      "description": "The resolved contributors a reader selects from (ADR-0010 clause 2), docs/metrics.md section 14. Not a metric family. Individual entries are ordered by first commit date ascending, ties broken by id (ADR-0009 clause 3); at most 200 appear individually, and the rest fold into one aggregate entry, last (ADR-0018 clause 4). No entry carries a raw address (ADR-0033 clause 2). Added in document version 1.1; source address counts and merge candidates added in 1.2.",
       "items": {
         "oneOf": [
           {
@@ -892,7 +892,9 @@
         "display_name",
         "first_commit_date",
         "last_commit_date",
-        "commit_count"
+        "commit_count",
+        "source_address_count",
+        "merge_candidates"
       ],
       "properties": {
         "id": {
@@ -914,6 +916,41 @@
         "commit_count": {
           "type": "integer",
           "description": "The identity's analysed commits."
+        },
+        "source_address_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The distinct addresses the identity's commits record before .mailmap and configuration fold them into it. The addresses are never exported (ADR-0033 clause 2). Added in document version 1.2."
+        },
+        "merge_candidates": {
+          "type": "array",
+          "description": "Suggestions that another individual entry may be the same person, ordered by id, then signal. Nothing applies them (ADR-0010 clause 4). Added in document version 1.2.",
+          "items": {
+            "$ref": "#/$defs/mergeCandidate"
+          }
+        }
+      }
+    },
+    "mergeCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One merge suggestion: another entry of the identities section, and the signal that produced it (docs/metrics.md section 14).",
+      "required": [
+        "id",
+        "signal"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The id of the other entry."
+        },
+        "signal": {
+          "type": "string",
+          "enum": [
+            "display_name",
+            "local_part",
+            "noreply"
+          ]
         }
       }
     },
@@ -926,6 +963,7 @@
         "first_commit_date",
         "last_commit_date",
         "commit_count",
+        "source_address_count",
         "aggregate"
       ],
       "properties": {
@@ -944,6 +982,11 @@
         "commit_count": {
           "type": "integer",
           "description": "The folded identities' analysed commits, summed."
+        },
+        "source_address_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The folded identities' source addresses, summed. Added in document version 1.2."
         },
         "aggregate": {
           "type": "boolean",

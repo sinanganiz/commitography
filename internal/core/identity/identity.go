@@ -37,7 +37,15 @@ type Identity struct {
 	// addresses is every address that resolves to this identity: configured
 	// ones and observed ones, sorted.
 	addresses []Address
+	// sources is every address the identity's commits record before .mailmap,
+	// sorted: the source addresses folded into it.
+	sources []Address
 }
+
+// SourceAddresses returns how many distinct addresses, as the commits record
+// them before .mailmap and configuration, are folded into the identity
+// (docs/metrics.md section 14). It is a count; the addresses stay here.
+func (id Identity) SourceAddresses() int { return len(id.sources) }
 
 // Resolved reports whether the identity rests on an address. An identity
 // whose commits carry no address cannot be told apart from any other such
@@ -132,6 +140,14 @@ func NewResolver(cfg config.Config, commits []model.Commit) *Resolver {
 			r.byDigest[digest] = entry
 		}
 		entry.addresses = appendUnique(entry.addresses, address)
+		source := ParseAddress(c.AuthorSourceEmail)
+		if source.Empty() {
+			// A record that predates the source address, or a commit
+			// .mailmap did not touch, has the one address.
+			source = address
+		}
+		entry.addresses = appendUnique(entry.addresses, source)
+		entry.sources = appendUnique(entry.sources, source)
 		r.counts[digest]++
 
 		if !configured[digest] {
@@ -143,9 +159,8 @@ func NewResolver(cfg config.Config, commits []model.Commit) *Resolver {
 	}
 
 	for _, entry := range r.byDigest {
-		sort.Slice(entry.addresses, func(i, j int) bool {
-			return entry.addresses[i].value < entry.addresses[j].value
-		})
+		sortAddresses(entry.addresses)
+		sortAddresses(entry.sources)
 		entry.IsBot = isBot(cfg, entry)
 	}
 
@@ -214,6 +229,10 @@ func isBot(cfg config.Config, id *Identity) bool {
 		}
 	}
 	return config.IsBotIdentity(id.DisplayName, "")
+}
+
+func sortAddresses(list []Address) {
+	sort.Slice(list, func(i, j int) bool { return list[i].value < list[j].value })
 }
 
 func appendUnique(list []Address, value Address) []Address {
