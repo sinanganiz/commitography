@@ -28,14 +28,20 @@ import "time"
 //	     13 and 14)
 //	1.3  the configuration section filled with the resolved analysis
 //	     configuration (ADR-0026 clause 2)
+//	1.4  the sections object added, carrying a version for every top-level
+//	     section that is not a family (ADR-0070 clause 1)
 func DocumentVersion() Version {
-	return Version{Major: 1, Minor: 3}
+	return Version{Major: 1, Minor: 4}
 }
 
 // Report is the complete analysis artifact: one repository, at one commit,
 // under one analysis configuration (ADR-0021 clause 1).
 type Report struct {
 	DocumentVersion Version `json:"document_version"`
+	// Sections is the version of each top-level section that is not a metric
+	// family, governing the meaning of that section's values as a family's
+	// version governs its own (ADR-0070 clause 1). versions.go defines it.
+	Sections SectionVersions `json:"sections"`
 	// Metadata is the one section whose values differ between two runs over
 	// the same commit and configuration. Comparison tooling excludes it by
 	// path.

@@ -43,6 +43,7 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 
 	r := &core.Report{
 		DocumentVersion: core.DocumentVersion(),
+		Sections:        core.CurrentSectionVersions(),
 		Metadata: core.Metadata{
 			GeneratedAt: b.clock.Now().UTC(),
 			ToolVersion: in.ToolVersion,

@@ -7,6 +7,7 @@
   "additionalProperties": false,
   "required": [
     "document_version",
+    "sections",
     "metadata",
     "repository",
     "configuration",
@@ -31,6 +32,31 @@
         },
         "minor": {
           "type": "integer"
+        }
+      }
+    },
+    "sections": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The version of every top-level section that is not a metric family, governing the meaning of that section's values as a family's version governs its own (ADR-0070 clause 1). A change to how a section is derived increments it, adding a field increments its minor component, and every one of them is part of the report cache key (clause 3). The document version continues to govern structure alone. Added in document version 1.4.",
+      "required": [
+        "metadata",
+        "repository",
+        "configuration",
+        "identities"
+      ],
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/version"
+        },
+        "repository": {
+          "$ref": "#/$defs/version"
+        },
+        "configuration": {
+          "$ref": "#/$defs/version"
+        },
+        "identities": {
+          "$ref": "#/$defs/version"
         }
       }
     },

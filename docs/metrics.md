@@ -363,9 +363,14 @@ The list of resolved contributors the reader selects their own identity from
 (ADR-0010 clause 2). It is **not a metric family**: ADR-0024 clause 5 fixes the
 family set and this is not in it. It is a top-level section of the report,
 `identities`, beside the generation metadata and the resolved configuration. It
-carries no version and no status of its own; the document version governs it
-(ADR-0031 clause 1). Adding it made the document version 1.1; adding
-`source_address_count` and `merge_candidates` made it 1.2.
+carries no status of its own.
+
+Its version is in the report's `sections` object and governs how its values are
+derived (ADR-0070): 1.0 is the section as first emitted, 1.1 added
+`source_address_count` and `merge_candidates`, and 2.0 derives merge candidates
+from the analysed history alone (ADR-0069). The document version governs its
+structure (ADR-0031 clause 1): adding the section made it 1.1, and adding those
+two fields made it 1.2.
 
 **Population.** Every identity with at least one analysed commit. An identity
 whose commits are all excluded does not appear.
