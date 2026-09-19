@@ -48,6 +48,103 @@ func exampleProblems(t *testing.T, content string) []string {
 	return out
 }
 
+// digestOf loads a configuration file and returns the digest of the analysis
+// plane it resolves to.
+func digestOf(t *testing.T, body string) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, config.FileName), []byte(body), 0o600); err != nil {
+		fatal(t, 26, "writing a configuration file: %v", err)
+	}
+	settings, err := config.Load(core.SystemFilesystem(), "", dir, func(string, ...any) {})
+	if err != nil {
+		fatal(t, 26, "loading a configuration: %v", err)
+	}
+	analysis := settings.Analysis
+	analysis.CardinalityLimits = core.LimitValues()
+	return core.ConfigurationDigest(analysis)
+}
+
+// TestConfigDigestIsStableAgainstOrderingAndFormatting is the digest half of
+// ADR-0026 clause 5: the digest is of the resolved configuration, so how a
+// file spells it cannot reach it, and any value that changes the analysis
+// must.
+func TestConfigDigestIsStableAgainstOrderingAndFormatting(t *testing.T) {
+	t.Parallel()
+	plain := digestOf(t, `
+count_merges: true
+date_source: committer
+exclude_paths:
+  - "generated/**"
+identities:
+  - name: Ada Lovelace
+    emails:
+      - ada@example.com
+`)
+	for name, body := range map[string]string{
+		"the keys in another order": `
+identities:
+  - emails:
+      - ada@example.com
+    name: Ada Lovelace
+date_source: committer
+exclude_paths:
+  - "generated/**"
+count_merges: true
+`,
+		"other spacing and quoting": `
+count_merges:    yes
+date_source:     'committer'
+exclude_paths: ["generated/**"]
+
+identities: [{name: "Ada Lovelace", emails: ["ada@example.com"]}]
+`,
+		"an address written as its digest": `
+count_merges: true
+date_source: committer
+exclude_paths:
+  - "generated/**"
+identities:
+  - name: Ada Lovelace
+    emails:
+      - ` + core.IdentityDigest("ada@example.com") + `
+`,
+	} {
+		if got := digestOf(t, body); got != plain {
+			report(t, 26, "%s produced the digest %s, and the same configuration written plainly produced %s",
+				name, got, plain)
+		}
+	}
+
+	for name, body := range map[string]string{
+		"a value changed": `
+count_merges: false
+date_source: committer
+exclude_paths:
+  - "generated/**"
+identities:
+  - name: Ada Lovelace
+    emails:
+      - ada@example.com
+`,
+		"an entry added": `
+count_merges: true
+date_source: committer
+exclude_paths:
+  - "generated/**"
+  - "vendored/**"
+identities:
+  - name: Ada Lovelace
+    emails:
+      - ada@example.com
+`,
+	} {
+		if got := digestOf(t, body); got == plain {
+			report(t, 64, "%s left the digest at %s, so the digest cannot distinguish two analyses", name, got)
+		}
+	}
+}
+
 // TestConfigExampleChangesNothing holds the example configuration to its
 // header (WP-0010 clause 9a): as written it resolves to the built-in values,
 // both exclusion lists included, and sets no key that does not exist.

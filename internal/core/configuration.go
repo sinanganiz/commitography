@@ -16,7 +16,10 @@
 package core
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/sinanganiz/commitography/internal/core/config"
@@ -146,6 +149,67 @@ func embeddedExclusions(a config.Analysis, resolver *identity.Resolver) []string
 		}
 	}
 	return out
+}
+
+// ConfigurationDigest returns the normalised digest of a resolved analysis
+// configuration. WP-0033 puts it in the report cache key (ADR-0026 clause 5,
+// ADR-0017 clause 2), so that changing an analysis value produces a new cache
+// entry rather than overwriting one.
+//
+// It digests the resolved values, not the text they came from, so two
+// configurations that differ only in the order of their keys or in their
+// spacing produce one digest, and two that differ in any value produce two.
+// Addresses are digested as ADR-0068 digests them, so a configuration naming
+// addresses and one naming their digests share a cache entry, as they must:
+// they produce the same report.
+//
+// Anonymisation is digested as the flag it is, not applied: a pseudonym is
+// known only after the history has been read, and the cache key must exist
+// before that.
+func ConfigurationDigest(a config.Analysis) string {
+	var b strings.Builder
+	write := func(key string, values ...string) {
+		b.WriteString(key)
+		for _, value := range values {
+			b.WriteByte('\t')
+			b.WriteString(strconv.Quote(value))
+		}
+		b.WriteByte('\n')
+	}
+
+	for _, id := range a.Identities {
+		values := []string{id.Name}
+		for _, email := range id.Emails {
+			if reference := identity.Reference(email); reference != "" {
+				values = append(values, reference)
+			}
+		}
+		write("identity", values...)
+	}
+	authors := make([]string, 0, len(a.ExcludeAuthors))
+	for _, entry := range a.ExcludeAuthors {
+		if strings.Contains(entry, "@") {
+			entry = identity.Reference(entry)
+		}
+		authors = append(authors, entry)
+	}
+	write("exclude_authors", authors...)
+	write("exclude_paths", a.ExcludePaths...)
+	write("outlier_threshold_lines", strconv.Itoa(a.OutlierThresholdLines))
+	write("count_merges", strconv.FormatBool(a.CountMerges))
+	write("date_source", a.DateSource)
+	write("use_mailmap", strconv.FormatBool(a.UseMailmap))
+	write("anonymize", strconv.FormatBool(a.Anonymize))
+	write("since", a.Since)
+	write("until", a.Until)
+	write("year", strconv.Itoa(a.Year))
+	write("recency_window_days", strconv.Itoa(a.RecencyWindowDays))
+	for _, limit := range NamedLimits() {
+		write("cardinality_limit."+limit.Name, strconv.Itoa(limit.Value))
+	}
+
+	sum := sha256.Sum256([]byte(b.String()))
+	return hex.EncodeToString(sum[:])
 }
 
 // addressPattern is the shape of an email address, as the identities section
