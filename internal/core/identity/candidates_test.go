@@ -13,14 +13,25 @@ func commitBy(name, email string) model.Commit {
 	return model.Commit{AuthorName: name, AuthorEmail: email, AuthorDate: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
 }
 
+// resolved returns the commits with their identities resolved, as the filter
+// stage leaves them before aggregation reads them.
+func resolved(cfg config.Analysis, commits []model.Commit) (*Resolver, []model.Commit) {
+	r := NewResolver(cfg, commits)
+	out := append([]model.Commit(nil), commits...)
+	for i := range out {
+		out[i].IdentityID = r.Resolve(out[i].AuthorName, out[i].AuthorEmail)
+	}
+	return r, out
+}
+
 func candidatesOf(t *testing.T, commits ...model.Commit) (*Resolver, map[string][]Candidate) {
 	t.Helper()
-	r := NewResolver(config.Default(), commits)
+	r, analysed := resolved(config.Default(), commits)
 	var digests []string
 	for _, id := range r.Identities() {
 		digests = append(digests, id.Digest)
 	}
-	return r, r.Candidates(digests)
+	return r, Candidates(digests, analysed)
 }
 
 func TestCandidatesComeFromEachSignal(t *testing.T) {
@@ -77,13 +88,73 @@ func TestCandidatesAreSuggestionsOnly(t *testing.T) {
 
 func TestCandidatesStayWithinTheGivenSet(t *testing.T) {
 	t.Parallel()
-	r := NewResolver(config.Default(), []model.Commit{
+	r, analysed := resolved(config.Default(), []model.Commit{
 		commitBy("Ada", "ada@example.com"), commitBy("Ada", "ada@corp.example.com"),
 	})
 	only := r.Resolve("", "ada@example.com")
-	got := r.Candidates([]string{only})
+	got := Candidates([]string{only}, analysed)
 	if len(got) != 1 || len(got[only]) != 0 {
 		t.Errorf("candidates = %v, want none outside the given set", got)
+	}
+}
+
+// ADR-0069 clause 2: a value that exists only because it was configured is not
+// evidence about this repository, so it suggests nothing. Before the record,
+// the configured address below produced a local_part candidate that no commit
+// supported, and that no rerun from the report's embedded configuration —
+// where addresses are digests — could reproduce.
+func TestConfiguredValuesProduceNoCandidate(t *testing.T) {
+	t.Parallel()
+	commits := []model.Commit{
+		commitBy("Ada", "ada@a.example.com"),
+		commitBy("L", "lovelace@b.example.com"),
+	}
+	cfg := config.Default()
+	cfg.Identities = []config.Identity{{
+		Name:   "Ada King",
+		Emails: []string{"ada@a.example.com", "lovelace@corp.example.com"},
+	}}
+	r, analysed := resolved(cfg, commits)
+	digests := []string{r.Resolve("", "ada@a.example.com"), r.Resolve("", "lovelace@b.example.com")}
+	got := Candidates(digests, analysed)
+	for _, digest := range digests {
+		if len(got[digest]) != 0 {
+			t.Errorf("the configured address produced the candidates %v", got[digest])
+		}
+	}
+
+	// The configured name is not evidence either: the identity's recorded name
+	// is what a signal compares.
+	if same := Candidates(digests, analysed); len(same[digests[0]]) != 0 {
+		t.Errorf("the configured name produced the candidates %v", same[digests[0]])
+	}
+}
+
+// Every name a commit records is evidence, not only the most recent, and the
+// same holds for the addresses before and after .mailmap.
+func TestEveryRecordedNameAndAddressIsEvidence(t *testing.T) {
+	t.Parallel()
+	renamed := commitBy("Ada Lovelace", "ada@example.com")
+	renamed.AuthorDate = renamed.AuthorDate.AddDate(1, 0, 0)
+	folded := commitBy("Grace", "grace@example.com")
+	folded.AuthorSourceEmail = "ada.lovelace@old.example.com"
+
+	r, got := candidatesOf(t,
+		commitBy("Ada", "ada@example.com"),
+		renamed,
+		commitBy("Ada Lovelace", "someone@corp.example.com"),
+		folded)
+
+	ada := r.Resolve("", "ada@example.com")
+	other := r.Resolve("", "someone@corp.example.com")
+	if want := []Candidate{{Digest: other, Signal: SignalDisplayName}}; !reflect.DeepEqual(got[ada], want) {
+		t.Errorf("candidates of the renamed identity = %v, want %v", got[ada], want)
+	}
+	// Grace's pre-mailmap address shares its local part with nobody, but the
+	// address it folded into does not hide it either.
+	grace := r.Resolve("", "grace@example.com")
+	if len(got[grace]) != 0 {
+		t.Errorf("candidates of the folded identity = %v, want none", got[grace])
 	}
 }
 

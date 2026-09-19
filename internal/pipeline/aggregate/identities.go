@@ -94,7 +94,7 @@ func buildIdentities(in core.Input, analyzed []model.Commit) []core.IdentityEntr
 		}
 		return a.ID < b.ID
 	})
-	withCandidates(in, shown)
+	withCandidates(shown, analyzed)
 	if len(folded) == 0 {
 		return shown
 	}
@@ -105,15 +105,17 @@ func buildIdentities(in core.Input, analyzed []model.Commit) []core.IdentityEntr
 // in the identity layer, where the raw data they compare is (ADR-0033
 // clause 1). Candidates are sought among the individual entries only, so every
 // id a candidate names is an entry the reader can see.
-func withCandidates(in core.Input, shown []core.IdentityEntry) {
+//
+// The evidence is the analysed commits (ADR-0069 clause 1), which is why they
+// are passed here rather than read from the resolver: the resolver also holds
+// what the configuration supplied, and a value that only a configuration
+// carries is not evidence about this repository.
+func withCandidates(shown []core.IdentityEntry, analyzed []model.Commit) {
 	ids := make([]string, len(shown))
 	for i, e := range shown {
 		ids[i] = e.ID
 	}
-	var found map[string][]identity.Candidate
-	if in.Resolver != nil {
-		found = in.Resolver.Candidates(ids)
-	}
+	found := identity.Candidates(ids, analyzed)
 	for i := range shown {
 		shown[i].MergeCandidates = []core.MergeCandidate{}
 		for _, c := range found[shown[i].ID] {
