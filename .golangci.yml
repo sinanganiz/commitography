@@ -168,12 +168,19 @@ linters:
           deny:
             - pkg: github.com/sinanganiz/commitography/internal/checks
               desc: "ADR-0060 clause 2: nothing may import internal/checks"
-        # Process execution is imported by the git package and by the closed
-        # set of sites in ADR-0065 clause 3, tests included (clause 7): the
-        # verification packages under internal/checks/ and the browser
-        # opener. The one test that needed a platform construct creates it
-        # through the Windows API and starts no process. Adding a site here
-        # requires a superseding record (ADR-0065 clause 6).
+        # Process execution is imported by the git package (ADR-0065
+        # clause 1) and by the closed set of sites in clause 3, tests
+        # included (clause 7): the verification packages under
+        # internal/checks/ and the browser opener. The third category of
+        # clause 3, test setup creating a platform construct the standard
+        # library cannot express, has no site: the one test that needed such
+        # a construct creates it through the Windows API and starts no
+        # process, so no path is listed for it.
+        #
+        # This list is the clause 3 set exactly, and
+        # TestProcessExecutionSitesAreTheClosedSet compares the two so that it
+        # stays that way. Adding a site requires a superseding record;
+        # widening it here is forbidden (ADR-0065 clause 6).
         process-execution:
           list-mode: lax
           files:
@@ -196,6 +203,17 @@ linters:
         - pattern: ^context\.WithValue$
           pkg: ^context$
           msg: "ADR-0042: context carries cancellation and deadlines only"
+        # The rule above denies the process-execution library by import, and
+        # these are the other ways to start one. They are denied everywhere,
+        # the git package included: a process is started through os/exec, so
+        # that the one chokepoint applies the hardening set rather than a
+        # call site reimplementing part of it (ADR-0065 clauses 1 and 2).
+        - pattern: ^os\.StartProcess$
+          pkg: ^os$
+          msg: "ADR-0065: a process is started through the git package, not directly"
+        - pattern: ^syscall\.(StartProcess|ForkExec|Exec|CreateProcess)$
+          pkg: ^syscall$
+          msg: "ADR-0065: a process is started through the git package, not directly"
 
   # No exclusions. Link-time build metadata is not excluded here either:
   # internal/core/buildinfo.go carries the single in-file suppression of
