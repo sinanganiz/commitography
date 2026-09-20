@@ -56,8 +56,8 @@ GO_UNIT_PACKAGES := $(shell go list ./... | grep -vE '/internal/checks(/|$$)')
 .PHONY: build web test fixtures lint clean docker-image docker-smoke perfcheck \
 	gate-fast gate-full toolchain-versions build-go lint-go test-go checks \
 	typecheck-web test-web vulncheck-go vulncheck-web fixture-determinism \
-	golden-large golden-update determinism reproducible-build reproducible-binary \
-	gate-release reproducible-release
+	golden-large golden-update determinism subprocess-count reproducible-build \
+	reproducible-binary gate-release reproducible-release
 
 build: web
 	go build -trimpath -ldflags "$(LDFLAGS)" -o $(BINARY) ./cmd/commitography
@@ -124,17 +124,16 @@ lint: lint-go
 #   full (15 minutes)  everything in fast, plus vulnerability scanning,
 #                      golden comparison on the large fixture, fixture
 #                      determinism (on every supported platform), report
-#                      determinism and the reproducible build of the local
-#                      binary
+#                      determinism, the git subprocess count and the
+#                      reproducible build of the local binary
 #   release            everything in full, plus the reproducible build of the
 #                      release binary
 #
 # Checks ADR-0057 assigns to a gate whose subject does not exist yet —
 # invariants, family contract, namespace violation, goroutine leak,
 # incremental equivalence, identity projection, mode capability matrix,
-# model-free equivalence, performance budgets, subprocess count,
-# cross-compilation, bundle integrity — are added by the package that
-# creates each subject.
+# model-free equivalence, performance budgets, cross-compilation, bundle
+# integrity — are added by the package that creates each subject.
 #
 # The leak scan runs in the fast gate and covers log output as well as
 # artifacts. The report determinism checker covers the same-input half; the
@@ -143,12 +142,12 @@ lint: lint-go
 # code set from WP-0006; WP-0008 extends it to metrics and cardinality limits.
 FAST_CHECKS := build-go lint-go test-go checks typecheck-web test-web
 FULL_CHECKS := vulncheck-go vulncheck-web fixture-determinism golden-large \
-	determinism reproducible-build
+	determinism subprocess-count reproducible-build
 RELEASE_CHECKS := reproducible-release
 
 # Checkers that belong to the full gate or the release path and are therefore
 # skipped by `checks`. Each has its own target below.
-FULL_CHECKERS := ^(TestFixtureDeterminism|TestGoldenLarge|TestDeterminism|TestDeterminismRejectsAClockDependentValue|TestReproducibleBuild)$$
+FULL_CHECKERS := ^(TestFixtureDeterminism|TestGoldenLarge|TestDeterminism|TestDeterminismRejectsAClockDependentValue|TestSubprocessCount|TestReproducibleBuild)$$
 
 # Every gate prints the number of checks run, passed, failed and skipped
 # (ADR-0064 clause 4). Go tests and frontend tests count one per test; every
@@ -231,6 +230,15 @@ golden-large:
 determinism:
 	go test -json -count=1 -run '^TestDeterminism' ./internal/checks \
 		| $(GATESUMMARY) gotest $(GATE_DIR) determinism
+
+# ADR-0063 table 2 and ADR-0050 clause 3: the number of git processes an
+# analysis starts does not grow with the number of commits. It analyses the
+# smallest and the largest fixture with a recording program in front of git,
+# so it needs the built binary and both fixtures; the gate has generated
+# them already.
+subprocess-count:
+	go test -json -count=1 -run '^TestSubprocessCount$$' ./internal/checks \
+		| $(GATESUMMARY) gotest $(GATE_DIR) subprocess-count
 
 # ADR-0049 clause 6 and ADR-0063 table 2. Builds the command twice with the
 # flags `make build` uses and compares the two binaries. Each build is its own
