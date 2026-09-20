@@ -102,7 +102,12 @@ func fixtureManifest(t *testing.T, root string) string {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}
 		for _, ref := range refs {
-			b.WriteString(name + " " + strings.TrimPrefix(ref, "\n") + "\n")
+			// git's own newline after the last record leaves one record that
+			// is nothing but that newline.
+			if ref = strings.TrimPrefix(ref, "\n"); ref == "" {
+				continue
+			}
+			b.WriteString(name + " " + ref + "\n")
 		}
 		count, err := git.Output(ctx, withLongPaths("rev-list", "--count", "--all"))
 		if err != nil {
