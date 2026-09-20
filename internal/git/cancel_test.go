@@ -8,48 +8,58 @@ import (
 	"time"
 )
 
-// TestCancellationLeavesNoProcessInTheGroup enforces ADR-0044 clause 4: a
-// cancelled invocation leaves no descendant running, not merely no direct
-// child.
+// concurrentInvocations is how many invocations the checker below runs under
+// one context. An analysis holds several git processes at once — the history
+// read is sharded across them — and one cancellation must reach all of them,
+// so cancelling a single invocation is not the shape to test.
+const concurrentInvocations = 4
+
+// TestCancellationLeavesNoProcessInTheGroup enforces ADR-0044 clauses 3 and
+// 4: cancelling the context an analysis runs under leaves no git process
+// alive, and termination reaches the descendants rather than the direct
+// children alone.
 //
 // It is verified by asking the operating system whether each process is still
-// there, rather than by the absence of an error, which is what the work
-// package requires. The tree is two deep on purpose: the recording program is
-// the direct child that os/exec's own cancellation would reach, and the git
-// it starts is the descendant that would be orphaned without the group.
+// there, rather than by the absence of an error. Each tree is two deep on
+// purpose: the recording program is the direct child that os/exec's own
+// cancellation would reach, and the git it starts is the descendant that
+// would be orphaned without the group.
 func TestCancellationLeavesNoProcessInTheGroup(t *testing.T) {
 	t.Parallel()
 	recorder := newRecorder(t)
 	repo := repositoryRoot(t)
 
-	// cat-file --batch reads object names from standard input and blocks
-	// until it gets one, so the tree stays alive until it is terminated.
-	stdin, hold, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("opening the invocation's standard input: %v", err)
-	}
-	defer stdin.Close()
-	defer hold.Close()
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	process, err := Start(ctx, recorder.spec(At(repo, "cat-file", "--batch").WithStdin(stdin)))
-	if err != nil {
-		t.Fatalf("starting the invocation: %v", err)
-	}
-	pids := waitForTheTree(t, recorder)
+	for i := 0; i < concurrentInvocations; i++ {
+		// cat-file --batch reads object names from standard input and blocks
+		// until it gets one, so each tree stays alive until it is
+		// terminated. The write end stays open for the whole test.
+		stdin, hold, err := os.Pipe()
+		if err != nil {
+			t.Fatalf("opening the invocation's standard input: %v", err)
+		}
+		defer stdin.Close()
+		defer hold.Close()
 
+		process, err := Start(ctx, recorder.spec(At(repo, "cat-file", "--batch").WithStdin(stdin)))
+		if err != nil {
+			t.Fatalf("starting invocation %d: %v", i, err)
+		}
+		defer process.Close()
+	}
+	pids := waitForTheTrees(t, recorder, 2*concurrentInvocations)
+
+	// One cancellation, as an analysis gets.
 	cancel()
-	process.Close()
 
 	for _, pid := range pids {
 		if waitForExit(pid) {
 			continue
 		}
-		t.Errorf("ADR-0044 clause 4: process %d was still running %s after the invocation was "+
-			"cancelled; termination must reach the group, not the direct child alone",
-			pid, terminationGrace)
+		t.Errorf("ADR-0044 clause 4: process %d was still running %s after the analysis was cancelled; "+
+			"termination must reach the group, not the direct child alone", pid, terminationGrace)
 	}
 }
 
@@ -107,18 +117,19 @@ const (
 	terminationGrace = time.Duration(maxPolls) * pollInterval
 )
 
-// waitForTheTree blocks until the recording program has started the real git,
-// and returns both process identifiers.
-func waitForTheTree(t *testing.T, r recorder) []int {
+// waitForTheTrees blocks until every recording program has started its real
+// git, and returns all the process identifiers: one per recording program
+// and one per git.
+func waitForTheTrees(t *testing.T, r recorder, want int) []int {
 	t.Helper()
 	for i := 0; i < maxPolls; i++ {
-		// Two records: the recording program's own, and the git it started.
-		if pids := r.processes(); len(pids) >= 2 {
+		if pids := r.processes(); len(pids) >= want {
 			return pids
 		}
 		time.Sleep(pollInterval)
 	}
-	t.Fatalf("ADR-0064: the invocation never reached git, so the checker has nothing to cancel")
+	t.Fatalf("ADR-0064: only %d of %d processes started, so the checker has nothing to cancel",
+		len(r.processes()), want)
 	return nil
 }
 

@@ -43,6 +43,19 @@ func gitOutput(t *testing.T, repo string, args ...string) string {
 	return out
 }
 
+// gitRecords reads git's NUL-delimited output. The recomputations below are
+// independent of the parser under test but not of the record format: a
+// reading of git that split on newlines would be wrong about exactly the
+// names this package exists to handle (ADR-0065 clause 2).
+func gitRecords(t *testing.T, repo string, args ...string) []string {
+	t.Helper()
+	records, err := git.Records(context.Background(), git.At(repo, args...).Pathspecs())
+	if err != nil {
+		t.Fatalf("git %s: %v", strings.Join(args, " "), err)
+	}
+	return records
+}
+
 func TestCollectCommitCountMatchesRevList(t *testing.T) {
 	t.Parallel()
 	repo := fixture(t, "basic")
@@ -76,10 +89,19 @@ func TestCollectTotalAddedLinesMatchesGit(t *testing.T) {
 	}
 
 	// Independent recomputation straight from git, not reusing the parser.
-	raw := gitOutput(t, repo, "log", "--all", "--numstat", "--no-renames", "--pretty=format:")
+	// The header is an object name and the field separator, so a record that
+	// ends in one is a header with no file entries, and the entry a header
+	// shares a record with follows its newline.
 	var want int
-	for _, line := range strings.Split(raw, "\n") {
-		parts := strings.SplitN(strings.TrimSpace(line), "\t", 3)
+	for _, record := range gitRecords(t, repo, "log", "-z", "--all", "--numstat", "--no-renames",
+		"--pretty=format:%H\x1f") {
+		entry := record
+		if head, rest, ok := strings.Cut(record, "\n"); ok && strings.HasSuffix(head, "\x1f") {
+			entry = rest
+		} else if strings.HasSuffix(record, "\x1f") {
+			continue
+		}
+		parts := strings.SplitN(entry, "\t", 3)
 		if len(parts) != 3 || parts[0] == "-" {
 			continue
 		}
@@ -105,9 +127,8 @@ func TestCollectPreservesAuthorTimezoneOffsets(t *testing.T) {
 
 	// Raw %aI strings, keyed by hash, straight from git.
 	raw := map[string]string{}
-	for _, line := range strings.Split(gitOutput(t, repo, "log", "--all", "--pretty=format:%H %aI"), "\n") {
-		hash, iso, ok := strings.Cut(strings.TrimSpace(line), " ")
-		if ok {
+	for _, record := range gitRecords(t, repo, "log", "-z", "--all", "--pretty=format:%H %aI") {
+		if hash, iso, ok := strings.Cut(record, " "); ok {
 			raw[hash] = iso
 		}
 	}
@@ -172,10 +193,9 @@ func TestCollectRootCommitHasNoParents(t *testing.T) {
 	}
 
 	roots := map[string]bool{}
-	for _, line := range strings.Split(gitOutput(t, repo, "rev-list", "--all", "--max-parents=0"), "\n") {
-		if line = strings.TrimSpace(line); line != "" {
-			roots[line] = true
-		}
+	for _, record := range gitRecords(t, repo, "log", "-z", "--all", "--max-parents=0",
+		"--pretty=format:%H") {
+		roots[record] = true
 	}
 	if len(roots) == 0 {
 		t.Fatal("fixture has no root commit")
@@ -293,21 +313,12 @@ func TestCollectMailmapReconcilesWithShortlog(t *testing.T) {
 		got[c.AuthorName]++
 	}
 
+	// The counts `shortlog -sn` would group by author name. shortlog has no
+	// NUL-delimited form, and an author name is repository content, so the
+	// names are counted from records instead.
 	want := map[string]int{}
-	for _, line := range strings.Split(gitOutput(t, repo, "shortlog", "-sn", "--all"), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		count, name, ok := strings.Cut(line, "\t")
-		if !ok {
-			t.Fatalf("unexpected shortlog line %q", line)
-		}
-		n, err := strconv.Atoi(strings.TrimSpace(count))
-		if err != nil {
-			t.Fatalf("parsing shortlog count %q: %v", count, err)
-		}
-		want[name] = n
+	for _, name := range gitRecords(t, repo, "log", "-z", "--all", "--pretty=format:%aN") {
+		want[name]++
 	}
 
 	if len(got) != len(want) {
