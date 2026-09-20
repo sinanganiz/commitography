@@ -12,6 +12,11 @@ only when their `Files` sections do not overlap. Because work happens directly
 on `main` rather than on per-package branches, two packages can only be worked
 at once from separate working copies; check the `Files` sections first.
 
+A number is an identifier, not a position. **WP-0061 sits early in the waves**
+because it is the second half of a package that was split after work had begun;
+renumbering would have invalidated the package names already written into code
+comments and the linter's tracking list.
+
 Status lives in this table only. Package files carry no status field, so the
 two can never disagree.
 
@@ -114,24 +119,24 @@ to be amended mid-flight.
 | [0007](0007-dependency-wiring.md) | foundation | Dependency wiring and ambient state removal | ADR-0042, ADR-0061, ADR-0021, ADR-0044, ADR-0067 | WP-0005 | Done |
 | [0008](0008-report-document.md) | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032, ADR-0062, ADR-0010 | WP-0005, WP-0006 | Done |
 | [0009](0009-identity-and-privacy.md) | core | Identity model and privacy layers | ADR-0033, ADR-0010, ADR-0032, ADR-0062 | WP-0008 | Done |
-| [0010](0010-configuration-planes.md) | core | Configuration planes and resolution | ADR-0026, ADR-0021, ADR-0062, ADR-0068, ADR-0069, ADR-0070, ADR-0053 | WP-0008 | Done |
-| [0011](0011-git-chokepoint.md) | pipeline | Git invocation chokepoint | ADR-0065, ADR-0044, ADR-0066, ADR-0041 | WP-0005, WP-0006, WP-0007 | Done |
-| 0012 | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052 | WP-0011, WP-0009, WP-0010 | Draft |
-| 0013 | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051 | WP-0012 | Draft |
-| 0014 | pipeline | Work-type classification | ADR-0020, ADR-0018 | WP-0013 | Draft |
-| 0015 | pipeline | Aggregate stage and family harness | ADR-0024, ADR-0032, ADR-0052 | WP-0013, WP-0008 | Draft |
-| 0016 | pipeline | Interpret stage | ADR-0020, ADR-0014 | WP-0015 | Draft |
-| 0017 | pipeline | Render boundary and CLI | ADR-0034, ADR-0021 | WP-0015, WP-0016 | Draft |
-| 0018 | metrics | temporal family | ADR-0024 | WP-0015 | Draft |
-| 0019 | metrics | commit-size family | ADR-0024 | WP-0015 | Draft |
-| 0020 | metrics | messages family | ADR-0024 | WP-0015 | Draft |
-| 0021 | metrics | files family | ADR-0024 | WP-0015 | Draft |
-| 0022 | metrics | coupling family | ADR-0024, ADR-0053 | WP-0015 | Draft |
-| 0023 | metrics | ownership family | ADR-0024 | WP-0015, WP-0013 | Draft |
-| 0024 | metrics | worktype family output | ADR-0024, ADR-0018 | WP-0015, WP-0014 | Draft |
-| 0025 | metrics | ai-archaeology family | ADR-0024 | WP-0015, WP-0013 | Draft |
-| 0026 | metrics | hotspot family | ADR-0024 | WP-0015 | Draft |
-| 0027 | metrics | static-analysis placeholder | ADR-0012, ADR-0032 | WP-0015 | Draft |
+| [0010](0010-configuration-planes.md) | core | Configuration planes and resolution | ADR-0026, ADR-0021, ADR-0062, ADR-0068, ADR-0069, ADR-0070, ADR-0053 | WP-0008 | Ready |
+| [0011](0011-git-chokepoint.md) | pipeline | Git invocation chokepoint | ADR-0065, ADR-0044, ADR-0066, ADR-0041 | WP-0005, WP-0006, WP-0007 | Ready |
+| [0012](0012-collect-stage.md) | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052, ADR-0062, ADR-0017 | WP-0009, WP-0010, WP-0011 | Ready |
+| [0013](0013-replay-stage.md) | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051, ADR-0033, ADR-0019, ADR-0052 | WP-0012 | Ready |
+| [0014](0014-worktype-classification.md) | pipeline | Work-type classification | ADR-0020, ADR-0018, ADR-0019 | WP-0013 | Ready |
+| [0015](0015-family-contract-and-registry.md) | pipeline | Family contract and registry | ADR-0024, ADR-0032, ADR-0031, ADR-0062 | WP-0008 | Ready |
+| 0016 | pipeline | Interpret stage | ADR-0020, ADR-0014 | WP-0061 | Draft |
+| 0017 | pipeline | Render boundary and CLI | ADR-0034, ADR-0021 | WP-0061, WP-0016 | Draft |
+| 0018 | metrics | temporal family | ADR-0024 | WP-0061 | Draft |
+| 0019 | metrics | commit-size family | ADR-0024 | WP-0061 | Draft |
+| 0020 | metrics | messages family | ADR-0024 | WP-0061 | Draft |
+| 0021 | metrics | files family | ADR-0024 | WP-0061 | Draft |
+| 0022 | metrics | coupling family | ADR-0024, ADR-0053 | WP-0061 | Draft |
+| 0023 | metrics | ownership family | ADR-0024 | WP-0061, WP-0013 | Draft |
+| 0024 | metrics | worktype family output | ADR-0024, ADR-0018 | WP-0061, WP-0014 | Draft |
+| 0025 | metrics | ai-archaeology family | ADR-0024 | WP-0061, WP-0013 | Draft |
+| 0026 | metrics | hotspot family | ADR-0024 | WP-0061 | Draft |
+| 0027 | metrics | static-analysis placeholder | ADR-0012, ADR-0032 | WP-0061 | Draft |
 | 0028 | interpret | Axis layer | ADR-0030, ADR-0013 | WP-0016, WP-0018, WP-0019, WP-0020, WP-0021, WP-0022, WP-0023, WP-0024, WP-0025, WP-0026 | Draft |
 | 0029 | interpret | Archetype and badge evaluation | ADR-0014, ADR-0030 | WP-0028 | Draft |
 | 0030 | interpret | Taxonomy calibration | ADR-0030, ADR-0019 | WP-0029, WP-0004 | Draft |
@@ -165,6 +170,7 @@ to be amended mid-flight.
 | 0058 | distribution | Container image and deployment documentation | ADR-0046, ADR-0016 | WP-0045 | Draft |
 | 0059 | distribution | Release pipeline | ADR-0049, ADR-0057 | WP-0058, WP-0003 | Draft |
 | 0060 | distribution | User documentation rewrite | ADR-0001 | WP-0057, WP-0058 | Draft |
+| [0061](0061-aggregate-stage.md) | pipeline | Aggregate stage | ADR-0020, ADR-0024, ADR-0052, ADR-0032 | WP-0013, WP-0015 | Ready |
 
 ---
 
@@ -178,10 +184,10 @@ to be amended mid-flight.
 | 4 | 0005 |
 | 5 | 0006, 0007 |
 | 6 | 0008, 0011, 0032 |
-| 7 | 0009, 0010, 0037 |
+| 7 | 0009, 0010, 0015, 0037 |
 | 8 | 0012, 0033, 0040, 0046 |
 | 9 | 0013, 0035, 0041, 0047 |
-| 10 | 0014, 0015, 0034, 0036, 0044, 0048, 0049 |
+| 10 | 0014, 0034, 0036, 0044, 0048, 0049, 0061 |
 | 11 | 0016, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0038, 0050 |
 | 12 | 0017, 0028, 0039, 0042, 0043, 0051, 0052, 0053 |
 | 13 | 0029, 0045 |
@@ -207,10 +213,10 @@ to be amended mid-flight.
 | 0009 | Raw identities stay internal; exported artifacts carry display name and digest only. |
 | 0010 | Resolved analysis configuration is embedded in the report and reproduces it exactly. |
 | 0011 | All git invocation passes one hardened package, NUL-delimited and context-bound. |
-| 0012 | A single pass produces normalized commit records, independently cacheable. |
-| 0013 | Chronological replay maintains compact line ownership for the analysed commit. |
-| 0014 | Lines are classified during replay with no blame invocation, in a dual breakdown. |
-| 0015 | Families declare inputs, own namespaces, carry versions, and report status. |
+| 0012 | A single pass produces normalized commit records, independently cacheable, computing no metric. |
+| 0013 | Chronological replay maintains compact line ownership and closes the blame deviation. |
+| 0014 | Lines are classified during replay with no blame, in a projectable dual breakdown. |
+| 0015 | Families declare inputs, own namespaces, carry versions and report status; goldens unchanged. |
 | 0016 | A stateless stage assigns archetypes and badges over a stored report. |
 | 0017 | The CLI emits exactly one file, deterministic and identical to server output. |
 | 0018 | Temporal metrics as defined in docs/metrics.md section 2. |
@@ -256,3 +262,4 @@ to be amended mid-flight.
 | 0058 | One image serves both modes; private remotes are documented via host secrets. |
 | 0059 | Release artifacts are reproducible, accompanied by an SBOM and signed. |
 | 0060 | README and user documentation describe what exists, with no invalidated claim. |
+| 0061 | Aggregate runs registered families from cached inputs with the repository unreadable. |
