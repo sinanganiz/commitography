@@ -17,9 +17,9 @@ const fixtureHashes = "testdata/fixture-hashes.txt"
 // committed list, so every platform that runs this checker is compared with
 // every other.
 //
-// The generator is a shell script and this package may not execute anything
-// but git (ADR-0047), so `make fixture-determinism` generates the two sets
-// and passes their roots in COMMITOGRAPHY_FIXTURES_FIRST and
+// The generator is a shell script, and no subprocess anywhere runs through a
+// shell (ADR-0065 clause 2), so `make fixture-determinism` generates the two
+// sets and passes their roots in COMMITOGRAPHY_FIXTURES_FIRST and
 // COMMITOGRAPHY_FIXTURES_SECOND. The fast gate skips this checker; it belongs
 // to the full gate (ADR-0057 clause 5).
 //
@@ -82,10 +82,12 @@ func fixtureManifest(t *testing.T, root string) string {
 		dir := filepath.Join(root, name)
 		// As in the generator: a deep checkout otherwise exceeds the Windows
 		// path length limit when git reads objects. Other platforms ignore it.
-		withLongPaths := func(args ...string) []string {
-			return append([]string{"-c", "core.longpaths=true"}, args...)
+		// It is a setting rather than an argument, so it cannot displace one
+		// of the mandatory configuration flags (ADR-0065 clause 2).
+		withLongPaths := func(args ...string) git.Spec {
+			return git.At(dir, args...).Configured("core.longpaths=true")
 		}
-		head, err := git.Output(ctx, git.At(dir, withLongPaths("symbolic-ref", "HEAD")...))
+		head, err := git.Output(ctx, withLongPaths("symbolic-ref", "HEAD"))
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}
@@ -94,15 +96,15 @@ func fixtureManifest(t *testing.T, root string) string {
 		// of its own and git's own newline starts the next one. A reference
 		// name may contain neither, so removing that one leading newline is
 		// exact, and nothing here splits on lines (ADR-0065 clause 2).
-		refs, err := git.Records(ctx, git.At(dir, withLongPaths("for-each-ref",
-			"--format=%(refname) %(objectname)%00")...))
+		refs, err := git.Records(ctx, withLongPaths("for-each-ref",
+			"--format=%(refname) %(objectname)%00"))
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}
 		for _, ref := range refs {
 			b.WriteString(name + " " + strings.TrimPrefix(ref, "\n") + "\n")
 		}
-		count, err := git.Output(ctx, git.At(dir, withLongPaths("rev-list", "--count", "--all")...))
+		count, err := git.Output(ctx, withLongPaths("rev-list", "--count", "--all"))
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}

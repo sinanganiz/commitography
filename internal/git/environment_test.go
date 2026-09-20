@@ -25,7 +25,8 @@ func TestEnvironmentAndFlagsOnEveryInvocation(t *testing.T) {
 	ctx := context.Background()
 
 	// One call per exported way of running git.
-	if _, err := Output(ctx, recorder.spec(At(repo, "rev-parse", "--git-dir"))); err != nil {
+	if _, err := Output(ctx, recorder.spec(At(repo, "rev-parse", "--git-dir").
+		Configured("core.longpaths=true"))); err != nil {
 		t.Fatalf("Output: %v", err)
 	}
 	if _, err := Records(ctx, recorder.spec(At(repo, "ls-files", "-z").Pathspecs("go.mod"))); err != nil {
@@ -69,6 +70,16 @@ func TestEnvironmentAndFlagsOnEveryInvocation(t *testing.T) {
 					t.Errorf("ADR-0065 clause 2: `git %s` carries a configuration flag after its subcommand",
 						named)
 				}
+			}
+		}
+		// git takes the last occurrence of a configuration key, so the
+		// mandatory flags must be the last ones: an invocation may add a
+		// setting and may not replace one.
+		if last := lastIndex(invocation.Args, "-c"); last >= 0 {
+			if !contains(configFlags(), invocation.Args[last+1]) {
+				t.Errorf("ADR-0065 clause 2: `git %s` ends its configuration with %q, which is not one of "+
+					"the mandatory flags, so a call site can replace one of them",
+					named, invocation.Args[last+1])
 			}
 		}
 
@@ -197,6 +208,15 @@ func firstSubcommand(args []string) int {
 func index(args []string, want string) int {
 	for i, arg := range args {
 		if arg == want {
+			return i
+		}
+	}
+	return -1
+}
+
+func lastIndex(args []string, want string) int {
+	for i := len(args) - 2; i >= 0; i-- {
+		if args[i] == want {
 			return i
 		}
 	}

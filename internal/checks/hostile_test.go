@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/core"
+	"github.com/sinanganiz/commitography/internal/git"
 	"github.com/sinanganiz/commitography/internal/pipeline"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/pipeline/render"
 )
 
@@ -185,6 +187,106 @@ func fixtureWithCondition(t *testing.T, repo repository, condition string) strin
 			fixtureConditions, condition)
 	}
 	return found[0]
+}
+
+// TestHostileNamesRecordIntegrity enforces the record half of ADR-0065
+// clause 2 on the fixture the manifest marks hostile: the collect stage's
+// reading of the history agrees, commit for commit and path for path, with
+// what git itself reports. A record that was split would add a commit or a
+// file, one that was merged would lose one, and one that was dropped would
+// lose both.
+//
+// The comparison is against a second, independent reading of the same
+// NUL-delimited stream rather than against a recorded expectation, so it
+// stays true when the fixture changes.
+func TestHostileNamesRecordIntegrity(t *testing.T) {
+	t.Parallel()
+	repo := openRepository(t)
+	fixture := fixtureWithCondition(t, repo, hostileCondition)
+	dir := filepath.Join(repo.root, "testdata", "fixtures", fixture)
+	if _, err := os.Stat(dir); err != nil {
+		fatal(t, 64, "fixture %q is missing; the gates generate it with `make fixtures`", fixture)
+	}
+
+	history, err := collect.New(core.FixedClock(fixedClock()), core.SystemFilesystem()).
+		Collect(collect.Options{RepoPath: dir, Context: context.Background()})
+	if err != nil {
+		fatal(t, 65, "reading the %s fixture: %v", hostileCondition, err)
+	}
+
+	want := gitFileEntries(t, dir)
+	if len(history.Commits) != len(want) {
+		report(t, 65, "the collect stage read %d commits from the %s fixture and git reports %d",
+			len(history.Commits), hostileCondition, len(want))
+	}
+	if len(want) == 0 {
+		fatal(t, 64, "git reports no commits in the %s fixture, so the comparison cannot fail", hostileCondition)
+	}
+	for _, commit := range history.Commits {
+		paths, ok := want[commit.Hash]
+		if !ok {
+			report(t, 65, "the collect stage produced commit %.12s, which git does not report", commit.Hash)
+			continue
+		}
+		if len(commit.Files) != len(paths) {
+			report(t, 65, "commit %.12s came back with %d file entries and git reports %d; a record was "+
+				"split, merged or dropped", commit.Hash, len(commit.Files), len(paths))
+			continue
+		}
+		for i, file := range commit.Files {
+			if file.Path != paths[i] {
+				report(t, 65, "commit %.12s file %d came back as %q and git reports %q",
+					commit.Hash, i, file.Path, paths[i])
+			}
+		}
+	}
+}
+
+// gitFileEntries reads the same history a second time, straight from git, and
+// returns each commit's file paths in order. It applies the framing rules of
+// `git log -z --numstat` and nothing else: records are NUL-delimited, a
+// header is an object name followed by the field separator, an empty record
+// separates commits, and a path is whatever follows the second tab.
+func gitFileEntries(t *testing.T, dir string) map[string][]string {
+	t.Helper()
+	entries := map[string][]string{}
+	current := ""
+	err := git.Scan(context.Background(), git.At(dir, "log", "-z", "--numstat", "--no-renames",
+		"--all", "--date-order", "--pretty=format:%H\x1f").Pathspecs(), func(record string) error {
+		head, first, hasFiles := strings.Cut(record, "\n")
+		switch {
+		case record == "":
+		case strings.HasSuffix(head, "\x1f") && len(head) == 41:
+			current = strings.TrimSuffix(head, "\x1f")
+			entries[current] = nil
+			if hasFiles {
+				entries[current] = append(entries[current], pathOfNumstatEntry(first))
+			}
+		case current != "":
+			entries[current] = append(entries[current], pathOfNumstatEntry(record))
+		}
+		return nil
+	})
+	if err != nil {
+		fatal(t, 65, "reading the fixture's history from git: %v", err)
+	}
+	return entries
+}
+
+// pathOfNumstatEntry is everything after the second tab of a file entry.
+func pathOfNumstatEntry(entry string) string {
+	parts := strings.SplitN(entry, "\t", 3)
+	if len(parts) != 3 {
+		return entry
+	}
+	return parts[2]
+}
+
+// fixedClock is the instant the collect stage stamps a history with here.
+// Nothing in the comparison reads it, but the stage requires a clock and no
+// checker reads the process's (ADR-0042 clause 4).
+func fixedClock() time.Time {
+	return time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
 }
 
 // TestHostileNamesFixtureIsClassified keeps the checker above from passing

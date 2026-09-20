@@ -142,10 +142,16 @@ func generateRepository(dir string, commits, files int) error {
 	return nil
 }
 
-func runGit(dir string, stdin io.Reader, args ...string) ([]byte, error) {
-	cmd := git.Command(dir, append([]string{"-c", "core.autocrlf=false"}, args...)...)
-	cmd.Stdin = stdin
-	return cmd.CombinedOutput()
+// runGit builds the measurement repositories. It goes through the git
+// package like every other invocation (ADR-0065 clause 1); autocrlf is a
+// setting rather than an argument, so it cannot displace one of the
+// mandatory configuration flags (clause 2).
+func runGit(dir string, stdin io.Reader, args ...string) (string, error) {
+	spec := git.At(dir, args...).Configured("core.autocrlf=false")
+	if stdin != nil {
+		spec = spec.WithStdin(stdin)
+	}
+	return git.Output(context.Background(), spec)
 }
 
 // removeTree also removes the read-only object files Git writes.

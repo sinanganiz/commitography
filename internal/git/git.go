@@ -68,6 +68,13 @@ type Spec struct {
 	// build chose. Nothing here is derived from a repository or a request.
 	Args []string
 
+	// Settings are extra configuration flags an invocation needs, as
+	// "key=value". They are placed before the mandatory ones, so that an
+	// invocation can add a setting and cannot replace one: git takes the last
+	// occurrence of a key, and the mandatory set is last. Set them with
+	// Configured.
+	Settings []string
+
 	// Operands are user-derived revisions and pathspecs. They are placed after
 	// a "--" separator, so a value beginning with "-" cannot be read as an
 	// option (ADR-0065 clause 2). Set them with Pathspecs.
@@ -114,6 +121,14 @@ func (s Spec) Pathspecs(paths ...string) Spec {
 	return s
 }
 
+// Configured adds configuration flags, as "key=value". A key the mandatory
+// set also carries is overridden by the mandatory one, not the other way
+// round.
+func (s Spec) Configured(settings ...string) Spec {
+	s.Settings = append(append([]string(nil), s.Settings...), settings...)
+	return s
+}
+
 // WithEnv adds environment entries, applied after sanitisation.
 func (s Spec) WithEnv(env ...string) Spec {
 	s.Env = append(append([]string(nil), s.Env...), env...)
@@ -132,9 +147,15 @@ func (s Spec) WithTimeout(d time.Duration) Spec {
 	return s
 }
 
-// arguments is the full argument vector after the program name.
+// arguments is the full argument vector after the program name. The
+// invocation's own settings come first and the mandatory ones last, because
+// git takes the last occurrence of a configuration key: the hardening set
+// cannot be replaced from a call site (ADR-0065 clause 2).
 func (s Spec) arguments() []string {
-	args := make([]string, 0, len(configFlags())+len(s.Args)+len(s.Operands)+4)
+	args := make([]string, 0, len(configFlags())+2*len(s.Settings)+len(s.Args)+len(s.Operands)+4)
+	for _, setting := range s.Settings {
+		args = append(args, "-c", setting)
+	}
 	args = append(args, configFlags()...)
 	if s.Repo != "" {
 		args = append(args, "-C", s.Repo)
