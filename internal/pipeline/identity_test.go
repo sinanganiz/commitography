@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -28,19 +29,23 @@ func TestResolverReconcilesWithShortlogOnMailmapFixture(t *testing.T) {
 	r := identity.NewResolver(config.Default(), commits)
 	got := len(r.Identities())
 
-	out, err := git.Command(repo, "shortlog", "-sn", "--all").Output()
+	// The distinct mailmapped author names git reports, which is what
+	// `shortlog -sn` groups by. It is read as NUL-delimited records rather
+	// than as shortlog's lines, because nothing in this package parses git
+	// output by line (ADR-0065 clause 2).
+	names, err := git.Records(context.Background(),
+		git.At(repo, "log", "-z", "--pretty=format:%aN", "--all").Pathspecs())
 	if err != nil {
-		t.Fatalf("git shortlog: %v", err)
+		t.Fatalf("git log: %v", err)
 	}
-	want := 0
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		if strings.TrimSpace(line) != "" {
-			want++
-		}
+	distinct := map[string]bool{}
+	for _, name := range names {
+		distinct[name] = true
 	}
+	want := len(distinct)
 
 	if got != want {
-		t.Errorf("resolved %d identities, git shortlog reports %d", got, want)
+		t.Errorf("resolved %d identities, git reports %d distinct author names", got, want)
 	}
 }
 

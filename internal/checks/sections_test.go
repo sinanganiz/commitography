@@ -182,11 +182,12 @@ func TestSectionVersionsMoveWithTheirDerivation(t *testing.T) {
 	repo := openRepository(t)
 	ctx := context.Background()
 	show := func(revision string) (string, bool) {
-		out, err := git.RunContext(ctx, repo.root, "show", revision)
+		out, err := git.Output(ctx, git.At(repo.root, "show", revision))
 		return out, err == nil
 	}
 
-	commits, err := git.LinesContext(ctx, repo.root, "log", "--no-merges", "--format=%H", "--", goldenDir)
+	commits, err := git.Records(ctx, git.At(repo.root, "log", "-z", "--no-merges",
+		"--format=%H").Pathspecs(goldenDir))
 	if err != nil {
 		fatal(t, 70, "cannot read the history of %s: %v", goldenDir, err)
 	}
@@ -195,12 +196,12 @@ func TestSectionVersionsMoveWithTheirDerivation(t *testing.T) {
 		// A commit that changes the fixtures changes what the reports
 		// describe, not how they are derived, so its golden diff says nothing
 		// about versions.
-		if changed, err := git.LinesContext(ctx, repo.root, "diff-tree", "--no-commit-id", "--name-only", "-r",
-			commit, "--", "testdata/build-fixtures.sh", "testdata/fixture-hashes.txt"); err != nil || len(changed) > 0 {
+		if changed, err := git.Records(ctx, git.At(repo.root, "diff-tree", "--no-commit-id", "--name-only",
+			"-r", "-z", commit).Pathspecs("testdata/build-fixtures.sh", "testdata/fixture-hashes.txt")); err != nil || len(changed) > 0 {
 			continue
 		}
-		files, err := git.LinesContext(ctx, repo.root, "diff-tree", "--no-commit-id", "--name-only", "-r",
-			commit, "--", goldenDir)
+		files, err := git.Records(ctx, git.At(repo.root, "diff-tree", "--no-commit-id", "--name-only",
+			"-r", "-z", commit).Pathspecs(goldenDir))
 		if err != nil {
 			fatal(t, 70, "cannot read what commit %.12s changed: %v", commit, err)
 		}

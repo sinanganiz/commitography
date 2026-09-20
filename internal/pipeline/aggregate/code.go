@@ -26,7 +26,11 @@ const binarySniffBytes = 8000
 // deviation.
 func (b *Builder) buildFiles(in core.Input, lineScoped []model.Commit) (core.Family[core.FilesMetrics], []string, error) {
 	var warnings []string
-	tracked, err := git.LinesContext(contextOf(in), in.RepoPath, "ls-tree", "-r", "--name-only", "HEAD")
+	// -z, and the "--" that follows the tree, because a tracked path is
+	// repository content: it may contain a newline or a quote, and a listing
+	// split on newlines would invent files (ADR-0045, ADR-0065 clause 2).
+	tracked, err := git.Records(contextOf(in),
+		git.At(in.RepoPath, "ls-tree", "-r", "--name-only", "-z", "HEAD").Pathspecs())
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			return core.Family[core.FilesMetrics]{}, nil, err

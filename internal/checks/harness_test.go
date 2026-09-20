@@ -51,21 +51,15 @@ type repository struct {
 func openRepository(t *testing.T) repository {
 	t.Helper()
 	ctx := context.Background()
-	root, err := git.RunContext(ctx, "", "rev-parse", "--show-toplevel")
+	root, err := git.Output(ctx, git.At("", "rev-parse", "--show-toplevel"))
 	if err != nil {
 		fatal(t, 55, "cannot locate the repository root: %v", err)
 	}
-	out, err := git.RunContext(ctx, root, "ls-files", "-z")
+	tracked, err := git.Records(ctx, git.At(root, "ls-files", "-z").Pathspecs())
 	if err != nil {
 		fatal(t, 55, "cannot list tracked files: %v", err)
 	}
-	repo := repository{root: root}
-	for _, path := range strings.Split(out, "\x00") {
-		if path != "" {
-			repo.tracked = append(repo.tracked, path)
-		}
-	}
-	return repo
+	return repository{root: root, tracked: tracked}
 }
 
 func (r repository) isTracked(path string) bool {

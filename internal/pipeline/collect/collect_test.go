@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -35,11 +36,11 @@ func fixture(t *testing.T, name string) string {
 
 func gitOutput(t *testing.T, repo string, args ...string) string {
 	t.Helper()
-	out, err := git.Command(repo, args...).Output()
+	out, err := git.Output(context.Background(), git.At(repo, args...))
 	if err != nil {
 		t.Fatalf("git %s: %v", strings.Join(args, " "), err)
 	}
-	return strings.TrimSpace(string(out))
+	return out
 }
 
 func TestCollectCommitCountMatchesRevList(t *testing.T) {

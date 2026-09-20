@@ -25,25 +25,20 @@ const (
 
 	gitOldRemedy = "Upgrade git to " + MinGitVersion + " or newer."
 
-	notRepositoryRemedy = "Point at the directory that contains .git, and check that git can read it."
-
 	emptyRepositoryRemedy = "Make at least one commit, then run the analysis again."
 
+	// The two conditions below are also recognised from a failed invocation,
+	// so their wording lives with the recognition in the git package and is
+	// named from here rather than repeated: one condition has one remedy
+	// wherever it surfaces (ADR-0041 clause 2).
+	notRepositoryRemedy = git.NotARepositoryRemedy
+
 	// ShallowRemedy is exported because the server reports the same condition
-	// for a repository it was asked to analyse, and one condition has one
-	// remedy wherever it surfaces.
-	ShallowRemedy = `Fix it with:
-  git fetch --unshallow
-
-In CI, configure a full clone:
-  GitHub Actions      -> actions/checkout with fetch-depth: 0
-  GitLab CI           -> GIT_DEPTH: 0
-  Bitbucket Pipelines -> clone: depth: full
-
-To analyze anyway and accept incorrect results, pass --allow-shallow.`
+	// for a repository it was asked to analyse.
+	ShallowRemedy = git.ShallowRemedy
 
 	// ShallowSummary is exported for the same reason as ShallowRemedy.
-	ShallowSummary = "this repository is a shallow clone, so its history is incomplete and all statistics would be wrong"
+	ShallowSummary = git.ShallowSummary
 )
 
 // ShallowError builds the refusal for a shallow clone. suppliedPath is named in
@@ -69,7 +64,7 @@ func (c *Collector) Preflight(ctx context.Context, repoPath, suppliedPath string
 	if _, err := git.LookPath(); err != nil {
 		return info, gitUnavailable(err)
 	}
-	raw, err := runGitContext(ctx, "", "--version")
+	raw, err := git.Output(ctx, git.At("", "--version"))
 	if err != nil {
 		return info, gitUnavailable(err)
 	}
@@ -86,7 +81,7 @@ func (c *Collector) Preflight(ctx context.Context, repoPath, suppliedPath string
 	}
 
 	// 3. Path is a repository.
-	if _, err := runGitContext(ctx, repoPath, "rev-parse", "--git-dir"); err != nil {
+	if _, err := git.Output(ctx, git.At(repoPath, "rev-parse", "--git-dir")); err != nil {
 		return info, core.NewUserError(core.ReasonNotARepository, suppliedPath, notRepositoryRemedy,
 			"the path is not a git repository").Wrapping(err)
 	}
@@ -98,14 +93,14 @@ func (c *Collector) Preflight(ctx context.Context, repoPath, suppliedPath string
 	info.Path = abs
 
 	// 4. Shallow check.
-	shallow, err := runGitContext(ctx, repoPath, "rev-parse", "--is-shallow-repository")
+	shallow, err := git.Output(ctx, git.At(repoPath, "rev-parse", "--is-shallow-repository"))
 	if err != nil {
 		return info, core.Internalf(err, "reading whether the repository is shallow")
 	}
 	info.IsShallow = shallow == "true"
 
 	// 5. Graft check.
-	gitDir, err := runGitContext(ctx, repoPath, "rev-parse", "--absolute-git-dir")
+	gitDir, err := git.Output(ctx, git.At(repoPath, "rev-parse", "--absolute-git-dir"))
 	if err != nil {
 		return info, core.NewUserError(core.ReasonNotARepository, suppliedPath, notRepositoryRemedy,
 			"the repository's git directory could not be resolved").Wrapping(err)
@@ -114,7 +109,7 @@ func (c *Collector) Preflight(ctx context.Context, repoPath, suppliedPath string
 		c.fileExists(filepath.Join(gitDir, "info", "grafts"))
 
 	// 6. Empty repository check.
-	head, err := runGitContext(ctx, repoPath, "rev-parse", "--verify", "HEAD")
+	head, err := git.Output(ctx, git.At(repoPath, "rev-parse", "--verify", "HEAD"))
 	if err != nil {
 		return info, core.NewUserError(core.ReasonEmptyRepository, suppliedPath, emptyRepositoryRemedy,
 			"the repository has no commits")
@@ -122,7 +117,7 @@ func (c *Collector) Preflight(ctx context.Context, repoPath, suppliedPath string
 
 	// 7. Head and default branch.
 	info.HeadCommit = head
-	if branch, err := runGitContext(ctx, repoPath, "symbolic-ref", "--short", "HEAD"); err == nil {
+	if branch, err := git.Output(ctx, git.At(repoPath, "symbolic-ref", "--short", "HEAD")); err == nil {
 		info.DefaultBranch = branch
 	}
 

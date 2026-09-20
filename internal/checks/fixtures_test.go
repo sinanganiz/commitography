@@ -85,19 +85,24 @@ func fixtureManifest(t *testing.T, root string) string {
 		withLongPaths := func(args ...string) []string {
 			return append([]string{"-c", "core.longpaths=true"}, args...)
 		}
-		head, err := git.RunContext(ctx, dir, withLongPaths("symbolic-ref", "HEAD")...)
+		head, err := git.Output(ctx, git.At(dir, withLongPaths("symbolic-ref", "HEAD")...))
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}
 		b.WriteString(name + " HEAD " + head + "\n")
-		refs, err := git.LinesContext(ctx, dir, withLongPaths("for-each-ref", "--format=%(refname) %(objectname)")...)
+		// for-each-ref has no -z, so the format ends each record with a NUL
+		// of its own and git's own newline starts the next one. A reference
+		// name may contain neither, so removing that one leading newline is
+		// exact, and nothing here splits on lines (ADR-0065 clause 2).
+		refs, err := git.Records(ctx, git.At(dir, withLongPaths("for-each-ref",
+			"--format=%(refname) %(objectname)%00")...))
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}
 		for _, ref := range refs {
-			b.WriteString(name + " " + ref + "\n")
+			b.WriteString(name + " " + strings.TrimPrefix(ref, "\n") + "\n")
 		}
-		count, err := git.RunContext(ctx, dir, withLongPaths("rev-list", "--count", "--all")...)
+		count, err := git.Output(ctx, git.At(dir, withLongPaths("rev-list", "--count", "--all")...))
 		if err != nil {
 			fatal(t, 19, "fixture %s: %v", name, err)
 		}

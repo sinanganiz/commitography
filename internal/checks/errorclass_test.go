@@ -119,11 +119,21 @@ func TestErrorClassAtPackageBoundaries(t *testing.T) {
 			reason: core.ReasonYearBelowThreshold,
 		},
 		{
-			// A failed git invocation is internal: whether it means the
-			// repository should be refused is the caller's decision, and
-			// classifying it here keeps git's stderr out of every artifact.
-			name:   "git: an invocation that fails",
-			err:    second(git.Run(t.TempDir(), "rev-parse", "--git-dir")),
+			// The git package maps the conditions the operator can fix onto
+			// user errors with their reason codes (WP-0011 clause 5). A path
+			// that is not a repository is one of them.
+			name:   "git: an invocation against a directory that is not a repository",
+			err:    second(git.Output(context.Background(), git.At(t.TempDir(), "rev-parse", "--git-dir"))),
+			class:  core.ClassUser,
+			reason: core.ReasonNotARepository,
+		},
+		{
+			// Every other failure stays internal: guessing that an
+			// unrecognised one is the operator's fault is the more damaging
+			// guess, and it keeps git's stderr out of every artifact.
+			name: "git: an invocation that fails for a reason of its own",
+			err: second(git.Output(context.Background(),
+				git.At(repo.root, "cat-file", "-p", "0000000000000000000000000000000000000000"))),
 			class:  core.ClassInternal,
 			reason: "",
 		},

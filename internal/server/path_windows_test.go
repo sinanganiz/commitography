@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/binary"
 	"os"
 	"path/filepath"
@@ -15,6 +16,13 @@ import (
 
 // These tests cover the Windows path forms of WP-3.5 and WP-6.5: junctions,
 // drive letter case, separators, extended-length and UNC paths.
+
+// initRepository creates an empty repository for a test to point at. It goes
+// through the git package like every other invocation (ADR-0065 clause 1).
+func initRepository(dir string) error {
+	_, err := git.Output(context.Background(), git.At("", "init", "-q", dir))
+	return err
+}
 
 func requireForbidden(t *testing.T, app *App, path string) {
 	t.Helper()
@@ -37,8 +45,8 @@ func TestWindowsJunctionOutOfTheRootIsRejected(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "outside-repository")
-	if out, err := git.Command("", "init", "-q", outside).CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, out)
+	if err := initRepository(outside); err != nil {
+		t.Fatalf("git init: %v", err)
 	}
 	link := filepath.Join(root, "junction")
 	if err := createJunction(link, outside); err != nil {
@@ -83,8 +91,8 @@ func TestWindowsParentTraversalLeavesTheRoot(t *testing.T) {
 	if err := os.Mkdir(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if out, err := git.Command("", "init", "-q", filepath.Join(parent, "sibling")).CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, out)
+	if err := initRepository(filepath.Join(parent, "sibling")); err != nil {
+		t.Fatalf("git init: %v", err)
 	}
 	app, err := newAppWithRoots(nil, []string{root})
 	if err != nil {
@@ -108,8 +116,8 @@ func TestWindowsExtendedAndUNCPathsCannotLeaveTheRoot(t *testing.T) {
 	root := filepath.Join(parent, "root")
 	outside := filepath.Join(parent, "outside")
 	for _, dir := range []string{root, outside} {
-		if out, err := git.Command("", "init", "-q", dir).CombinedOutput(); err != nil {
-			t.Fatalf("git init: %v: %s", err, out)
+		if err := initRepository(dir); err != nil {
+			t.Fatalf("git init: %v", err)
 		}
 	}
 	app, err := newAppWithRoots(nil, []string{root})

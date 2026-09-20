@@ -134,7 +134,7 @@ func (a *App) validateRepositoryPath(path string, allowShallow bool) (string, er
 	if info.IsShallow && !allowShallow {
 		return "", collect.ShallowError("")
 	}
-	gitDir, err := git.Run(canonical, "rev-parse", "--absolute-git-dir")
+	gitDir, err := git.Output(context.Background(), git.At(canonical, "rev-parse", "--absolute-git-dir"))
 	if err != nil {
 		return "", core.NewUserError(core.ReasonNotARepository, "", repositoryPathRemedy,
 			"the repository's git directory could not be resolved").Wrapping(err)

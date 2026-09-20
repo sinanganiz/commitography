@@ -4,11 +4,8 @@
 package collect
 
 import (
-	"bufio"
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"runtime"
 	"strconv"
 	"strings"
@@ -21,10 +18,12 @@ import (
 )
 
 const (
-	// recordSep and fieldSep are control characters that cannot occur in a
-	// commit subject, unlike commas or pipes.
-	recordSep = '\x01'
-	fieldSep  = "\x1f"
+	// fieldSep separates the header's fields. It is a control character
+	// rather than a comma or a pipe, but a commit subject may contain one
+	// too, which is why the subject is the last field and the header is split
+	// into a fixed number of parts rather than into as many as it happens to
+	// contain.
+	fieldSep = "\x1f"
 
 	// headerFields is the number of %-placeholders in the pretty format below.
 	headerFields = 8
@@ -35,7 +34,12 @@ const (
 	// .mailmap applied, which is the first step of identity resolution
 	// (docs/metrics.md section 1); the second email is the source address
 	// before it, which the identity layer counts (section 14).
-	prettyFormat = "format:%x01%H%x1f%aN%x1f%aE%x1f%ae%x1f%aI%x1f%cI%x1f%P%x1f%s"
+	//
+	// The subject is last because it is the one field that may contain the
+	// field separator; %s is the first line of the message, so it cannot
+	// contain a newline, which is what lets the header be cut from the first
+	// file entry that follows it.
+	prettyFormat = "format:%H%x1f%aN%x1f%aE%x1f%ae%x1f%aI%x1f%cI%x1f%P%x1f%s"
 
 	// maxParseFailureRatio is the share of unparsable records above which the
 	// history is considered untrustworthy rather than merely imperfect.
@@ -200,32 +204,46 @@ func shardCount(commits int) int {
 
 // revList enumerates the commits that will be read, in the same order the
 // ordinary walk would produce them.
+//
+// It is a log rather than a rev-list because rev-list has no NUL-delimited
+// output form and this package parses no lines (ADR-0065 clause 2). The
+// object names it returns are hexadecimal either way; the format is what the
+// rule is about, not this output's contents.
 func revList(opts Options) ([]string, error) {
-	args := []string{"rev-list", "--all", "--date-order"}
+	args := []string{"log", "-z", "--pretty=format:%H", "--all", "--date-order"}
+	args = append(args, boundArgs(opts)...)
+	return git.Records(opts.context(), git.At(opts.RepoPath, args...).Pathspecs())
+}
+
+// boundArgs are the date bounds, already resolved to instants by the caller.
+// They are user-derived, and each is bound to its option with "=", so neither
+// can be read as an option of its own.
+func boundArgs(opts Options) []string {
+	var args []string
 	if opts.Since != "" {
 		args = append(args, "--since="+opts.Since)
 	}
 	if opts.Until != "" {
 		args = append(args, "--until="+opts.Until)
 	}
-	return git.LinesContext(opts.context(), opts.RepoPath, args...)
+	return args
 }
 
 // logArgs builds the `git log` arguments shared by both readers. When hashes
 // are supplied the commits come from stdin and ancestry is not walked, so each
 // shard reads exactly the commits it was given.
+//
+// -z is what makes the whole read NUL-delimited: it separates commits with a
+// NUL instead of a newline and stops git munging path names, so a file name
+// containing a newline, a quote or a control character arrives intact
+// (ADR-0065 clause 2, ADR-0045).
 func logArgs(opts Options, fromStdin bool) []string {
-	args := []string{"log", "--numstat", "--no-renames"}
+	args := []string{"log", "-z", "--numstat", "--no-renames"}
 	if fromStdin {
 		args = append(args, "--no-walk", "--stdin")
 	} else {
 		args = append(args, "--all", "--date-order")
-		if opts.Since != "" {
-			args = append(args, "--since="+opts.Since)
-		}
-		if opts.Until != "" {
-			args = append(args, "--until="+opts.Until)
-		}
+		args = append(args, boundArgs(opts)...)
 	}
 	if opts.UseMailmap {
 		args = append(args, "--use-mailmap")
@@ -241,44 +259,30 @@ func collectStream(opts Options, hashes []string) (commits []model.Commit, faile
 }
 
 func collectStreamWithTotal(opts Options, hashes []string, expected int) (commits []model.Commit, failed, total int, err error) {
-	cmd := git.CommandContext(opts.context(), opts.RepoPath, logArgs(opts, hashes != nil)...)
+	spec := git.At(opts.RepoPath, logArgs(opts, hashes != nil)...).Pathspecs()
 	if hashes != nil {
-		cmd.Stdin = strings.NewReader(strings.Join(hashes, "\n") + "\n")
+		// The object names were produced by the enumeration pass above, so
+		// they are the product's own values rather than user-derived ones.
+		spec = spec.WithStdin(strings.NewReader(strings.Join(hashes, "\n") + "\n"))
 	}
-	stdout, err := cmd.StdoutPipe()
+	process, err := git.Start(opts.context(), spec)
 	if err != nil {
-		return nil, 0, 0, core.Internalf(err, "opening the git log output pipe")
+		return nil, 0, 0, err
 	}
-	stderr := &strings.Builder{}
-	cmd.Stderr = stderr
+	defer process.Close()
 
-	if err := cmd.Start(); err != nil {
-		return nil, 0, 0, core.Internalf(err, "starting git log")
-	}
-
-	commits, failed, total, parseErr := parseLog(stdout, opts, expected)
-
-	// Drain anything left so git never blocks on a full pipe, then reap.
-	_, _ = io.Copy(io.Discard, stdout)
-	waitErr := cmd.Wait()
-	if ctxErr := opts.context().Err(); ctxErr != nil {
-		return nil, 0, 0, ctxErr
-	}
-
-	if parseErr != nil {
+	parser := newLogParser(opts, expected)
+	if parseErr := process.Scan(parser.record); parseErr != nil {
 		return nil, 0, 0, parseErr
 	}
-	if waitErr != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			return nil, 0, 0, core.Internalf(waitErr, "reading the history with git log")
-		}
-		// git's own stderr is repository-influenced and may name paths, so it
-		// stays inside the internal error, whose artifact rendering discards it
-		// (ADR-0045, ADR-0067 clause 2).
-		return nil, 0, 0, core.Internalf(errors.New(msg), "reading the history with git log")
+	parser.finish()
+
+	// Wait drains what is left, so git never blocks on a full pipe, and
+	// classifies a failure (ADR-0041).
+	if err := process.Wait(); err != nil {
+		return nil, 0, 0, err
 	}
-	return commits, failed, total, nil
+	return parser.commits, parser.failed, parser.total, nil
 }
 
 // collectSharded splits the commit list into contiguous runs and reads each with
@@ -345,56 +349,84 @@ func collectSharded(opts Options, hashes []string, shards int) (commits []model.
 	return commits, failed, total, nil
 }
 
-// parseLog streams git log output, splitting on the record separator. Output is
-// never held in memory as a single string; only one record is materialized at a
-// time, so a repository with a million commits costs no more than its largest
-// commit.
-func parseLog(r io.Reader, opts Options, expected int) (commits []model.Commit, failed, total int, err error) {
-	br := bufio.NewReaderSize(r, 1<<20)
-	for {
-		chunk, readErr := br.ReadString(recordSep)
-		chunk = strings.TrimSuffix(chunk, string(recordSep))
+// logParser turns the NUL-delimited record stream of `git log -z --numstat`
+// into commits. It holds one record at a time, so a repository with a million
+// commits costs no more than its largest record.
+//
+// The stream's framing is git's own. Each commit is
+//
+//	<header>\n<added>\t<deleted>\t<path>\0<added>\t<deleted>\t<path>\0 ... \0
+//
+// where the last NUL is the commit separator -z adds, so a commit with file
+// entries produces an empty record before the next header, and a commit with
+// none — a merge, an empty commit — produces a header record and nothing
+// else. Nothing is split on a newline: the header's own newline is cut once,
+// which is exact because %s is the first line of the message and cannot
+// contain one, and a path is whatever remains of its record, newlines and
+// quotes included (ADR-0045).
+type logParser struct {
+	opts     Options
+	expected int
 
-		if strings.TrimSpace(chunk) != "" {
-			switch {
-			case isRecordStart(chunk):
-				total++
-				opts.progress(total, expected)
-				c, parseErr := parseRecord(chunk)
-				if parseErr != nil {
-					failed++
-					opts.warn("skipping unparsable commit record: %v", parseErr)
-				} else {
-					commits = append(commits, c)
-				}
-			case len(commits) > 0:
-				// The record separator is a control character precisely because it
-				// is not expected in a subject, but git permits any byte in a
-				// commit message and repositories do contain them. Such a subject
-				// splits its own record in two; rejoin the remainder onto the
-				// commit it belongs to rather than losing both the rest of the
-				// subject and the entire numstat block.
-				rejoinSplitRecord(&commits[len(commits)-1], chunk)
-			default:
-				total++
-				opts.progress(total, expected)
-				failed++
-				opts.warn("skipping unparsable commit record: no record header")
-			}
-		}
+	commits       []model.Commit
+	failed, total int
 
-		if readErr == io.EOF {
-			return commits, failed, total, nil
+	// pending is the commit being assembled, which stays open until a header
+	// or the end of the stream closes it, because its file entries arrive as
+	// separate records.
+	pending *model.Commit
+}
+
+func newLogParser(opts Options, expected int) *logParser {
+	return &logParser{opts: opts, expected: expected}
+}
+
+// record consumes one NUL-delimited record.
+func (p *logParser) record(chunk string) error {
+	switch {
+	case isRecordStart(chunk):
+		p.finish()
+		p.total++
+		p.opts.progress(p.total, p.expected)
+		header, first, hasFiles := strings.Cut(chunk, "\n")
+		commit, err := parseHeader(header)
+		if err != nil {
+			p.failed++
+			p.opts.warn("skipping unparsable commit record: %v", err)
+			return nil
 		}
-		if readErr != nil {
-			return commits, failed, total, core.Internalf(readErr, "reading the git log output")
+		if hasFiles {
+			commit.Files = appendFileChange(commit.Files, first)
 		}
+		p.pending = &commit
+	case chunk == "":
+		// The separator git writes between commits.
+	case p.pending != nil:
+		p.pending.Files = appendFileChange(p.pending.Files, chunk)
+	default:
+		// Output before any header. The read is producing something this
+		// parser does not recognise, which the caller turns into a refusal
+		// once enough records fail.
+		p.total++
+		p.opts.progress(p.total, p.expected)
+		p.failed++
+		p.opts.warn("skipping unparsable commit record: no record header")
+	}
+	return nil
+}
+
+// finish closes the commit being assembled.
+func (p *logParser) finish() {
+	if p.pending != nil {
+		p.commits = append(p.commits, *p.pending)
+		p.pending = nil
 	}
 }
 
-// isRecordStart reports whether a chunk begins with a real record header: an
-// object name followed by the field separator. Anything else is the tail of a
-// subject that contained the record separator itself.
+// isRecordStart reports whether a record begins with a header: an object name
+// followed by the field separator. A file entry cannot be mistaken for one,
+// because its first field is a decimal count or a dash followed by a tab, and
+// a tab is not a hexadecimal digit.
 func isRecordStart(chunk string) bool {
 	i := strings.Index(chunk, fieldSep)
 	// 40 hex digits for SHA-1, 64 for SHA-256.
@@ -410,26 +442,19 @@ func isRecordStart(chunk string) bool {
 	return true
 }
 
-// rejoinSplitRecord folds the tail of a split record back onto its commit. The
-// first line is the rest of the subject; whatever follows is the numstat block
-// that would otherwise have been dropped.
-func rejoinSplitRecord(c *model.Commit, chunk string) {
-	rest, block, _ := strings.Cut(chunk, "\n")
-	c.Subject += string(recordSep) + rest
-	c.Files = append(c.Files, parseNumstat(block)...)
-}
-
-// parseRecord turns one record (header line plus numstat block) into a Commit.
+// parseHeader turns one record header into a Commit without its files.
 //
 // Its errors are unclassified on purpose: they never leave this package. The
 // caller counts them, warns, and refuses the read only once too many records
 // fail, which is the error that does cross the boundary and is classified
 // there (ADR-0041 clause 1).
-func parseRecord(chunk string) (model.Commit, error) {
+func parseHeader(header string) (model.Commit, error) {
 	var c model.Commit
 
-	header, rest, _ := strings.Cut(chunk, "\n")
-	fields := strings.Split(header, fieldSep)
+	// SplitN, not Split: the subject is the last field and may contain the
+	// field separator itself, in which case it keeps it rather than producing
+	// a record with too many fields.
+	fields := strings.SplitN(header, fieldSep, headerFields)
 	if len(fields) != headerFields {
 		return c, fmt.Errorf("expected %d header fields, got %d", headerFields, len(fields))
 	}
@@ -460,41 +485,39 @@ func parseRecord(chunk string) (model.Commit, error) {
 		Parents:                  parents,
 		IsMerge:                  len(parents) > 1,
 		Subject:                  fields[7],
-		Files:                    parseNumstat(rest),
 	}
 	return c, nil
 }
 
-// parseNumstat reads the `<added>\t<deleted>\t<path>` block that follows a
-// record header. Blank lines and malformed lines are skipped rather than
-// failing the commit, since a missing file row is less damaging than a lost
-// commit.
-func parseNumstat(block string) []model.FileChange {
-	var files []model.FileChange
-	for _, line := range strings.Split(block, "\n") {
-		line = strings.TrimRight(line, "\r")
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		parts := strings.SplitN(line, "\t", 3)
-		if len(parts) != 3 {
-			continue
-		}
-		fc := model.FileChange{Path: unquoteGitPath(parts[2])}
-		if parts[0] == "-" && parts[1] == "-" {
-			fc.IsBinary = true
-		} else {
-			added, err1 := strconv.Atoi(parts[0])
-			deleted, err2 := strconv.Atoi(parts[1])
-			if err1 != nil || err2 != nil {
-				continue
-			}
-			fc.Added = added
-			fc.Deleted = deleted
-		}
-		files = append(files, fc)
+// appendFileChange reads one `<added>\t<deleted>\t<path>` entry and appends
+// it. A malformed entry is skipped rather than failing the commit, since a
+// missing file row is less damaging than a lost commit.
+//
+// The path is everything after the second tab, whatever it contains: with -z
+// git neither quotes nor escapes it, so a name holding a newline, a quote or
+// a control character is taken verbatim. Reversing C-style quoting here would
+// corrupt a name that genuinely begins and ends with a quote.
+func appendFileChange(files []model.FileChange, entry string) []model.FileChange {
+	if strings.TrimSpace(entry) == "" {
+		return files
 	}
-	return files
+	parts := strings.SplitN(entry, "\t", 3)
+	if len(parts) != 3 {
+		return files
+	}
+	fc := model.FileChange{Path: parts[2]}
+	if parts[0] == "-" && parts[1] == "-" {
+		fc.IsBinary = true
+	} else {
+		added, err1 := strconv.Atoi(parts[0])
+		deleted, err2 := strconv.Atoi(parts[1])
+		if err1 != nil || err2 != nil {
+			return files
+		}
+		fc.Added = added
+		fc.Deleted = deleted
+	}
+	return append(files, fc)
 }
 
 // parseGitTime parses a strict ISO 8601 timestamp and returns it together with
@@ -507,18 +530,6 @@ func parseGitTime(s string) (time.Time, int, error) {
 	}
 	_, offsetSeconds := t.Zone()
 	return t, offsetSeconds / 60, nil
-}
-
-// unquoteGitPath reverses git's C-style quoting. git quotes any path containing
-// a quote, a backslash or a control character even when core.quotePath is off.
-func unquoteGitPath(p string) string {
-	if len(p) < 2 || p[0] != '"' || p[len(p)-1] != '"' {
-		return p
-	}
-	if unquoted, err := strconv.Unquote(p); err == nil {
-		return unquoted
-	}
-	return p
 }
 
 func short(hash string) string {

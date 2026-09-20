@@ -20,7 +20,7 @@ func TestGoldenCommitMessages(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
 	ctx := context.Background()
-	shallow, err := git.RunContext(ctx, repo.root, "rev-parse", "--is-shallow-repository")
+	shallow, err := git.Output(ctx, git.At(repo.root, "rev-parse", "--is-shallow-repository"))
 	if err != nil {
 		fatal(t, 19, "cannot tell whether the history is complete: %v", err)
 	}
@@ -28,11 +28,12 @@ func TestGoldenCommitMessages(t *testing.T) {
 		fatal(t, 64, "the repository is a shallow clone, so commits changing %s cannot all be read; "+
 			"check out full history (fetch-depth: 0)", goldenDir)
 	}
-	out, err := git.RunContext(ctx, repo.root, "log", "-z", "--no-merges", "--format=%H%n%B", "--", goldenDir)
+	records, err := git.Records(ctx, git.At(repo.root, "log", "-z", "--no-merges",
+		"--format=%H%n%B").Pathspecs(goldenDir))
 	if err != nil {
 		fatal(t, 19, "cannot read the history of %s: %v", goldenDir, err)
 	}
-	for _, record := range strings.Split(out, "\x00") {
+	for _, record := range records {
 		record = strings.TrimSpace(record)
 		if record == "" {
 			continue
