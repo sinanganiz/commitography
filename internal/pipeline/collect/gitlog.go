@@ -46,10 +46,12 @@ const (
 	// history is considered untrustworthy rather than merely imperfect.
 	maxParseFailureRatio = 0.01
 
-	// shardThreshold is the commit count above which history is read by several
-	// git processes at once. Below it the extra rev-list pass and process spawns
-	// cost more than the parallelism returns.
-	shardThreshold = 5000
+	// ShardThreshold is the commit count from which history is read by
+	// several git processes at once. Below it the extra process spawns cost
+	// more than the parallelism returns, whatever degree was asked for. It is
+	// exported so that the parallel determinism checker can confirm its
+	// fixture reaches it.
+	ShardThreshold = 5000
 
 	// maxShards caps the number of concurrent git processes. Beyond roughly this
 	// many the run becomes disk-bound rather than CPU-bound and the extra
@@ -89,6 +91,12 @@ type Options struct {
 	// unset; the pipeline sets it. When it is nil, the records are normalized
 	// under the built-in plane and those three fields are the read options.
 	Analysis *config.Analysis
+
+	// Parallelism is how many readers a history above ShardThreshold is split
+	// across (ADR-0052 clause 1). Zero or less derives it from the available
+	// cores; it is never more than maxShards, and a reader is never given
+	// fewer than minCommitsPerShard commits. It changes no record (clause 6).
+	Parallelism int
 
 	UseMailmap bool
 	// Since and Until are passed to git log --since and --until; empty means
@@ -212,7 +220,7 @@ func readHistory(opts Options) (commits []model.Commit, failed, total int, err e
 		// ordinary walk, so this is not fatal.
 		return collectStream(opts, nil)
 	}
-	if shards := shardCount(len(hashes)); shards > 1 {
+	if shards := shardCount(len(hashes), opts.Parallelism); shards > 1 {
 		return collectSharded(opts, hashes, shards)
 	}
 	// The rev-list pass gives the streaming parser an exact denominator even
@@ -223,12 +231,17 @@ func readHistory(opts Options) (commits []model.Commit, failed, total int, err e
 	return collectStreamWithTotal(local, nil, localExpected)
 }
 
-// shardCount decides how many git processes to run for a given history size.
-func shardCount(commits int) int {
-	if commits < shardThreshold {
+// shardCount decides how many git processes read a history of the given size.
+// degree is the parallelism asked for; zero or less derives it from the
+// available cores, never a fixed number (ADR-0052 clause 5).
+func shardCount(commits, degree int) int {
+	if commits < ShardThreshold {
 		return 1
 	}
-	shards := runtime.NumCPU()
+	shards := degree
+	if shards <= 0 {
+		shards = runtime.NumCPU()
+	}
 	if shards > maxShards {
 		shards = maxShards
 	}

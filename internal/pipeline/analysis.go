@@ -43,6 +43,13 @@ type Options struct {
 	CountMergesSet bool
 	OnWarning      func(string)
 
+	// Parallelism is how many readers the collect stage splits a history
+	// above its threshold across (ADR-0052 clauses 1 and 5). Zero derives it
+	// from the available cores. It changes no value in the report (clause 6),
+	// so it belongs to the operational plane; the command and the server both
+	// set it here, and an operator-facing flag for it is WP-0017's.
+	Parallelism int
+
 	// ToolVersion is the build's version, recorded in the report's generation
 	// metadata. The command reads it at composition (ADR-0061 clause 4).
 	ToolVersion string

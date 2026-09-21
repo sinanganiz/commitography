@@ -122,6 +122,7 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 		RepoPath:     repoPath,
 		SuppliedPath: opts.SuppliedPath(),
 		Analysis:     &cfg,
+		Parallelism:  opts.Parallelism,
 		ToolVersion:  opts.ToolVersion,
 		Context:      ctx,
 		OnWarning:    collectWarn,

@@ -6,24 +6,31 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/core"
+	"github.com/sinanganiz/commitography/internal/core/config"
 	"github.com/sinanganiz/commitography/internal/pipeline"
+	"github.com/sinanganiz/commitography/internal/pipeline/collect"
 	"github.com/sinanganiz/commitography/internal/pipeline/render"
 )
 
-// The determinism checker (ADR-0063 table 2), same-input half: two runs of
-// one fixture produce byte-identical reports outside the generation metadata
-// (ADR-0021 clause 4). The two runs read different clocks, so a value derived
-// from the clock anywhere but the generation metadata makes them differ,
-// which a single fixed clock would hide.
+// The determinism checker (ADR-0063 table 2), in two halves.
 //
-// The half that compares differing parallelism degrees arrives with
-// parallelism in WP-0012 (ADR-0064 clause 5).
+// The same-input half: two runs of one fixture produce byte-identical reports
+// outside the generation metadata (ADR-0021 clause 4). The two runs read
+// different clocks, so a value derived from the clock anywhere but the
+// generation metadata makes them differ, which a single fixed clock would
+// hide.
+//
+// The parallelism half: the collect stage splits a large history across
+// concurrent readers, and the degree changes neither a commit record nor the
+// report (ADR-0052 clause 6). The aggregate stage's degree joins it with
+// WP-0061.
 
 // metadataSection is the path of the generation metadata in the report.
 const metadataSection = "metadata"
@@ -112,6 +119,62 @@ func TestDeterminism(t *testing.T) {
 					"(- first run, + second run):\n%s", fixture, diff)
 			}
 		})
+	}
+}
+
+// parallelFixture is the fixture the parallelism half runs on: the one large
+// enough to be split across readers at all.
+const parallelFixture = "large-history"
+
+// parallelDegrees are the degrees ADR-0052's acceptance criterion names: one
+// reader, two, and many. Many is at least three, so that the three are
+// distinct on a two-core machine too.
+func parallelDegrees() []int {
+	return []int{1, 2, max(runtime.NumCPU(), 3)}
+}
+
+// TestDeterminismAcrossParallelism requires the commit records and the report
+// to be identical at every degree.
+func TestDeterminismAcrossParallelism(t *testing.T) {
+	t.Parallel()
+	repo := openRepository(t)
+	dir := filepath.Join(repo.root, "testdata", "fixtures", parallelFixture)
+	if _, err := os.Stat(dir); err != nil {
+		fatal(t, 64, "fixture %q is missing; the gates generate it with `make fixtures`", parallelFixture)
+	}
+	// Below the threshold every degree reads with one process, and the
+	// comparison would hold whatever the reassembly did.
+	if commits := fixtureCommitCount(t, dir); commits < 2*collect.ShardThreshold {
+		fatal(t, 64, "the %s fixture has %d commits, under twice the %d from which a history is split, so "+
+			"no degree splits it", parallelFixture, commits, collect.ShardThreshold)
+	}
+
+	var firstRecords, firstReport string
+	for i, degree := range parallelDegrees() {
+		cfg := config.Default()
+		history, err := newCollector().Collect(collect.Options{
+			RepoPath: dir, Analysis: &cfg, Parallelism: degree, Context: context.Background(),
+		})
+		if err != nil {
+			fatal(t, 52, "collecting at degree %d: %v", degree, err)
+		}
+		records, err := json.Marshal(history.Commits)
+		if err != nil {
+			fatal(t, 52, "encoding the records read at degree %d: %v", degree, err)
+		}
+		produced := analyseWith(t, pipeline.Options{RepoPath: dir, Parallelism: degree}, core.FixedClock(checkTime()))
+		if i == 0 {
+			firstRecords, firstReport = string(records), produced
+			continue
+		}
+		if string(records) != firstRecords {
+			report(t, 52, "the commit records read at degree %d differ from those read at degree 1; the "+
+				"readers' output is reassembled out of order or incompletely", degree)
+		}
+		if diff := sameInputDifference(firstReport, produced); diff != "" {
+			report(t, 52, "the report produced at degree %d differs from the one at degree 1 "+
+				"(- degree 1, + degree %d):\n%s", degree, degree, diff)
+		}
 	}
 }
 

@@ -1,6 +1,7 @@
 package collect
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -187,7 +188,7 @@ func TestIsRecordStart(t *testing.T) {
 
 // The sharded reader exists only to use more cores; it must return exactly what
 // the single-invocation reader returns. Real repositories are too small here to
-// cross shardThreshold, so the sharded path is invoked directly.
+// cross ShardThreshold, so the sharded path is invoked directly.
 func TestShardedReadMatchesSingleStream(t *testing.T) {
 	t.Parallel()
 	for _, name := range []string{"basic", "merges", "binary", "single"} {
@@ -244,18 +245,30 @@ func TestShardedReadMatchesSingleStream(t *testing.T) {
 // Sharding must never change how much work is done, only how it is divided.
 func TestShardCount(t *testing.T) {
 	t.Parallel()
-	if got := shardCount(shardThreshold - 1); got != 1 {
-		t.Errorf("shardCount below threshold = %d, want 1", got)
+	for _, degree := range []int{0, 1, 2, 7, 64} {
+		if got := shardCount(ShardThreshold-1, degree); got != 1 {
+			t.Errorf("degree %d: shardCount below threshold = %d, want 1", degree, got)
+		}
+		if got := shardCount(0, degree); got != 1 {
+			t.Errorf("degree %d: shardCount(0) = %d, want 1", degree, got)
+		}
+		// Shards are never smaller than minCommitsPerShard.
+		if got := shardCount(ShardThreshold, degree); got*minCommitsPerShard > ShardThreshold && got != 1 {
+			t.Errorf("degree %d: shardCount(%d) = %d, which implies shards under %d commits",
+				degree, ShardThreshold, got, minCommitsPerShard)
+		}
+		if got := shardCount(1_000_000, degree); got > maxShards {
+			t.Errorf("degree %d: shardCount = %d, want at most %d", degree, got, maxShards)
+		}
 	}
-	if got := shardCount(0); got != 1 {
-		t.Errorf("shardCount(0) = %d, want 1", got)
+	// An explicit degree is the degree, within those bounds; none derives one
+	// from the cores (ADR-0052 clause 5).
+	for degree, want := range map[int]int{1: 1, 2: 2, 7: 7} {
+		if got := shardCount(1_000_000, degree); got != want {
+			t.Errorf("shardCount at degree %d = %d, want %d", degree, got, want)
+		}
 	}
-	// Shards are never smaller than minCommitsPerShard.
-	if got := shardCount(shardThreshold); got*minCommitsPerShard > shardThreshold && got != 1 {
-		t.Errorf("shardCount(%d) = %d, which implies shards under %d commits",
-			shardThreshold, got, minCommitsPerShard)
-	}
-	if got := shardCount(1_000_000); got > maxShards {
-		t.Errorf("shardCount = %d, want at most %d", got, maxShards)
+	if got := shardCount(1_000_000, 0); got != min(runtime.NumCPU(), maxShards) {
+		t.Errorf("shardCount with no degree = %d, want the cores, %d, at most %d", got, runtime.NumCPU(), maxShards)
 	}
 }
