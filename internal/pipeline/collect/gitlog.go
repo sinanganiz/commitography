@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/sinanganiz/commitography/internal/core"
+	"github.com/sinanganiz/commitography/internal/core/config"
 	"github.com/sinanganiz/commitography/internal/core/model"
 	"github.com/sinanganiz/commitography/internal/git"
 )
@@ -82,6 +83,13 @@ type Options struct {
 	// server request, in which case no message names it at all.
 	SuppliedPath string
 
+	// Analysis is the analysis plane the records are normalized under
+	// (normalize.go). When it is set it is the only source of the read
+	// options as well, and UseMailmap, Since and Until below must be left
+	// unset; the pipeline sets it. When it is nil, the records are normalized
+	// under the built-in plane and those three fields are the read options.
+	Analysis *config.Analysis
+
 	UseMailmap bool
 	// Since and Until are passed to git log --since and --until; empty means
 	// no bound. The pipeline passes the instants ResolveDateBounds returned,
@@ -115,13 +123,30 @@ func (o Options) context() context.Context {
 	return o.Context
 }
 
+// resolved returns the options with the analysis plane settled: the one the
+// caller gave, whose read options replace the separate fields, or the built-in
+// one. Giving both is a defect in the caller, not something to reconcile.
+func (o Options) resolved() (Options, config.Analysis, error) {
+	if o.Analysis == nil {
+		return o, config.Default(), nil
+	}
+	if o.UseMailmap || o.Since != "" || o.Until != "" {
+		return o, config.Analysis{}, core.Internalf(nil,
+			"the collect stage was given an analysis plane and separate read options; the plane carries them")
+	}
+	cfg := *o.Analysis
+	o.UseMailmap, o.Since, o.Until = cfg.UseMailmap, cfg.Since, cfg.Until
+	return o, cfg, nil
+}
+
 func (o Options) progress(current, total int) {
 	if o.OnProgress != nil {
 		o.OnProgress(current, total)
 	}
 }
 
-// Collect reads the full history.
+// Collect reads the full history and normalizes it: every record carries the
+// per-commit definitions of docs/metrics.md section 1 (normalize.go).
 //
 // Reading is still a single pass over the history — one diff per commit, never
 // a git invocation per commit — but on a large repository that pass is split
@@ -136,6 +161,10 @@ func (o Options) progress(current, total int) {
 // a git call per commit; the sharded read keeps the one-diff-per-commit property.
 // Small repositories still take the single-invocation path.
 func (c *Collector) Collect(opts Options) (*model.History, error) {
+	opts, cfg, err := opts.resolved()
+	if err != nil {
+		return nil, err
+	}
 	info, err := c.Preflight(opts.context(), opts.RepoPath, opts.SuppliedPath)
 	if err != nil {
 		return nil, err
@@ -154,11 +183,21 @@ func (c *Collector) Collect(opts Options) (*model.History, error) {
 		}
 	}
 
+	attributes, err := analysedAttributes(opts.context(), opts.RepoPath, info.HeadCommit)
+	if err != nil {
+		return nil, err
+	}
+	commits, err = normalize(commits, cfg, attributes)
+	if err != nil {
+		return nil, err
+	}
+
 	return &model.History{
 		SchemaVersion: model.SchemaVersion,
 		GeneratedAt:   c.clock.Now().UTC(),
 		ToolVersion:   opts.ToolVersion,
 		Repository:    info,
+		Attributes:    string(attributes),
 		Commits:       commits,
 	}, nil
 }

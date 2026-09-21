@@ -102,6 +102,13 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	if cfg.Since, cfg.Until, err = a.collector.ResolveDateBounds(ctx, repoPath, cfg.Since, cfg.Until); err != nil {
 		return nil, err
 	}
+	// The exclusion patterns are the operator's to get right, so they are
+	// compiled before the history is read: the collect stage applies them
+	// with the analysed commit's attributes and treats a failure as its own.
+	if _, err := filter.NewPathFilterFromAttributes(cfg, nil); err != nil {
+		return nil, core.NewUserError(core.ReasonInvalidConfiguration, err.Error(),
+			configurationRemedy, "an exclude_paths pattern could not be compiled")
+	}
 
 	warnings := make([]string, 0)
 	collectWarn := func(message string) {
@@ -114,10 +121,8 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	history, err := a.collector.Collect(collect.Options{
 		RepoPath:     repoPath,
 		SuppliedPath: opts.SuppliedPath(),
-		UseMailmap:   cfg.UseMailmap,
+		Analysis:     &cfg,
 		ToolVersion:  opts.ToolVersion,
-		Since:        cfg.Since,
-		Until:        cfg.Until,
 		Context:      ctx,
 		OnWarning:    collectWarn,
 		OnProgress: func(current, total int) {
@@ -134,17 +139,22 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	}
 	emit.emitCount(StageCollecting, fmt.Sprintf("%d commits", len(history.Commits)), len(history.Commits), len(history.Commits))
 
+	// The records carry every per-commit definition of docs/metrics.md
+	// section 1, decided by the collect stage. What follows reads them and
+	// rebuilds, from the artifact alone, what the aggregate stage still takes
+	// beside them: the identity layer, for the identities section, and the
+	// path filter, which the stage applies to the tree until WP-0013 moves the
+	// tree to replay. Neither reads the repository.
 	emit.emit(StageIdentity, "resolving identities")
 	resolver := identity.NewResolver(cfg, history.Commits)
 	identities := resolver.Identities()
 	emit.emitCount(StageIdentity, fmt.Sprintf("%d contributors", len(identities)), len(identities), len(identities))
 
-	pathFilter, err := filter.NewPathFilter(a.files, cfg, repoPath)
+	pathFilter, err := filter.NewPathFilterFromAttributes(cfg, []byte(history.Attributes))
 	if err != nil {
-		return nil, core.NewUserError(core.ReasonInvalidConfiguration, err.Error(),
-			configurationRemedy, "an exclude_paths pattern could not be compiled")
+		return nil, core.Internalf(err, "building the path filter from the collected attributes")
 	}
-	filtered := filter.Apply(history.Commits, cfg, resolver, pathFilter)
+	filtered := filter.Summarize(history.Commits)
 	emit.emitCount(StageFiltering, fmt.Sprintf("%d excluded", filtered.TotalCommits-filtered.AnalyzedCommits), filtered.TotalCommits-filtered.AnalyzedCommits, filtered.TotalCommits)
 
 	// The year is an analysis value, from --wrapped or from the configuration,

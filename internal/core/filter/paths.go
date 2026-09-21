@@ -5,8 +5,10 @@ package filter
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"path/filepath"
 	"runtime"
@@ -36,8 +38,25 @@ type PathFilter struct {
 	cache   map[string]bool
 }
 
-// NewPathFilter compiles the exclusion patterns and reads .gitattributes.
+// NewPathFilter compiles the exclusion patterns and reads the .gitattributes
+// file at the root of a directory.
+//
+// The pipeline does not use it: the collect stage reads the attributes of the
+// analysed commit through git, never a working-tree copy, and builds its filter
+// with NewPathFilterFromAttributes (WP-0012). It serves callers that hold a
+// directory rather than a commit.
 func NewPathFilter(files Files, cfg config.Analysis, repoPath string) (*PathFilter, error) {
+	attributes, err := readGitAttributes(files, repoPath)
+	if err != nil {
+		return nil, err
+	}
+	return NewPathFilterFromAttributes(cfg, attributes)
+}
+
+// NewPathFilterFromAttributes compiles the exclusion patterns and the paths a
+// .gitattributes file's content marks generated or re-includes. attributes is
+// the file's content, and empty where there is none.
+func NewPathFilterFromAttributes(cfg config.Analysis, attributes []byte) (*PathFilter, error) {
 	f := &PathFilter{cache: make(map[string]bool)}
 
 	for _, pattern := range cfg.ExcludePaths {
@@ -51,7 +70,7 @@ func NewPathFilter(files Files, cfg config.Analysis, repoPath string) (*PathFilt
 		f.exclude = append(f.exclude, normalizePattern(pattern))
 	}
 
-	generated, reincluded, err := readGitAttributes(files, repoPath)
+	generated, reincluded, err := parseGitAttributes(attributes)
 	if err != nil {
 		return nil, err
 	}
@@ -106,24 +125,34 @@ func normalizePattern(pattern string) string {
 	return foldPath(pattern)
 }
 
-// readGitAttributes extracts the paths marked linguist-generated, which GitHub
-// itself treats as machine-written, and the paths that explicitly opt back in.
-//
-// Only the repository-root .gitattributes is consulted. Nested attribute files
-// are rare in practice and walking for them would cost a full tree scan on
-// every run.
-func readGitAttributes(files Files, repoPath string) (generated, reincluded []string, err error) {
+// readGitAttributes returns the content of the .gitattributes file at the
+// root of a directory, or nothing where there is none.
+func readGitAttributes(files Files, repoPath string) ([]byte, error) {
 	path := filepath.Join(repoPath, ".gitattributes")
 	file, err := files.Open(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil, nil, nil
+			return nil, nil
 		}
-		return nil, nil, fmt.Errorf("reading %s: %w", path, err)
+		return nil, fmt.Errorf("reading %s: %w", path, err)
 	}
 	defer file.Close()
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", path, err)
+	}
+	return content, nil
+}
 
-	scanner := bufio.NewScanner(file)
+// parseGitAttributes extracts the paths marked linguist-generated, which
+// GitHub itself treats as machine-written, and the paths that explicitly opt
+// back in.
+//
+// Only the repository-root .gitattributes is consulted. Nested attribute files
+// are rare in practice and walking for them would cost a full tree scan on
+// every run.
+func parseGitAttributes(attributes []byte) (generated, reincluded []string, err error) {
+	scanner := bufio.NewScanner(bytes.NewReader(attributes))
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -145,7 +174,7 @@ func readGitAttributes(files Files, repoPath string) (generated, reincluded []st
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, nil, fmt.Errorf("reading %s: %w", path, err)
+		return nil, nil, fmt.Errorf("reading .gitattributes: %w", err)
 	}
 	return generated, reincluded, nil
 }
