@@ -8,8 +8,10 @@
 // the mandatory configuration flags before the subcommand, user-derived
 // operands behind a "--" separator, a context and a timeout (ADR-0044), the
 // NUL-delimited output formats ADR-0045 makes necessary, and a size limit on
-// every read. A caller describes what it wants with a Spec; it cannot describe
-// an invocation that omits one of those.
+// every read. So is the pinned output configuration of ADR-0071, in pinned.go,
+// which keeps an operator's own git configuration from moving a number. A
+// caller describes what it wants with a Spec; it cannot describe an invocation
+// that omits one of those.
 //
 // Cancellation terminates the process group rather than the direct child, so a
 // descendant git spawns is not orphaned (ADR-0044 clause 4). The two platform
@@ -69,10 +71,10 @@ type Spec struct {
 	Args []string
 
 	// Settings are extra configuration flags an invocation needs, as
-	// "key=value". They are placed before the mandatory ones, so that an
-	// invocation can add a setting and cannot replace one: git takes the last
-	// occurrence of a key, and the mandatory set is last. Set them with
-	// Configured.
+	// "key=value". They are placed before the pinned and the mandatory ones,
+	// so that an invocation can add a setting and cannot replace one: git
+	// takes the last occurrence of a key, and those two sets come after it.
+	// Set them with Configured.
 	Settings []string
 
 	// Operands are user-derived revisions and pathspecs. They are placed after
@@ -121,8 +123,8 @@ func (s Spec) Pathspecs(paths ...string) Spec {
 	return s
 }
 
-// Configured adds configuration flags, as "key=value". A key the mandatory
-// set also carries is overridden by the mandatory one, not the other way
+// Configured adds configuration flags, as "key=value". A key the pinned or
+// the mandatory set also carries is overridden by that set, not the other way
 // round.
 func (s Spec) Configured(settings ...string) Spec {
 	s.Settings = append(append([]string(nil), s.Settings...), settings...)
@@ -148,14 +150,16 @@ func (s Spec) WithTimeout(d time.Duration) Spec {
 }
 
 // arguments is the full argument vector after the program name. The
-// invocation's own settings come first and the mandatory ones last, because
-// git takes the last occurrence of a configuration key: the hardening set
-// cannot be replaced from a call site (ADR-0065 clause 2).
+// invocation's own settings come first, then the pinned output configuration
+// (ADR-0071) and the mandatory hardening set last, because git takes the last
+// occurrence of a configuration key: neither set can be replaced from a call
+// site (ADR-0065 clause 2).
 func (s Spec) arguments() []string {
-	args := make([]string, 0, len(configFlags())+2*len(s.Settings)+len(s.Args)+len(s.Operands)+4)
+	args := make([]string, 0, len(pinnedFlags())+len(configFlags())+2*len(s.Settings)+len(s.Args)+len(s.Operands)+4)
 	for _, setting := range s.Settings {
 		args = append(args, "-c", setting)
 	}
+	args = append(args, pinnedFlags()...)
 	args = append(args, configFlags()...)
 	if s.Repo != "" {
 		args = append(args, "-C", s.Repo)

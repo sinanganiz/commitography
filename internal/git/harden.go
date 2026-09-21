@@ -45,12 +45,6 @@ func configFlags() []string {
 		// credential fails instead of prompting or reading a store
 		// (ADR-0016 clause 2).
 		"-c", "credential.helper=",
-
-		// Paths are emitted raw and UTF-8 rather than C-quoted, so a path is
-		// read exactly as the repository holds it. With NUL-delimited output
-		// there is nothing for quoting to protect, and quoting would corrupt
-		// a name that legitimately contains a quote.
-		"-c", "core.quotePath=false",
 	}
 }
 
@@ -80,8 +74,8 @@ func fixedEnvironment() []string {
 }
 
 // environment builds the sanitised environment for one invocation: the
-// process's own, less every GIT_ variable it inherited, plus the fixed set,
-// plus whatever the invocation sets for itself.
+// process's own, less every GIT_ variable it inherited, plus the fixed set and
+// the pinned one (pinned.go), plus whatever the invocation sets for itself.
 //
 // Inherited GIT_ variables go because each of them changes what git reads or
 // writes — GIT_DIR, GIT_WORK_TREE, GIT_CONFIG_GLOBAL and GIT_CONFIG_COUNT
@@ -94,7 +88,7 @@ func fixedEnvironment() []string {
 // invocation's own entry overrides the fixed set.
 func environment(extra []string) []string {
 	inherited := os.Environ()
-	env := make([]string, 0, len(inherited)+len(fixedEnvironment())+len(extra))
+	env := make([]string, 0, len(inherited)+len(fixedEnvironment())+len(pinnedEnvironment())+len(extra))
 	for _, entry := range inherited {
 		if name, _, ok := strings.Cut(entry, "="); !ok || isGitVariable(name) {
 			continue
@@ -102,6 +96,7 @@ func environment(extra []string) []string {
 		env = append(env, entry)
 	}
 	env = append(env, fixedEnvironment()...)
+	env = append(env, pinnedEnvironment()...)
 	return append(env, extra...)
 }
 

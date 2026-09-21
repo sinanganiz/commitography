@@ -64,6 +64,27 @@ func TestEnvironmentAndFlagsOnEveryInvocation(t *testing.T) {
 				t.Errorf("ADR-0065 clause 2: `git %s` was invoked without %q", named, flag)
 			}
 		}
+		// The pinned output configuration, on every invocation (ADR-0071
+		// clause 2), and in force: a key's last occurrence is the one git
+		// uses, so each pinned and mandatory key must end on its own value.
+		for _, flag := range pinnedFlags() {
+			if !contains(invocation.Args, flag) {
+				t.Errorf("ADR-0071 clause 2: `git %s` was invoked without %q", named, flag)
+			}
+		}
+		effective := lastSettings(invocation.Args)
+		for _, set := range [][]string{pinnedFlags(), configFlags()} {
+			for i := 0; i+1 < len(set); i++ {
+				if set[i] != "-c" {
+					continue
+				}
+				key, _, _ := strings.Cut(set[i+1], "=")
+				if effective[key] != set[i+1] {
+					t.Errorf("ADR-0071 clause 1: `git %s` ends with %s = %q in force, not the pinned %q",
+						named, key, effective[key], set[i+1])
+				}
+			}
+		}
 		if subcommand := firstSubcommand(invocation.Args); subcommand >= 0 {
 			for i, arg := range invocation.Args {
 				if arg == "-c" && i > subcommand {
@@ -83,9 +104,9 @@ func TestEnvironmentAndFlagsOnEveryInvocation(t *testing.T) {
 			}
 		}
 
-		// The sanitised environment.
+		// The sanitised environment, and the pinned one.
 		env := environmentMap(invocation.Env)
-		for _, entry := range fixedEnvironment() {
+		for _, entry := range append(fixedEnvironment(), pinnedEnvironment()...) {
 			name, want, _ := strings.Cut(entry, "=")
 			got, ok := env[name]
 			if !ok {
@@ -180,9 +201,10 @@ func environmentMap(env []string) map[string]string {
 	return out
 }
 
-// isFixed reports whether a git variable is one the fixed set sets.
+// isFixed reports whether a git variable is one the fixed or the pinned set
+// sets.
 func isFixed(name string) bool {
-	for _, entry := range append(fixedEnvironment(), "GIT_TEST_DATE_NOW=") {
+	for _, entry := range append(append(fixedEnvironment(), pinnedEnvironment()...), "GIT_TEST_DATE_NOW=") {
 		if fixed, _, _ := strings.Cut(entry, "="); strings.EqualFold(fixed, name) {
 			return true
 		}
@@ -212,6 +234,21 @@ func index(args []string, want string) int {
 		}
 	}
 	return -1
+}
+
+// lastSettings returns the value each configuration key given with -c ends
+// on, as "key=value" keyed by key: the last occurrence, which is the one git
+// uses.
+func lastSettings(args []string) map[string]string {
+	out := map[string]string{}
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "-c" {
+			key, _, _ := strings.Cut(args[i+1], "=")
+			out[key] = args[i+1]
+			i++
+		}
+	}
+	return out
 }
 
 func lastIndex(args []string, want string) int {
