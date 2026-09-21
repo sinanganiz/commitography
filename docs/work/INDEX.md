@@ -99,6 +99,16 @@ to be amended mid-flight.
   scope. The first such matcher appeared in the next package. Where a record
   names a case it does not cover, expect that case, and decide it before a
   package trips on it.
+- **A determinism guarantee must name every input that can move the output.**
+  ADR-0021 promised identical reports for identical inputs, and the operator's
+  personal git configuration was an input nobody had listed. Before claiming a
+  function is deterministic, enumerate what it reads, including what the tools
+  it calls read.
+- **Carry forward what a package defers.** WP-0012 moved "no family recomputes a
+  section 1 value" to the family rebuilds. Every one of WP-0018 to WP-0027 must
+  switch its family to read those values from the record. WP-0012 also made the
+  collect artifact depend on the analysis configuration, so WP-0033 must key its
+  cache on the configuration digest.
 - **When a package hits a collision, look for the defect that predates it.**
   Merge candidates drawing on configuration-only addresses contradicted ADR-0007
   from the start; digests merely made it visible. Fixing the visible symptom
@@ -120,8 +130,8 @@ to be amended mid-flight.
 | [0008](0008-report-document.md) | core | Report document and schema versioning | ADR-0021, ADR-0031, ADR-0032, ADR-0062, ADR-0010 | WP-0005, WP-0006 | Done |
 | [0009](0009-identity-and-privacy.md) | core | Identity model and privacy layers | ADR-0033, ADR-0010, ADR-0032, ADR-0062 | WP-0008 | Done |
 | [0010](0010-configuration-planes.md) | core | Configuration planes and resolution | ADR-0026, ADR-0021, ADR-0062, ADR-0068, ADR-0069, ADR-0070, ADR-0053 | WP-0008 | Done |
-| [0011](0011-git-chokepoint.md) | pipeline | Git invocation chokepoint | ADR-0065, ADR-0044, ADR-0066, ADR-0041 | WP-0005, WP-0006, WP-0007 | Ready |
-| [0012](0012-collect-stage.md) | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052, ADR-0062, ADR-0017 | WP-0009, WP-0010, WP-0011 | Ready |
+| [0011](0011-git-chokepoint.md) | pipeline | Git invocation chokepoint | ADR-0065, ADR-0044, ADR-0066, ADR-0041 | WP-0005, WP-0006, WP-0007 | Done |
+| [0012](0012-collect-stage.md) | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052, ADR-0062, ADR-0017, ADR-0071, ADR-0031 | WP-0009, WP-0010, WP-0011 | Ready |
 | [0013](0013-replay-stage.md) | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051, ADR-0033, ADR-0019, ADR-0052 | WP-0012 | Ready |
 | [0014](0014-worktype-classification.md) | pipeline | Work-type classification | ADR-0020, ADR-0018, ADR-0019 | WP-0013 | Ready |
 | [0015](0015-family-contract-and-registry.md) | pipeline | Family contract and registry | ADR-0024, ADR-0032, ADR-0031, ADR-0062 | WP-0008 | Ready |

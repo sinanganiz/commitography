@@ -94,6 +94,7 @@ a superseding record is written first.
 | [0068](0068-configuration-identity-references.md) | The embedded configuration carries identity references, not identities | Accepted |
 | [0069](0069-candidate-evidence-from-history.md) | Merge candidates are evidence from the analysed history | Accepted |
 | [0070](0070-section-versions.md) | Top-level report sections carry their own version | Accepted |
+| [0071](0071-pinned-git-configuration.md) | Git configuration that affects output is pinned on every invocation | Accepted |
 
 ADR-0047 is superseded by ADR-0065. ADR-0056 is superseded by ADR-0063.
 
@@ -111,7 +112,7 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 | 3 | 0014, 0017, 0024, 0033, 0037, 0038, 0043, 0045, 0049, 0056, 0058, 0059, 0063 |
 | 4 | 0009, 0011, 0012, 0015, 0027, 0032, 0035, 0040, 0046, 0052, 0057, 0061, 0062 |
 | 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053, 0060, 0064 |
-| 6 | 0023, 0047, 0051, 0054, 0065, 0066, 0067, 0068, 0070 |
+| 6 | 0023, 0047, 0051, 0054, 0065, 0066, 0067, 0068, 0070, 0071 |
 | 7 | 0069 |
 
 Two records carry partial dependencies stated in prose rather than as a
@@ -184,6 +185,8 @@ checked without reading the full set. The governing record is authoritative.
   at the closed set of sites in ADR-0065 clause 3. (0065)
 - No subprocess anywhere is invoked through a shell, and git output is never
   line-parsed. (0065)
+- No operator's personal git configuration can change a report; every
+  output-affecting key is pinned on the invocation. (0071)
 - No globals, package-level mutable singletons, services in `context`, or direct
   process clock calls. (0042)
 - No bare `go` statement; every goroutine has an owner. (0044)
