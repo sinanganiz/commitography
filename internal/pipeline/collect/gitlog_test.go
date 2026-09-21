@@ -103,6 +103,96 @@ func TestParseKeepsHostilePathsWhole(t *testing.T) {
 	}
 }
 
+// A rename is an entry with an empty path field and its two paths in records
+// of their own, whether it is the first entry, sharing the header's record,
+// or a later one (WP-0012 clause 10a).
+func TestParseReadsRenameEntries(t *testing.T) {
+	t.Parallel()
+	stream := header(testHash, "refactor: move things") + "\n0\t0\t\x00src/old.go\x00src/new.go\x00" +
+		"1\t0\tplain.go\x00" +
+		"2\t1\t\x00docs/a.md\x00docs/b.md\x00" +
+		"-\t-\t\x00logo.png\x00assets/logo.png\x00\x00"
+
+	parsed := parseStream(Options{}, 0, stream)
+	if len(parsed.commits) != 1 {
+		t.Fatalf("got %d commits, want 1", len(parsed.commits))
+	}
+	want := []struct {
+		previous, path string
+		added, deleted int
+		binary         bool
+	}{
+		{"src/old.go", "src/new.go", 0, 0, false},
+		{"", "plain.go", 1, 0, false},
+		{"docs/a.md", "docs/b.md", 2, 1, false},
+		{"logo.png", "assets/logo.png", 0, 0, true},
+	}
+	files := parsed.commits[0].Files
+	if len(files) != len(want) {
+		t.Fatalf("got %d files, want %d: %+v", len(files), len(want), files)
+	}
+	for i, w := range want {
+		f := files[i]
+		if f.PreviousPath != w.previous || f.Path != w.path || f.Added != w.added || f.Deleted != w.deleted ||
+			f.IsBinary != w.binary {
+			t.Errorf("file %d = %+v, want %+v", i, f, w)
+		}
+	}
+}
+
+// A rename's paths are taken because of where they sit, never because of
+// what they look like: a source path crafted to resemble a commit header is
+// still a path, and no commit starts in the middle of it (WP-0012 clause
+// 10a, ADR-0045).
+func TestParseTakesRenamePathsByPosition(t *testing.T) {
+	t.Parallel()
+	next := "0123456789abcdef0123456789abcdef01234567"
+	crafted := strings.Repeat("f", 40) + "\x1fAda\x1fada@example.com\x1fada@example.com" +
+		"\x1f2010-04-10T16:57:36Z\x1f2010-04-10T16:57:36Z\x1f\x1fnot a commit"
+	for name, stream := range map[string]string{
+		"as the first entry": header(testHash, "refactor: move") + "\n0\t0\t\x00" + crafted + "\x00src/new.go\x00\x00" +
+			header(next, "feat: next") + "\n1\t0\tmain.go\x00\x00",
+		"as a later entry": header(testHash, "refactor: move") + "\n1\t0\tkeep.go\x00" +
+			"0\t0\t\x00" + crafted + "\x00src/new.go\x00\x00" +
+			header(next, "feat: next") + "\n1\t0\tmain.go\x00\x00",
+		"as the destination too": header(testHash, "refactor: move") + "\n0\t0\t\x00" + crafted + "\x00" +
+			crafted + "\x00\x00" + header(next, "feat: next") + "\n1\t0\tmain.go\x00\x00",
+	} {
+		parsed := parseStream(Options{}, 0, stream)
+		if parsed.failed != 0 || len(parsed.commits) != 2 {
+			t.Fatalf("%s: %d commits and %d failures, want 2 and none; the path started a commit",
+				name, len(parsed.commits), parsed.failed)
+		}
+		found := false
+		for _, f := range parsed.commits[0].Files {
+			if f.PreviousPath == crafted {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s: the crafted rename source is not the previous path of any entry: %+v",
+				name, parsed.commits[0].Files)
+		}
+		if parsed.commits[1].Hash != next || len(parsed.commits[1].Files) != 1 {
+			t.Errorf("%s: the commit after the rename came back as %+v", name, parsed.commits[1])
+		}
+	}
+}
+
+// A stream that ends inside a rename leaves an entry with one of its two
+// paths, which stands for nothing; it is dropped, and the commit is kept.
+func TestParseDropsARenameTheStreamEndsInside(t *testing.T) {
+	t.Parallel()
+	stream := header(testHash, "refactor: move") + "\n1\t0\tkeep.go\x000\t0\t\x00src/old.go"
+	parsed := parseStream(Options{}, 0, stream)
+	if len(parsed.commits) != 1 {
+		t.Fatalf("got %d commits, want 1", len(parsed.commits))
+	}
+	if files := parsed.commits[0].Files; len(files) != 1 || files[0].Path != "keep.go" {
+		t.Errorf("files = %+v, want only keep.go", files)
+	}
+}
+
 // git writes no file entries for a merge or an empty commit, so such a record
 // is a header and the separator alone. Neither may swallow the commit that
 // follows it.

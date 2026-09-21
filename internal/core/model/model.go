@@ -21,10 +21,15 @@ const SchemaVersion = 3
 
 // FileChange is a single file's line delta within one commit.
 type FileChange struct {
-	Path     string `json:"path"`
-	Added    int    `json:"added"`
-	Deleted  int    `json:"deleted"`
-	IsBinary bool   `json:"isBinary"`
+	// Path is the file's path after the commit.
+	Path string `json:"path"`
+	// PreviousPath is the path the file had before the commit, where git
+	// detected the change as a rename; empty otherwise. Added and Deleted are
+	// then the lines the content changed, not the file's length.
+	PreviousPath string `json:"previousPath,omitempty"`
+	Added        int    `json:"added"`
+	Deleted      int    `json:"deleted"`
+	IsBinary     bool   `json:"isBinary"`
 
 	// Excluded marks an excluded path (docs/metrics.md section 1): one that
 	// matches an exclusion pattern or that the analysed commit's attributes

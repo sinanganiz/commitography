@@ -416,6 +416,16 @@ func collectSharded(opts Options, hashes []string, shards int) (commits []model.
 // which is exact because %s is the first line of the message and cannot
 // contain one, and a path is whatever remains of its record, newlines and
 // quotes included (ADR-0045).
+//
+// A rename is an entry whose path field is empty, followed by two records of
+// its own: the path before and the path after,
+//
+//	<added>\t<deleted>\t\0<previous path>\0<path>\0
+//
+// Those two records are taken as paths because of where they sit, never
+// because of what they look like (WP-0012 clause 10a). A path is repository
+// content and can be crafted to resemble a commit header, and a reader that
+// asked what a record looks like would start a commit in the middle of one.
 type logParser struct {
 	opts     Options
 	expected int
@@ -427,6 +437,11 @@ type logParser struct {
 	// or the end of the stream closes it, because its file entries arrive as
 	// separate records.
 	pending *model.Commit
+
+	// owed is how many path records the pending commit's last entry, a
+	// rename, is still owed. While it is above zero, the next record is a
+	// path, whatever it contains.
+	owed int
 }
 
 func newLogParser(opts Options, expected int) *logParser {
@@ -435,6 +450,18 @@ func newLogParser(opts Options, expected int) *logParser {
 
 // record consumes one NUL-delimited record.
 func (p *logParser) record(chunk string) error {
+	// A rename's paths come first, by position, before anything asks what
+	// the record looks like.
+	if p.owed > 0 && p.pending != nil {
+		last := &p.pending.Files[len(p.pending.Files)-1]
+		if p.owed == 2 {
+			last.PreviousPath = chunk
+		} else {
+			last.Path = chunk
+		}
+		p.owed--
+		return nil
+	}
 	switch {
 	case isRecordStart(chunk):
 		p.finish()
@@ -447,14 +474,14 @@ func (p *logParser) record(chunk string) error {
 			p.opts.warn("skipping unparsable commit record: %v", err)
 			return nil
 		}
-		if hasFiles {
-			commit.Files = appendFileChange(commit.Files, first)
-		}
 		p.pending = &commit
+		if hasFiles {
+			commit.Files, p.owed = appendFileChange(commit.Files, first)
+		}
 	case chunk == "":
 		// The separator git writes between commits.
 	case p.pending != nil:
-		p.pending.Files = appendFileChange(p.pending.Files, chunk)
+		p.pending.Files, p.owed = appendFileChange(p.pending.Files, chunk)
 	default:
 		// Output before any header. The read is producing something this
 		// parser does not recognise, which the caller turns into a refusal
@@ -467,9 +494,15 @@ func (p *logParser) record(chunk string) error {
 	return nil
 }
 
-// finish closes the commit being assembled.
+// finish closes the commit being assembled. A rename the stream ended in the
+// middle of has no path to stand for, so it is dropped rather than kept with
+// one of its two.
 func (p *logParser) finish() {
 	if p.pending != nil {
+		if p.owed > 0 {
+			p.pending.Files = p.pending.Files[:len(p.pending.Files)-1]
+			p.owed = 0
+		}
 		p.commits = append(p.commits, *p.pending)
 		p.pending = nil
 	}
@@ -542,20 +575,22 @@ func parseHeader(header string) (model.Commit, error) {
 }
 
 // appendFileChange reads one `<added>\t<deleted>\t<path>` entry and appends
-// it. A malformed entry is skipped rather than failing the commit, since a
-// missing file row is less damaging than a lost commit.
+// it, and returns how many path records the entry is still owed: two for a
+// rename, whose path field is empty, and none otherwise. A malformed entry is
+// skipped rather than failing the commit, since a missing file row is less
+// damaging than a lost commit.
 //
 // The path is everything after the second tab, whatever it contains: with -z
 // git neither quotes nor escapes it, so a name holding a newline, a quote or
 // a control character is taken verbatim. Reversing C-style quoting here would
 // corrupt a name that genuinely begins and ends with a quote.
-func appendFileChange(files []model.FileChange, entry string) []model.FileChange {
+func appendFileChange(files []model.FileChange, entry string) ([]model.FileChange, int) {
 	if strings.TrimSpace(entry) == "" {
-		return files
+		return files, 0
 	}
 	parts := strings.SplitN(entry, "\t", 3)
 	if len(parts) != 3 {
-		return files
+		return files, 0
 	}
 	fc := model.FileChange{Path: parts[2]}
 	if parts[0] == "-" && parts[1] == "-" {
@@ -564,12 +599,15 @@ func appendFileChange(files []model.FileChange, entry string) []model.FileChange
 		added, err1 := strconv.Atoi(parts[0])
 		deleted, err2 := strconv.Atoi(parts[1])
 		if err1 != nil || err2 != nil {
-			return files
+			return files, 0
 		}
 		fc.Added = added
 		fc.Deleted = deleted
 	}
-	return append(files, fc)
+	if fc.Path == "" {
+		return append(files, fc), 2
+	}
+	return append(files, fc), 0
 }
 
 // parseGitTime parses a strict ISO 8601 timestamp and returns it together with
