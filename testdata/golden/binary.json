@@ -177,10 +177,11 @@
     },
     "commit-size": {
       "version": {
-        "major": 1,
+        "major": 2,
         "minor": 0
       },
       "status": "ok",
+      "method": "Effective lines are the lines git's diff adds and removes in each file that is not excluded. A file git detects as binary, by a NUL byte within its first 8 000 bytes unless a repository attribute says otherwise, contributes none. Rename detection is on, so a renamed file contributes the lines its content changed, and a file moved without change contributes none.",
       "metrics": {
         "mean_lines": 1.3,
         "median_lines": 1,
@@ -207,7 +208,7 @@
     },
     "files": {
       "version": {
-        "major": 1,
+        "major": 2,
         "minor": 0
       },
       "status": "ok",

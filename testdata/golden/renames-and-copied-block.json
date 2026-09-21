@@ -195,17 +195,18 @@
     },
     "commit-size": {
       "version": {
-        "major": 1,
+        "major": 2,
         "minor": 0
       },
       "status": "ok",
+      "method": "Effective lines are the lines git's diff adds and removes in each file that is not excluded. A file git detects as binary, by a NUL byte within its first 8 000 bytes unless a repository attribute says otherwise, contributes none. Rename detection is on, so a renamed file contributes the lines its content changed, and a file moved without change contributes none.",
       "metrics": {
-        "mean_lines": 20.8,
-        "median_lines": 21,
+        "mean_lines": 8.8,
+        "median_lines": 1,
         "largest_commit": {
-          "hash": "54ea43987924e33231bcf22a62e0956b5cd8a203",
-          "date": "2025-10-02",
-          "lines": 40,
+          "hash": "b7219b21a6d27720ba8696480e7bf6a306791204",
+          "date": "2025-10-01",
+          "lines": 30,
           "files": 2
         }
       }
@@ -225,22 +226,12 @@
     },
     "files": {
       "version": {
-        "major": 1,
+        "major": 2,
         "minor": 0
       },
       "status": "ok",
       "metrics": {
         "most_modified": [
-          {
-            "path": "src/lexer.go",
-            "commits": 2,
-            "removed": true
-          },
-          {
-            "path": "src/parser.go",
-            "commits": 2,
-            "removed": true
-          },
           {
             "path": "src/syntax/parser.go",
             "commits": 2,
@@ -250,6 +241,16 @@
             "path": "src/format/printer.go",
             "commits": 1,
             "removed": false
+          },
+          {
+            "path": "src/lexer.go",
+            "commits": 1,
+            "removed": true
+          },
+          {
+            "path": "src/parser.go",
+            "commits": 1,
+            "removed": true
           },
           {
             "path": "src/syntax/scanner.go",

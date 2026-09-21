@@ -183,3 +183,28 @@ func TestApplyDoesNotMutateInput(t *testing.T) {
 		t.Error("Apply modified the caller's slice")
 	}
 }
+
+// Annotate marks excluded paths on each file, so the files it returns are its
+// own: the caller's still say what they said.
+func TestAnnotateDoesNotMutateTheCallersFiles(t *testing.T) {
+	t.Parallel()
+	commits := []model.Commit{{
+		Hash:        "a",
+		AuthorEmail: "ada@example.com",
+		AuthorDate:  time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC),
+		Files:       []model.FileChange{{Path: "package-lock.json", Added: 3}, {Path: "main.go", Added: 2}},
+	}}
+	cfg := config.Default()
+	pf, err := NewPathFilterFromAttributes(cfg, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := Annotate(commits, cfg, identity.NewResolver(cfg, commits), pf)
+	if !got[0].Files[0].Excluded || got[0].EffectiveLines != 2 {
+		t.Errorf("annotated %+v with %d effective lines, want the lockfile excluded and 2 lines",
+			got[0].Files, got[0].EffectiveLines)
+	}
+	if commits[0].Files[0].Excluded {
+		t.Error("Annotate marked the caller's file")
+	}
+}

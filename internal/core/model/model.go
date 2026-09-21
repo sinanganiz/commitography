@@ -17,7 +17,9 @@ import "time"
 //	2  AuthorSourceEmail added
 //	3  the per-commit definitions of docs/metrics.md section 1 added, with the
 //	   reasons a commit is not analysed, and the analysed commit's attributes
-const SchemaVersion = 3
+//	4  rename detection on: a renamed file is one change carrying its previous
+//	   path, and its lines are what its content changed
+const SchemaVersion = 4
 
 // FileChange is a single file's line delta within one commit.
 type FileChange struct {

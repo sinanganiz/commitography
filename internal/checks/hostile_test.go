@@ -246,13 +246,32 @@ func TestHostileNamesRecordIntegrity(t *testing.T) {
 // returns each commit's file paths in order. It applies the framing rules of
 // `git log -z --numstat` and nothing else: records are NUL-delimited, a
 // header is an object name followed by the field separator, an empty record
-// separates commits, and a path is whatever follows the second tab.
+// separates commits, and a path is whatever follows the second tab. A rename
+// has an empty path there, and its previous path and its path follow as the
+// next two records, which are taken by position; the path after the rename is
+// the entry's path, as the collect stage records it.
 func gitFileEntries(t *testing.T, dir string) map[string][]string {
 	t.Helper()
 	entries := map[string][]string{}
 	current := ""
-	err := git.Scan(context.Background(), git.At(dir, "log", "-z", "--numstat", "--no-renames",
+	owed := 0
+	add := func(entry string) {
+		path := pathOfNumstatEntry(entry)
+		if path == "" && strings.Count(entry, "\t") == 2 {
+			owed = 2
+			return
+		}
+		entries[current] = append(entries[current], path)
+	}
+	err := git.Scan(context.Background(), git.At(dir, "log", "-z", "--numstat",
 		"--all", "--date-order", "--pretty=format:%H\x1f").Pathspecs(), func(record string) error {
+		if owed > 0 {
+			owed--
+			if owed == 0 {
+				entries[current] = append(entries[current], record)
+			}
+			return nil
+		}
 		head, first, hasFiles := strings.Cut(record, "\n")
 		switch {
 		case record == "":
@@ -260,10 +279,10 @@ func gitFileEntries(t *testing.T, dir string) map[string][]string {
 			current = strings.TrimSuffix(head, "\x1f")
 			entries[current] = nil
 			if hasFiles {
-				entries[current] = append(entries[current], pathOfNumstatEntry(first))
+				add(first)
 			}
 		case current != "":
-			entries[current] = append(entries[current], pathOfNumstatEntry(record))
+			add(record)
 		}
 		return nil
 	})
@@ -271,6 +290,87 @@ func gitFileEntries(t *testing.T, dir string) map[string][]string {
 		fatal(t, 65, "reading the fixture's history from git: %v", err)
 	}
 	return entries
+}
+
+// craftedHeaderPath is a path built to be a well-formed record header of the
+// collect stage's own format: an object name, the field separator, and every
+// field a header carries. A reader that asked what a record looks like would
+// start a commit in the middle of the rename it belongs to.
+func craftedHeaderPath() string {
+	return strings.Repeat("f", 40) + "\x1fAda\x1fada@example.com\x1fada@example.com" +
+		"\x1f2010-04-10T16:57:36Z\x1f2010-04-10T16:57:36Z\x1f\x1fnot a commit"
+}
+
+// renameRepository builds a repository of two commits: the first adds a file
+// at the crafted path, and the second moves it, unchanged, to src/moved.go.
+// The trees are written directly, so no filesystem has to hold the name, and
+// the dates are fixed so that nothing here reads a clock (ADR-0042 clause 4).
+func renameRepository(t *testing.T) string {
+	t.Helper()
+	ctx := context.Background()
+	dir := t.TempDir()
+	run := func(spec git.Spec) string {
+		t.Helper()
+		out, err := git.Output(ctx, spec.WithEnv(
+			"GIT_AUTHOR_NAME=Fixture Builder", "GIT_AUTHOR_EMAIL=fixtures@example.com",
+			"GIT_AUTHOR_DATE=1700000000 +0000", "GIT_COMMITTER_NAME=Fixture Builder",
+			"GIT_COMMITTER_EMAIL=fixtures@example.com", "GIT_COMMITTER_DATE=1700000000 +0000"))
+		if err != nil {
+			fatal(t, 64, "building the rename repository: %v", err)
+		}
+		return out
+	}
+	blob := func(content string) string {
+		return run(git.At(dir, "hash-object", "-w", "--stdin").WithStdin(strings.NewReader(content)))
+	}
+	tree := func(entries ...string) string {
+		return run(git.At(dir, "mktree", "-z").WithStdin(strings.NewReader(strings.Join(entries, "\x00") + "\x00")))
+	}
+
+	run(git.At("", "init", "-q", dir))
+	moved := blob(strings.Repeat("a line that moves without change\n", 20))
+	kept := blob("package keep\n")
+	before := tree("100644 blob "+kept+"\tkeep.go", "100644 blob "+moved+"\t"+craftedHeaderPath())
+	after := tree("100644 blob "+kept+"\tkeep.go", "040000 tree "+tree("100644 blob "+moved+"\tmoved.go")+"\tsrc")
+	first := run(git.At(dir, "commit-tree", before, "-m", "feat: add a file at a crafted path"))
+	second := run(git.At(dir, "commit-tree", after, "-p", first, "-m", "refactor: move it"))
+	run(git.At(dir, "update-ref", "HEAD", second))
+	return dir
+}
+
+// TestHostileRenameSourceParsesAsAPath is WP-0012 clause 10a on a real
+// history: a rename whose source is a crafted record header comes back as
+// that path's rename, and no commit starts in the middle of it.
+func TestHostileRenameSourceParsesAsAPath(t *testing.T) {
+	t.Parallel()
+	dir := renameRepository(t)
+	var warnings []string
+	history, err := newCollector().Collect(collect.Options{
+		RepoPath: dir, Context: context.Background(),
+		OnWarning: func(message string) { warnings = append(warnings, message) },
+	})
+	if err != nil {
+		fatal(t, 45, "reading a history whose rename source is a crafted header: %v", err)
+	}
+	if len(history.Commits) != 2 || len(warnings) != 0 {
+		report(t, 45, "the history came back as %d commits with the warnings %q, want its 2 and none; the "+
+			"crafted path was read as a record", len(history.Commits), warnings)
+	}
+	renamed := false
+	for _, c := range history.Commits {
+		for _, f := range c.Files {
+			if f.PreviousPath == craftedHeaderPath() && f.Path == "src/moved.go" {
+				renamed = true
+				if f.Added != 0 || f.Deleted != 0 || c.EffectiveLines != 0 {
+					report(t, 45, "the move without change counts %d added, %d removed and %d effective lines, "+
+						"want none (docs/metrics.md section 1)", f.Added, f.Deleted, c.EffectiveLines)
+				}
+			}
+		}
+	}
+	if !renamed {
+		report(t, 45, "no record carries the rename from the crafted path to src/moved.go: %+v", history.Commits)
+	}
 }
 
 // pathOfNumstatEntry is everything after the second tab of a file entry.

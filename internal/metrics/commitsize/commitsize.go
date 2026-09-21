@@ -14,7 +14,7 @@ import (
 const dateLayout = "2006-01-02"
 
 // version is the family version (ADR-0031 clause 2).
-func version() core.Version { return core.Version{Major: 1, Minor: 0} }
+func version() core.Version { return core.Version{Major: 2, Minor: 0} }
 
 // Build computes the commit-size family over the line-scoped commits: the
 // analysed commits minus bulk commits. With none, every metric is absent and

@@ -17,6 +17,13 @@ import (
 
 const minWrappedCommits = 10
 
+// commitSizeMethod states how effective lines are counted (docs/metrics.md
+// section 1), where that differs from counting a file's lines.
+const commitSizeMethod = "Effective lines are the lines git's diff adds and removes in each file that is not " +
+	"excluded. A file git detects as binary, by a NUL byte within its first 8 000 bytes unless a repository " +
+	"attribute says otherwise, contributes none. Rename detection is on, so a renamed file contributes the " +
+	"lines its content changed, and a file moved without change contributes none."
+
 // configurationRemedy is the remedy for every configuration refusal: they all
 // come from the same file and are all fixed the same way.
 const configurationRemedy = "Correct the setting in " + config.FileName +
@@ -212,6 +219,14 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	}
 	for _, message := range buildWarnings {
 		collectWarn(message)
+	}
+	// Effective lines rest on how the collect stage reads a diff, which
+	// differs from a plain line count in two ways a reader must be told of
+	// (ADR-0032 clause 8, WP-0012 clause 10c). The statement is set here, on
+	// the family whose values are effective lines, until the family registry
+	// of WP-0015 gives a family's own declaration a place to carry it.
+	if report.Families.CommitSize.Status != core.StatusSkipped {
+		report.Families.CommitSize.Method = commitSizeMethod
 	}
 
 	var previousYearCommits *int

@@ -91,9 +91,11 @@ func TestCollectTotalAddedLinesMatchesGit(t *testing.T) {
 	// Independent recomputation straight from git, not reusing the parser.
 	// The header is an object name and the field separator, so a record that
 	// ends in one is a header with no file entries, and the entry a header
-	// shares a record with follows its newline.
+	// shares a record with follows its newline. Rename detection is on, as it
+	// is for the stage; a rename's two path records carry no tab and count
+	// nothing.
 	var want int
-	for _, record := range gitRecords(t, repo, "log", "-z", "--all", "--numstat", "--no-renames",
+	for _, record := range gitRecords(t, repo, "log", "-z", "--all", "--numstat",
 		"--pretty=format:%H\x1f") {
 		entry := record
 		if head, rest, ok := strings.Cut(record, "\n"); ok && strings.HasSuffix(head, "\x1f") {

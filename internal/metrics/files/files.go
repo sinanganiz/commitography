@@ -17,7 +17,7 @@ import (
 const dateLayout = "2006-01-02"
 
 // version is the family version (ADR-0031 clause 2).
-func version() core.Version { return core.Version{Major: 1, Minor: 0} }
+func version() core.Version { return core.Version{Major: 2, Minor: 0} }
 
 // fileStat accumulates per-path activity across the line-scoped commit set.
 type fileStat struct {

@@ -289,8 +289,13 @@ func boundArgs(opts Options) []string {
 // NUL instead of a newline and stops git munging path names, so a file name
 // containing a newline, a quote or a control character arrives intact
 // (ADR-0065 clause 2, ADR-0045).
+//
+// Rename detection is on, through the configuration the git package pins on
+// every invocation along with its limit (ADR-0071): a file moved without
+// change is one entry with no lines, not its whole length removed and added
+// (docs/metrics.md section 1). The parser reads a rename's paths by position.
 func logArgs(opts Options, fromStdin bool) []string {
-	args := []string{"log", "-z", "--numstat", "--no-renames"}
+	args := []string{"log", "-z", "--numstat"}
 	if fromStdin {
 		args = append(args, "--no-walk", "--stdin")
 	} else {
