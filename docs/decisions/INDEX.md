@@ -97,6 +97,7 @@ a superseding record is written first.
 | [0071](0071-pinned-git-configuration.md) | Git configuration that affects output is pinned on every invocation | Accepted |
 | [0072](0072-unforgeable-framing.md) | Framing that content cannot forge | Accepted |
 | [0073](0073-replay-follows-the-graph.md) | Replay follows the commit graph | Accepted |
+| [0074](0074-worktype-unit-and-window.md) | What work-type classification counts, and where its window applies | Accepted |
 
 ADR-0047 is superseded by ADR-0065. ADR-0056 is superseded by ADR-0063.
 
@@ -116,6 +117,7 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 | 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053, 0060, 0064 |
 | 6 | 0023, 0047, 0051, 0054, 0065, 0066, 0067, 0068, 0070, 0071, 0072 |
 | 7 | 0069, 0073 |
+| 8 | 0074 |
 
 Two records carry partial dependencies stated in prose rather than as a
 whole-record dependency, and are therefore placed earlier than their text
@@ -205,6 +207,8 @@ checked without reading the full set. The governing record is authoritative.
   (0052)
 - Replay never walks history as a single running state, never reads the working
   tree, and never uses git's diff output for line ownership. (0073)
+- Replay applies no analysis parameter; a rewrite counts once, and the recency
+  window is applied in aggregation. (0074)
 - No visualisation renders unbounded cardinality; limits are applied in the
   report. (0053)
 

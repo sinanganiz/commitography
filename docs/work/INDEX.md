@@ -112,11 +112,21 @@ to be amended mid-flight.
   Replay's first version walked history as a line. On most real repositories
   that gives wrong answers, not approximate ones. Where the input has a shape,
   the package must say which shape it assumes.
+- **A metric rule is not defined until its unit is.** ADR-0020 clause 4 gave
+  four classes and no unit, and two honest readings gave rework shares a factor
+  of two apart. When writing a rule that counts things, say what one thing is.
+- **Record inputs, apply parameters late.** Fixing a result in an early stage
+  ties that stage to every parameter the result depends on. Where a later stage
+  can apply the parameter, record what it needs and let it.
 - **Carry forward what a package defers.** WP-0012 moved "no family recomputes a
   section 1 value" to the family rebuilds. Every one of WP-0018 to WP-0027 must
   switch its family to read those values from the record. WP-0012 also made the
   collect artifact depend on the analysis configuration, so WP-0033 must key its
-  cache on the configuration digest. WP-0026 must decide whether `worktree`
+  cache on the configuration digest. WP-0024 inherits from WP-0014: applying the window to the age histograms, the
+  class counts, the bound at 200, repository shares and the projection checker,
+  and it must **move the top-200 identity selection into `core`** so that the
+  breakdown and the identities section fold exactly the same identities; a copy
+  held equal by a checker is the fallback only. WP-0026 must decide whether `worktree`
   remains a distinct input kind, now that replay reads content from git objects
   (ADR-0073, out of scope).
 - **When a package hits a collision, look for the defect that predates it.**
@@ -143,7 +153,7 @@ to be amended mid-flight.
 | [0011](0011-git-chokepoint.md) | pipeline | Git invocation chokepoint | ADR-0065, ADR-0044, ADR-0066, ADR-0041 | WP-0005, WP-0006, WP-0007 | Done |
 | [0012](0012-collect-stage.md) | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052, ADR-0062, ADR-0017, ADR-0071, ADR-0031 | WP-0009, WP-0010, WP-0011 | Done |
 | [0013](0013-replay-stage.md) | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051, ADR-0072, ADR-0073, ADR-0033, ADR-0019, ADR-0052 | WP-0012 | Done |
-| [0014](0014-worktype-classification.md) | pipeline | Work-type classification | ADR-0020, ADR-0018, ADR-0019 | WP-0013 | Ready |
+| [0014](0014-worktype-classification.md) | pipeline | Work-type classification inputs | ADR-0074, ADR-0020, ADR-0073, ADR-0019, ADR-0062 | WP-0013 | Ready |
 | [0015](0015-family-contract-and-registry.md) | pipeline | Family contract and registry | ADR-0024, ADR-0032, ADR-0031, ADR-0062 | WP-0008 | Ready |
 | 0016 | pipeline | Interpret stage | ADR-0020, ADR-0014 | WP-0061 | Draft |
 | 0017 | pipeline | Render boundary and CLI | ADR-0034, ADR-0021 | WP-0061, WP-0016 | Draft |
@@ -153,7 +163,7 @@ to be amended mid-flight.
 | 0021 | metrics | files family | ADR-0024 | WP-0061 | Draft |
 | 0022 | metrics | coupling family | ADR-0024, ADR-0053 | WP-0061 | Draft |
 | 0023 | metrics | ownership family | ADR-0024 | WP-0061, WP-0013 | Draft |
-| 0024 | metrics | worktype family output | ADR-0024, ADR-0018 | WP-0061, WP-0014 | Draft |
+| 0024 | metrics | worktype family output | ADR-0024, ADR-0018, ADR-0074 | WP-0061, WP-0014 | Draft |
 | 0025 | metrics | ai-archaeology family | ADR-0024 | WP-0061, WP-0013 | Draft |
 | 0026 | metrics | hotspot family | ADR-0024 | WP-0061 | Draft |
 | 0027 | metrics | static-analysis placeholder | ADR-0012, ADR-0032 | WP-0061 | Draft |
@@ -235,7 +245,7 @@ to be amended mid-flight.
 | 0011 | All git invocation passes one hardened package, NUL-delimited and context-bound. |
 | 0012 | A single pass produces normalized commit records, independently cacheable, computing no metric. |
 | 0013 | Graph-following replay derives ownership from parents, reads git objects, and closes the deviation. |
-| 0014 | Lines are classified during replay with no blame, in a projectable dual breakdown. |
+| 0014 | Replay records each change's kind, editor, previous owner and age, applying no window. |
 | 0015 | Families declare inputs, own namespaces, carry versions and report status; goldens unchanged. |
 | 0016 | A stateless stage assigns archetypes and badges over a stored report. |
 | 0017 | The CLI emits exactly one file, deterministic and identical to server output. |
@@ -245,7 +255,7 @@ to be amended mid-flight.
 | 0021 | File activity metrics as defined in docs/metrics.md section 5. |
 | 0022 | Coupling pairs and bounded graph with cardinality degradation. |
 | 0023 | Line-based bus factor, concentration, code age over all tracked lines. |
-| 0024 | Dual-breakdown output and repository shares, projectable without recomputation. |
+| 0024 | Applies the window, bounds the breakdown at 200, and proves projection equals recomputation. |
 | 0025 | Assisted detection rules file and the assisted versus unassisted comparisons. |
 | 0026 | Indentation-based complexity proxy and hotspot scoring, skipped without a worktree. |
 | 0027 | The family is present in every report as skipped with reason not_implemented. |
