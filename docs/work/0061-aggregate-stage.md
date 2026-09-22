@@ -24,12 +24,13 @@ repository unreadable.
 4. **Resolving declared inputs must not change any family's status**
    (ADR-0076 clause 9). If it does, an input declaration is wrong: **stop and
    report**, do not absorb it into a golden update.
-4a. **Retire the working tree** (ADR-0076). If the family interface still admits
-   `worktree` when this package starts — because WP-0015 ran before ADR-0076
-   existed — remove the kind, and change `hotspot` and `static-analysis` to
-   their ADR-0076 clause 6 rows. Remove `worktree_unavailable` from
-   `docs/metrics.md` section 13, and correct the input lines in sections 10 and
-   11.
+4a. **Remove `worktree_unavailable` together with its producer** (ADR-0076
+   clause 11). WP-0015 already removed the input kind and corrected the
+   declarations and the catalogue's input lines. This package removes the code
+   from `docs/metrics.md` section 13, the sentence in section 10 saying the
+   family skips without a working tree, and whatever in the aggregation stage
+   emits the code — in one change, so the reason code checker never sees a code
+   listed without a producer or produced without a listing.
 4b. **If `hotspot` currently reads the working tree**, it cannot run with the
    repository removed. Set it to `skipped` with `not_implemented`, which is the
    one status change ADR-0076 clause 10 sanctions; record the deviation next to
@@ -78,7 +79,7 @@ repository unreadable.
 **May create or modify:** `internal/pipeline/aggregate/**`,
 `internal/pipeline/run.go`, `internal/core/**`, `internal/checks/**`,
 `docs/report-schema.json`, `testdata/**` golden files, `docs/metrics.md`
-**sections 10, 11 and 13 only, for clause 4a**, `internal/metrics/hotspot/**`
+**for the section 10 sentence and the section 13 code in clause 4a only**, `internal/metrics/hotspot/**`
 and `internal/metrics/staticanalysis/**` **for their declarations only**, and
 `.golangci.yml` **for the namespace deviation entry and the hotspot deviation
 entry only**.

@@ -19,6 +19,30 @@ is a shape and belongs in `core`; the registry is a composition and belongs to
 the stage that composes. Registry, routing and the scratch-family demonstration
 moved to WP-0061.
 
+## Resumption after ADR-0076
+
+This package was first executed against its text at commit `92feaaf`, and that
+work is complete and correct for that text: ten declaring packages, the
+declaration checker with seven demonstrated failure modes, the namespace
+deviation recorded, and no golden file moved. ADR-0076 then changed the input
+set while the package was running. Resuming it applies **only the delta**:
+
+1. Remove the `worktree` input kind, so the interface admits exactly three.
+2. `hotspot` declares `commit-records` and `replay-state`; `static-analysis`
+   declares `replay-state`.
+3. The declaration checker reads the family table from ADR-0076 clause 6
+   instead of ADR-0024 clause 5, and gains the failure mode "declared inputs
+   differ from the clause 6 row". Demonstrate that mode failing and passing.
+4. **Checker messages name the record they enforce** (ADR-0055 clause 3). Every
+   message currently naming ADR-0024 names ADR-0076, because ADR-0024 is
+   superseded.
+5. Correct the **input lines only** in `docs/metrics.md` sections 5, 10 and 11,
+   so the catalogue states the ADR-0076 inputs for `files`, `hotspot` and
+   `static-analysis`.
+
+Keep every commit already made. None of the delta changes what any family
+computes, so no golden file moves.
+
 ## In scope
 1. Define the family interface in `internal/core`. A family declares:
    - the inputs it requires, from exactly `commit-records`, `replay-state`,
@@ -67,14 +91,21 @@ moved to WP-0061.
 - Changing any metric computation.
 - Switching `hotspot` off the working tree. Declaring its ADR-0076 row is this
   package's work; changing what it computes is WP-0061's and WP-0026's.
+- **Removing `worktree_unavailable`** from `docs/metrics.md` section 13, or the
+  sentence in section 10 saying the family skips without a working tree. The
+  reason code checker requires a listed code to have a producer and a produced
+  code to be listed; the code must leave together with whatever emits it, which
+  is in the aggregation stage. WP-0061 does both.
 
 ## Files
 **May create or modify:** `internal/core/family.go` and neighbouring core files,
 `internal/metrics/**` **for declarations and declaration-only packages only**,
 `internal/checks/**`, `.golangci.yml` **for the namespace deviation entry
-only**, and `Makefile` **for the stale comment only**.
+only**, `Makefile` **for the stale comment only**, and `docs/metrics.md` **for
+the input lines of sections 5, 10 and 11 only**.
 **Must not touch:** `internal/pipeline/**`, `cmd/**`, `testdata/**`,
-`docs/decisions/**`, `docs/metrics.md`, `docs/report-schema.json`.
+`docs/decisions/**`, any other line of `docs/metrics.md`,
+`docs/report-schema.json`.
 
 ## Steps
 1. Define the interface with the method statement field.
@@ -92,6 +123,9 @@ only**, and `Makefile` **for the stale comment only**.
 - The declaration checker exists, and each failure mode in clause 5 has been
   observed failing and then passing.
 - The namespace gap is recorded as a deviation naming WP-0061.
+- No checker message names ADR-0024.
+- `docs/metrics.md` states the ADR-0076 inputs for `files`, `hotspot` and
+  `static-analysis`, and still lists `worktree_unavailable` in section 13.
 - **Every golden file is byte-identical**: nothing routes through the
   declarations yet.
 

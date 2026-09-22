@@ -127,6 +127,14 @@ to be amended mid-flight.
   is the expensive side.** The catalogue said `commit_size`; the report said
   `commit-size`. Editing the catalogue was cheaper and would have inverted
   ADR-0062. The report keys change instead.
+- **Never change a package's text in the tree while it is being executed.**
+  WP-0015 was amended for ADR-0076 while an agent was running it; the agent saw
+  uncommitted records and a rewritten package, and rightly stopped. Settle an
+  amendment before a package starts, or after it finishes, and carry the delta
+  as a resumption.
+- **A reason code leaves with its producer.** The catalogue checker requires
+  both directions, so removing a code from `docs/metrics.md` in one package and
+  its emitter in another breaks the gate in between.
 - **A package that adds a fixture adds its golden file.** ADR-0019 requires one
   per fixture and the harness enforces it. "No golden changes" means no existing
   report changes; say that, and measure it with a filter that excludes additions.
