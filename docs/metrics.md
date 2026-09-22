@@ -201,14 +201,66 @@ fixture (ADR-0019 clause 6).
 
 **Input:** replay-state. **Namespace:** `worktype`.
 
-Classification rules are defined in ADR-0020 clause 4 and are not restated here.
-Population: changed lines in analysed, non-bulk commits, on non-excluded paths.
+The classes are those of ADR-0020 clause 4, and ADR-0074 defines what they
+count. Population: the line-level change events of analysed, non-bulk commits,
+on non-excluded paths.
+
+**Events.** Each version of a file that a commit changes is aligned with the
+version it was changed from, by the fixed in-process algorithm of ADR-0073
+clause 7. The lines the alignment leaves unmatched form changed blocks: runs of
+R removed and A added lines between two lines it matches. Within a block, the
+first min(R, A) removed lines pair with the first min(R, A) added lines by
+position. That gives three kinds of event, and each counts once:
+
+| Event | What it is |
+|---|---|
+| replacement | An added line paired with a removed line. |
+| deletion | A removed line with no paired added line. |
+| addition | An added line with no paired removed line. |
+
+Rewriting a line is one replacement, never a deletion and an addition. A file a
+commit adds is all additions, one it deletes is all deletions, and one it
+renames counts only the lines its content changed. Merges differ, as below.
+
+**Age.** A replacement or deletion carries the removed line's previous owner and
+its age: the editing commit's local date minus the local date of the commit
+that wrote the removed line, in whole days, both by the configured date source.
+An age is negative where the editing commit is dated before the line.
+
+**Classes.** An addition is `new_work`. A replacement or deletion is **recent**
+when its age is less than `recency_window_days`, and legacy when its age is
+equal to it or greater. A recent event whose editor is the line's previous
+owner is `rework`, a recent event of another identity's line is `help_others`,
+and a legacy event is `legacy_refactor`. The window is applied here, when the
+family is aggregated; replay records the ages and applies none, so changing the
+window changes no replay state (ADR-0074 clauses 8 and 9).
+
+**Merges.** A merge produces events only when merges are counted, and only for
+what it did itself (ADR-0074 clause 6). Its blocks are taken against its first
+parent and paired as above. An addition or replacement is recorded only where
+the added line is the merge's own, matching no parent's version (ADR-0073
+clause 5), and a deletion only for a line present in every parent's version of
+the file and absent from the merge's. Every other difference was made by a
+parent's own commit, and is recorded there.
+
+**Files replay cannot count.** A change to or from a binary version produces no
+event, as it contributes no effective lines. A change to or from a version
+larger than the single-file-size limit, whose content replay does not read, or
+a version derived from one, whose lines replay cannot trace to the lines they
+came from, produces no event, and the family is `degraded` with reason
+`limit_reached_size` (ADR-0074 clause 7). In a merge, either holds when any
+parent's version is such a file.
+
+**Recorded inputs.** Replay records, for each editing identity and previous
+owner, the ages of the lines they replaced and of those they deleted, as two
+histograms, and for each editing identity the number of its additions. The
+family turns them into the class counts below.
 
 | Metric | Definition |
 |---|---|
 | `breakdown` | The two-dimensional editor-by-previous-owner matrix required by ADR-0018, with a class breakdown per cell. Top 200 identities individually, remainder aggregated. |
-| `repository_shares` | `new_work`, `rework`, `help_others`, `legacy_refactor` as shares of classified lines. |
-| `classified_line_count` | Total lines classified. |
+| `repository_shares` | `new_work`, `rework`, `help_others`, `legacy_refactor` as shares of classified events. |
+| `classified_line_count` | Total change events classified. Each event is one line, and counts once. |
 | `recency_window_days` | The window used, echoed for reproducibility. |
 
 Person-scope shares are a projection of `breakdown` over the selected identity
