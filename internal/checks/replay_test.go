@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -156,8 +158,9 @@ func TestReplayMapCoversEveryTrackedTextLine(t *testing.T) {
 			case len(got.Lines) != lineCount(file.content):
 				report(t, 20, "%s: %s has %d lines and the map holds %d", fixture, file.path,
 					lineCount(file.content), len(got.Lines))
-			default:
-				lines += len(got.Lines)
+			}
+			if isText(file.content) {
+				lines += lineCount(file.content)
 			}
 		}
 		if len(held) != want {
@@ -242,6 +245,121 @@ func TestReplayMergedSideBranchOwnership(t *testing.T) {
 	}
 	for path := range want {
 		report(t, 73, "the map does not hold %s", path)
+	}
+}
+
+// blameOwners reads git blame's commit for every line of a file at a commit,
+// with the given detection options, from its incremental output.
+//
+// That output is line-framed, which ADR-0072 clause 3 forbids for records
+// that carry attacker-controlled content. A fixture is the product's own
+// generated content, not an attacker's, and only the entry headers are read:
+// an object name, then three decimal numbers, a form no other line of the
+// output takes, because every other line begins with its key.
+func blameOwners(t *testing.T, dir, commit, path string, options ...string) []string {
+	t.Helper()
+	args := append(append([]string{"blame", "--incremental"}, options...), commit)
+	out, err := git.Output(context.Background(), git.At(dir, args...).Pathspecs(path))
+	if err != nil {
+		fatal(t, 19, "blaming %s in %s: %v", path, filepath.Base(dir), err)
+	}
+	entry := regexp.MustCompile(`^([0-9a-f]{40}) [0-9]+ ([0-9]+) ([0-9]+)$`)
+	var owners []string
+	for _, line := range strings.Split(out, "\n") {
+		m := entry.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		final, _ := strconv.Atoi(m[2])
+		count, _ := strconv.Atoi(m[3])
+		for len(owners) < final-1+count {
+			owners = append(owners, "")
+		}
+		for i := 0; i < count; i++ {
+			owners[final-1+i] = m[1]
+		}
+	}
+	return owners
+}
+
+// divergence is the share of a map's lines whose owner or day differs from the
+// commit git blame names for the line, with the given detection options.
+func divergence(t *testing.T, run replayRun, options ...string) (float64, int) {
+	t.Helper()
+	ownership := run.state.Ownership
+	commits := map[string]model.Commit{}
+	for _, c := range run.history.Commits {
+		commits[c.Hash] = c
+	}
+	differ, total := 0, 0
+	for _, f := range ownership.Files {
+		if f.Binary || f.Lines == nil {
+			continue
+		}
+		blamed := blameOwners(t, run.dir, ownership.Commit, f.Path, options...)
+		if len(blamed) != len(f.Lines) {
+			fatal(t, 19, "blame gives %s %d lines and the map %d", f.Path, len(blamed), len(f.Lines))
+		}
+		for i, line := range f.Lines {
+			c, ok := commits[blamed[i]]
+			if !ok {
+				fatal(t, 19, "blame names commit %.12s for %s line %d, which is not in the records", blamed[i],
+					f.Path, i+1)
+			}
+			total++
+			if ownerOf(ownership, line) != c.IdentityID+" "+c.ActiveDate {
+				differ++
+			}
+		}
+	}
+	if total == 0 {
+		fatal(t, 64, "the %s fixture has no line to compare with blame", filepath.Base(run.dir))
+	}
+	return float64(differ) / float64(total), total
+}
+
+// The blame divergence thresholds of ADR-0019 clause 6, per fixture and per
+// blame. Each is the measured divergence, as a share of lines, with nothing
+// added: a change to the alignment or the walk that moves more lines away
+// from blame fails here and has to say why.
+//
+// Plain blame follows a file's renames, as replay does, and on these fixtures
+// agrees with replay on every line. Blame with -M -C -C also finds lines moved
+// within a file and lines copied from another file of the same commit or of
+// the commit that created the file, which replay does not reproduce
+// (docs/metrics.md section 7): on the renames-and-copied-block fixture that is
+// the ten-line block copied into src/format/printer.go, which blame gives to
+// the parser's author and replay to the commit that copied it.
+func blameThresholds() map[string]map[string]float64 {
+	return map[string]map[string]float64{
+		"renames-and-copied-block": {"blame": 0, "blame -M -C -C": 10.0 / 44},
+		"merged-side-branch":       {"blame": 0, "blame -M -C -C": 0},
+	}
+}
+
+// TestReplayBlameDivergence measures replay-derived ownership against git
+// blame on the renames-and-copied-block fixture and on a fixture with a
+// merged side branch, and requires each divergence to stay at or below its
+// recorded threshold (ADR-0019 clause 6, ADR-0073). A line diverges when its
+// owner or its day differs from those of the commit blame names for it.
+func TestReplayBlameDivergence(t *testing.T) {
+	t.Parallel()
+	repo := openRepository(t)
+	for fixture, thresholds := range blameThresholds() {
+		run := replayFixture(t, fixtureDir(t, repo, fixture), config.DefaultMaxFileBytes)
+		if run.state.Ownership == nil {
+			fatal(t, 19, "replay produced no ownership map for %s: %s", fixture, run.state.Unavailable)
+		}
+		for name, options := range map[string][]string{"blame": nil, "blame -M -C -C": {"-M", "-C", "-C"}} {
+			share, lines := divergence(t, run, options...)
+			// ADR-0050 clause 3 asks for measurements to be recorded on every
+			// enforcing run.
+			t.Logf("%s: %d lines, %.4f diverge from %s", fixture, lines, share, name)
+			if share > thresholds[name]+1e-9 {
+				report(t, 19, "%s: %.4f of %d lines diverge from %s, over the recorded threshold of %.4f",
+					fixture, share, lines, name, thresholds[name])
+			}
+		}
 	}
 }
 

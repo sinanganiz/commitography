@@ -1,0 +1,25 @@
+# Budget values (ADR-0050 clause 5, ADR-0054 clause 2), one per line:
+#
+#   <budget> <fixture> <value>
+#
+# A measurement over its budget fails the build (ADR-0054 clause 1).
+# Tightening a value needs no record; loosening one needs a record stating the
+# measurement behind it (clause 3), and so does changing what a budget
+# measures.
+#
+# replay-bytes-per-line: the replay ownership map's own bytes at the analysed
+# commit, per tracked text line it holds (ADR-0051 clause 4), counted from its
+# structure by TestReplayMemoryBudget: every file's record with its path and
+# object name, every line's owner and day, and the identity table. Measured
+# on the designated large fixture, whose 40 files of 30 lines make the
+# per-file part a larger share than a repository of longer files would.
+#
+# replay-peak-states: the most commit states replay holds at once (ADR-0073
+# clause 4), measured on the large fixture, which is linear, and on the two
+# fixtures with branches.
+#
+# Each value is the measurement on the run that recorded it.
+replay-bytes-per-line  large-history       15.32
+replay-peak-states     large-history       2
+replay-peak-states     merges              3
+replay-peak-states     merged-side-branch  3
