@@ -536,6 +536,153 @@ git -C "$dir" checkout -q main
 merge_at "$dir" "$((BASE_TS + 7 * DAY))" "Ada Lovelace" "ada@example.com" --no-ff --no-edit notes
 
 # --------------------------------------------------------------------------
+# worktype-events/ - a history in which the kind, editor, previous owner and
+# age of every line-level change are known by construction (ADR-0074). Ada
+# commits under two addresses, as Ada Lovelace and as Ada L.; with no
+# .mailmap they are two identities, and they rewrite each other's recent
+# lines. Every commit is at noon UTC, so a line's age is the difference
+# between two commit days. Each commit's expected events are written beside
+# it, one per changed line, as
+#
+#   <kind> <editor> <- <previous owner> <age in days>
+#
+# and TestWorkTypeFixtureEvents in internal/checks holds replay to them.
+# --------------------------------------------------------------------------
+echo "building worktype-events/"
+dir="$root/worktype-events"
+init_repo "$dir"
+# noon <day>: the timestamp of noon UTC on that day of the history.
+noon() {
+	echo $((BASE_TS + $1 * DAY + 12 * 3600))
+}
+# put_lines <dir> <file> <line>...: replaces a file's content with the lines.
+put_lines() {
+	p_dir="$1"; p_file="$2"
+	shift 2
+	printf '%s\n' "$@" >"$p_dir/$p_file"
+}
+
+# Day 0. addition Ada Lovelace, eight times.
+put_lines "$dir" app.txt alpha bravo charlie delta echo foxtrot golf hotel
+git -C "$dir" add -A
+commit "$dir" "$(noon 0)" "+0000" "Ada Lovelace" "ada@example.com" "feat: write the first draft"
+
+# Day 2. replacement Ada Lovelace <- Ada Lovelace 2: her own recent line,
+# rewritten, is one replacement and no addition.
+put_lines "$dir" app.txt alpha "bravo, reworded by ada" charlie delta echo foxtrot golf hotel
+git -C "$dir" add -A
+commit "$dir" "$(noon 2)" "+0000" "Ada Lovelace" "ada@example.com" "fix: reword bravo"
+
+# Day 4. replacement Grace Hopper <- Ada Lovelace 4: another identity's
+# recent line.
+put_lines "$dir" app.txt alpha "bravo, reworded by ada" "charlie, reworded by grace" delta echo \
+	foxtrot golf hotel
+git -C "$dir" add -A
+commit "$dir" "$(noon 4)" "+0000" "Grace Hopper" "grace@example.com" "fix: reword charlie"
+
+# Day 6. replacement Ada L. <- Ada Lovelace 6: one person's second address
+# rewriting a recent line of her first.
+put_lines "$dir" app.txt alpha "bravo, reworded by ada" "charlie, reworded by grace" \
+	"delta, reworded at corp" echo foxtrot golf hotel
+git -C "$dir" add -A
+commit "$dir" "$(noon 6)" "+0000" "Ada L." "ada.lovelace@corp.example.com" "fix: reword delta"
+
+# Day 8. replacement Ada Lovelace <- Ada L. 2: and her first address
+# rewriting it back.
+put_lines "$dir" app.txt alpha "bravo, reworded by ada" "charlie, reworded by grace" \
+	"delta, reworded at home" echo foxtrot golf hotel
+git -C "$dir" add -A
+commit "$dir" "$(noon 8)" "+0000" "Ada Lovelace" "ada@example.com" "fix: reword delta again"
+
+# Day 10. addition Alan Turing: a line added in place of none.
+put_lines "$dir" app.txt alpha "bravo, reworded by ada" "charlie, reworded by grace" \
+	"delta, reworded at home" echo foxtrot golf hotel india
+git -C "$dir" add -A
+commit "$dir" "$(noon 10)" "+0000" "Alan Turing" "alan@example.com" "feat: add india"
+
+# Day 12. deletion Grace Hopper <- Ada Lovelace 12: a line removed and
+# replaced by none.
+put_lines "$dir" app.txt alpha "bravo, reworded by ada" "charlie, reworded by grace" \
+	"delta, reworded at home" echo foxtrot hotel india
+git -C "$dir" add -A
+commit "$dir" "$(noon 12)" "+0000" "Grace Hopper" "grace@example.com" "refactor: drop golf"
+
+# Day 29. replacement Alan Turing <- Ada Lovelace 29: a line one day younger
+# than the default recency window of 30 days.
+put_lines "$dir" app.txt alpha "bravo, reworded by ada" "charlie, reworded by grace" \
+	"delta, reworded at home" "echo, reworded by alan" foxtrot hotel india
+git -C "$dir" add -A
+commit "$dir" "$(noon 29)" "+0000" "Alan Turing" "alan@example.com" "fix: reword echo"
+
+# Day 30. replacement Grace Hopper <- Ada Lovelace 30: a line exactly as old
+# as the default window.
+put_lines "$dir" app.txt alpha "bravo, reworded by ada" "charlie, reworded by grace" \
+	"delta, reworded at home" "echo, reworded by alan" "foxtrot, reworded by grace" hotel india
+git -C "$dir" add -A
+commit "$dir" "$(noon 30)" "+0000" "Grace Hopper" "grace@example.com" "fix: reword foxtrot"
+
+# Day 45. replacement Alan Turing <- Ada Lovelace 45: an old line.
+put_lines "$dir" app.txt "alpha, reworded by alan" "bravo, reworded by ada" "charlie, reworded by grace" \
+	"delta, reworded at home" "echo, reworded by alan" "foxtrot, reworded by grace" hotel india
+git -C "$dir" add -A
+commit "$dir" "$(noon 45)" "+0000" "Alan Turing" "alan@example.com" "fix: reword alpha"
+
+# Day 47. Two lines rewritten as three: the first two added lines pair with
+# the two removed lines by position, and the third is an addition.
+#   replacement Ada L. <- Ada Lovelace 45
+#   replacement Ada L. <- Grace Hopper 43
+#   addition Ada L.
+put_lines "$dir" app.txt "alpha, reworded by alan" "bravo one" "bravo two" "bravo three" \
+	"delta, reworded at home" "echo, reworded by alan" "foxtrot, reworded by grace" hotel india
+git -C "$dir" add -A
+commit "$dir" "$(noon 47)" "+0000" "Ada L." "ada.lovelace@corp.example.com" \
+	"refactor: split two lines into three"
+
+# Day 50. Three lines folded into one: the first removed line pairs with the
+# added line, and the other two are deletions.
+#   replacement Grace Hopper <- Ada Lovelace 42
+#   deletion Grace Hopper <- Alan Turing 21
+#   deletion Grace Hopper <- Grace Hopper 20
+put_lines "$dir" app.txt "alpha, reworded by alan" "bravo one" "bravo two" "bravo three" \
+	"delta to foxtrot, folded" hotel india
+git -C "$dir" add -A
+commit "$dir" "$(noon 50)" "+0000" "Grace Hopper" "grace@example.com" \
+	"refactor: fold three lines into one"
+
+# Day 60. addition Ada Lovelace, six times.
+put_lines "$dir" notes.txt "note one" "note two" "note three" "note four" "note five" "note six"
+git -C "$dir" add -A
+commit "$dir" "$(noon 60)" "+0000" "Ada Lovelace" "ada@example.com" "docs: add notes"
+
+# Day 62, on a side branch.
+#   replacement Grace Hopper <- Ada Lovelace 2
+#   deletion Grace Hopper <- Ada Lovelace 2: note five, removed on this side
+#     only
+git -C "$dir" checkout -q -b side
+put_lines "$dir" notes.txt "note one" "note two, by grace" "note three" "note four" "note six"
+git -C "$dir" add -A
+commit "$dir" "$(noon 62)" "+0000" "Grace Hopper" "grace@example.com" "docs: reword note two and drop note five"
+
+# Day 63, on main. replacement Alan Turing <- Ada Lovelace 3
+git -C "$dir" checkout -q main
+put_lines "$dir" notes.txt "note one" "note two, by alan" "note three" "note four" "note five" "note six"
+git -C "$dir" add -A
+commit "$dir" "$(noon 63)" "+0000" "Alan Turing" "alan@example.com" "docs: reword note two"
+
+# Day 65. Ada merges the side branch. Note two conflicts, and her resolution
+# matches neither parent. She also removes note four, which both parents
+# hold, and note five goes because the side branch removed it. A merge
+# produces events only when merges are counted, taken against its first
+# parent (ADR-0074 clause 6), and then these:
+#   replacement Ada Lovelace <- Alan Turing 2: the resolution, a line of her own
+#   deletion Ada Lovelace <- Ada Lovelace 5: note four, in every parent
+# Note five, which only one side removed, is the side branch's deletion.
+merge_at "$dir" "$(noon 65)" "Ada Lovelace" "ada@example.com" --no-commit --no-ff side || true
+put_lines "$dir" notes.txt "note one" "note two, resolved" "note three" "note six"
+git -C "$dir" add -A
+commit "$dir" "$(noon 65)" "+0000" "Ada Lovelace" "ada@example.com" "Merge branch 'side'"
+
+# --------------------------------------------------------------------------
 # large-history/ - the designated large fixture for performance measurement
 #
 # LARGE_COMMITS commits by twelve authors over forty files, one commit every

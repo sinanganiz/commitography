@@ -54,3 +54,7 @@ shallow commits 5
 single HEAD refs/heads/main
 single refs/heads/main b947e202f9ef14904893b55794fae0331c49d592
 single commits 1
+worktype-events HEAD refs/heads/main
+worktype-events refs/heads/main d153e5fd0f07f1380a6f9fe4c3cdc02f61b7b18d
+worktype-events refs/heads/side 5cf1b782d47af7ff1d8fbb9f0b6e7ebba541a7eb
+worktype-events commits 16

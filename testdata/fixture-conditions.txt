@@ -50,4 +50,15 @@ merged-side-branch        merged-side-branch
 merged-side-branch        conflict-resolution
 merged-side-branch        merge-keeping-first-parent
 merged-side-branch        merge-onto-unmoved-main
+worktype-events           one-person-two-addresses
+worktype-events           cross-address-rewrites
+worktype-events           own-recent-replacement
+worktype-events           others-recent-replacement
+worktype-events           old-line-replacement
+worktype-events           positional-pairing
+worktype-events           pure-deletion
+worktype-events           pure-addition
+worktype-events           recency-window-boundary
+worktype-events           conflict-resolution
+worktype-events           merge-deletion
 large-history             large-fixture
