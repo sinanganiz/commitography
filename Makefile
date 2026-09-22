@@ -120,7 +120,8 @@ lint: lint-go
 #                      parallel tests, fixture conditions, golden
 #                      comparison on small fixtures, golden commit
 #                      messages, reason code catalogue, error classification,
-#                      leak scan, frontend type check and unit tests
+#                      family declarations, leak scan, frontend type check
+#                      and unit tests
 #   full (15 minutes)  everything in fast, plus vulnerability scanning,
 #                      golden comparison on the large fixture, fixture
 #                      determinism (on every supported platform), report
@@ -130,10 +131,17 @@ lint: lint-go
 #                      release binary
 #
 # Checks ADR-0057 assigns to a gate whose subject does not exist yet —
-# invariants, family contract, namespace violation, goroutine leak,
-# incremental equivalence, identity projection, mode capability matrix,
-# model-free equivalence, performance budgets, cross-compilation, bundle
-# integrity — are added by the package that creates each subject.
+# invariants, namespace violation, goroutine leak, incremental equivalence,
+# identity projection, mode capability matrix, model-free equivalence,
+# performance budgets, cross-compilation, bundle integrity — are added by the
+# package that creates each subject.
+#
+# The family contract is checked by the family declarations checker
+# (WP-0015): every family declares its inputs, its namespace and its version.
+# That checker also rejects two families declaring one namespace, and a
+# family declaring another's namespace as an input. The namespace violation
+# check, that no family writes outside its namespace, needs the registry that
+# routes output through the declarations and arrives with it (WP-0061).
 #
 # The leak scan runs in the fast gate and covers log output as well as
 # artifacts. The report determinism checker covers the same-input half; the
