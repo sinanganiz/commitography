@@ -166,7 +166,7 @@ to be amended mid-flight.
 | [0011](0011-git-chokepoint.md) | pipeline | Git invocation chokepoint | ADR-0065, ADR-0044, ADR-0066, ADR-0041 | WP-0005, WP-0006, WP-0007 | Done |
 | [0012](0012-collect-stage.md) | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052, ADR-0062, ADR-0017, ADR-0071, ADR-0031 | WP-0009, WP-0010, WP-0011 | Done |
 | [0013](0013-replay-stage.md) | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051, ADR-0072, ADR-0073, ADR-0033, ADR-0019, ADR-0052 | WP-0012 | Done |
-| [0014](0014-worktype-classification.md) | pipeline | Work-type classification inputs | ADR-0074, ADR-0020, ADR-0073, ADR-0019, ADR-0062 | WP-0013 | Ready |
+| [0014](0014-worktype-classification.md) | pipeline | Work-type classification inputs | ADR-0074, ADR-0020, ADR-0073, ADR-0019, ADR-0062 | WP-0013 | Done|
 | [0015](0015-family-contract-and-registry.md) | pipeline | Family contract and registry | ADR-0024, ADR-0032, ADR-0031, ADR-0062 | WP-0008 | Ready |
 | 0016 | pipeline | Interpret stage | ADR-0020, ADR-0014 | WP-0061 | Draft |
 | 0017 | pipeline | Render boundary and CLI | ADR-0034, ADR-0021 | WP-0061, WP-0016 | Draft |
