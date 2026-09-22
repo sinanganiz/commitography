@@ -390,3 +390,34 @@ func TestReplayBranchesDeriveFromTheirOwnParents(t *testing.T) {
 		t.Errorf("held at most %d states, want 3: the fork's, a branch's and one being replayed", stats.PeakStates)
 	}
 }
+
+// The merge rule of ADR-0073 clause 5: a merge starts from its first parent,
+// a line new against the first parent but unchanged in another parent is that
+// parent's, and only a line no parent holds is the merge's. A file taken whole
+// from another parent is that parent's, owners and all; a line both parents
+// hold is the first parent's.
+func TestReplayMergeRule(t *testing.T) {
+	t.Parallel()
+	h := newHistory()
+	h.commit("root", "ada", 1, "", edit{path: "f", content: text("shared", "2", "3")})
+	h.commit("main", "alan", 2, "root", edit{path: "f", content: text("shared", "main 2", "3")})
+	h.commit("side", "grace", 3, "root", edit{path: "f", content: text("shared", "2", "3", "side 4")},
+		edit{path: "g", content: text("g by grace")})
+	h.commit("other", "linus", 4, "root", edit{path: "h", content: text("h by linus")})
+	h.merge("merge", "ada", 5, []string{"main", "side", "other"}, map[string]string{
+		"f": text("shared", "resolved 2", "3", "side 4"),
+		"g": text("g by grace"),
+		"h": text("h by linus", "evil"),
+	})
+
+	ownership, _, _, _ := replayed(t, h, "merge", 0, "")
+	for path, want := range map[string][]string{
+		"f": {"ada@1", "ada@5", "ada@1", "grace@3"},
+		"g": {"grace@3"},
+		"h": {"linus@4", "ada@5"},
+	} {
+		if got := owners(t, ownership, path); !reflect.DeepEqual(got, want) {
+			t.Errorf("%s is owned %v, want %v", path, got, want)
+		}
+	}
+}

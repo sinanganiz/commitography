@@ -23,6 +23,12 @@ large-history commits 20000
 mailmap HEAD refs/heads/main
 mailmap refs/heads/main bf0b5a73439dd59e9ce2d3ef2a5a30698596e02a
 mailmap commits 51
+merged-side-branch HEAD refs/heads/main
+merged-side-branch refs/heads/declined 34d1f194d7d00beb0fab6b7d23dada50191b9607
+merged-side-branch refs/heads/main 2454cdd22b92dc8843f1ff6b6c3ac83b14fadb09
+merged-side-branch refs/heads/notes ab9d5d42229fd97cfccf6bc74f59e67e6b2bd6e7
+merged-side-branch refs/heads/side 05eb198d57079621e6a0552a18d75fb58ea3bfb1
+merged-side-branch commits 8
 merges HEAD refs/heads/main
 merges refs/heads/main b9d6682377878c66aa66012dbfbe5f99347e2baf
 merges refs/heads/topic-1 651a0ad043c2fa09121241ff410d6b87328eae53

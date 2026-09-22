@@ -345,7 +345,11 @@ func (w *walker) change(c *model.Commit, base trie) (trie, error) {
 }
 
 // merge derives a merge's state: its first parent's, with every file it
-// changes relative to that parent derived under the merge rule.
+// changes relative to that parent derived under the merge rule of ADR-0073
+// clause 5. The file's new version is aligned with the first parent's version,
+// and a line that alignment leaves new but which another parent's version
+// holds unchanged inherits that parent's owner. Only a line no parent holds is
+// the merge's own: a conflict resolved by hand, or an evil merge.
 func (w *walker) merge(c *model.Commit, parents []trie) (trie, error) {
 	var removals []int
 	var sets []write
@@ -377,7 +381,7 @@ func (w *walker) merge(c *model.Commit, parents []trie) (trie, error) {
 			removals = append(removals, id)
 			continue
 		}
-		file, err := w.derive(c, m.Path, m.NewBlob, versions[:1])
+		file, err := w.derive(c, m.Path, m.NewBlob, versions)
 		if err != nil {
 			return trie{}, err
 		}

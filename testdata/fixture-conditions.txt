@@ -46,4 +46,8 @@ agent-coauthor-trailers   agent-coauthor-trailers
 agent-coauthor-trailers   human-coauthor-trailer
 multi-year-gap            multi-year-gap
 multi-year-gap            single-contributor
+merged-side-branch        merged-side-branch
+merged-side-branch        conflict-resolution
+merged-side-branch        merge-keeping-first-parent
+merged-side-branch        merge-onto-unmoved-main
 large-history             large-fixture

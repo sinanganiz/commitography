@@ -19,8 +19,11 @@
 //     version in its first parent (diff.go). Aligned lines keep their owner;
 //     every other line is owned by the commit's author, on the commit's day.
 //   - A merge starts from its first parent's state and aligns each file it
-//     changes with the first parent's version. Merges are replayed whatever
-//     the merge-counting setting (ADR-0073 clause 6).
+//     changes with the first parent's version. A line that alignment leaves
+//     new, but which exists unchanged in another parent's version of the file,
+//     inherits that parent's owner. Only a line matching no parent is owned by
+//     the merge's author (ADR-0073 clause 5). Merges are replayed whatever the
+//     merge-counting setting (clause 6).
 //
 // Ownership is stored compactly (ADR-0051 clause 1): an owner is an index into
 // the map's identity table, which holds identity digests, never addresses

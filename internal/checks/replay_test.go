@@ -191,6 +191,60 @@ func dayDate(day int32) string {
 	return time.Unix(int64(day)*86400, 0).UTC().Format("2006-01-02")
 }
 
+// TestReplayMergedSideBranchOwnership checks the merge rule of ADR-0073
+// clause 5 against a fixture whose every surviving line has one owner by
+// construction: lines written on a side branch are their side-branch author's,
+// a conflict resolution that matches neither parent is the merging author's,
+// a branch merged with -s ours leaves nothing, and a branch merged into a main
+// line that had not moved keeps its author.
+func TestReplayMergedSideBranchOwnership(t *testing.T) {
+	t.Parallel()
+	repo := openRepository(t)
+	run := replayFixture(t, fixtureDir(t, repo, "merged-side-branch"), config.DefaultMaxFileBytes)
+	ownership := run.state.Ownership
+	if ownership == nil {
+		fatal(t, 20, "replay produced no ownership map for the merged-side-branch fixture: %s", run.state.Unavailable)
+	}
+	identity := map[string]string{}
+	for _, c := range run.history.Commits {
+		identity[c.AuthorName] = c.IdentityID
+	}
+	owner := func(name, date string) string { return identity[name] + " " + date }
+	ada, grace, alan := "Ada Lovelace", "Grace Hopper", "Alan Turing"
+	written := owner(ada, "2025-10-01")
+	want := map[string][]string{
+		"app.txt": {
+			written, written, written,
+			owner(ada, "2025-10-04"), // the resolution, matching no parent
+			written, written, written,
+			owner(alan, "2025-10-03"), // the first parent's own change
+			written, written,
+			owner(grace, "2025-10-02"), owner(grace, "2025-10-02"), // the side branch's
+		},
+		"side.txt":  {owner(grace, "2025-10-02"), owner(grace, "2025-10-02")},
+		"notes.txt": {owner(alan, "2025-10-07"), owner(alan, "2025-10-07")},
+	}
+	for _, f := range ownership.Files {
+		expected, ok := want[f.Path]
+		if !ok {
+			report(t, 73, "the map holds %s, which the fixture's analysed commit does not", f.Path)
+			continue
+		}
+		delete(want, f.Path)
+		var got []string
+		for _, line := range f.Lines {
+			got = append(got, ownerOf(ownership, line))
+		}
+		if strings.Join(got, "\n") != strings.Join(expected, "\n") {
+			report(t, 73, "%s is owned\n  %s\nand by construction it is\n  %s", f.Path,
+				strings.Join(got, "\n  "), strings.Join(expected, "\n  "))
+		}
+	}
+	for path := range want {
+		report(t, 73, "the map does not hold %s", path)
+	}
+}
+
 // TestReplayLinearHistoryOwnership checks line ownership on a linear history
 // against what its generator wrote: the basic fixture appends one line to
 // src/main.go in every commit, so each line is owned by the commit that

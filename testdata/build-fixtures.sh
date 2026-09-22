@@ -473,6 +473,69 @@ for start in 1488362400 1672653600; do
 done
 
 # --------------------------------------------------------------------------
+# merged-side-branch/ - a side branch merged back with a conflict resolved by
+# hand, a side branch merged and discarded with -s ours, and one merged into a
+# main line that had not moved. Every surviving line has one owner by
+# construction: Ada wrote the file, Grace's side-branch lines are Grace's,
+# Alan's main-line line is Alan's, the resolution matches no parent and is the
+# merging Ada's, and the declined branch leaves nothing (ADR-0073 clause 5).
+# --------------------------------------------------------------------------
+echo "building merged-side-branch/"
+dir="$root/merged-side-branch"
+init_repo "$dir"
+# merge_at <dir> <timestamp> <name> <email> <merge arguments...>
+merge_at() {
+	m_dir="$1"; m_ts="$2"; m_name="$3"; m_email="$4"
+	shift 4
+	GIT_AUTHOR_NAME="$m_name" GIT_AUTHOR_EMAIL="$m_email" GIT_AUTHOR_DATE="$m_ts +0000" \
+	GIT_COMMITTER_NAME="$m_name" GIT_COMMITTER_EMAIL="$m_email" GIT_COMMITTER_DATE="$m_ts +0000" \
+	git -C "$m_dir" merge -q --no-verify "$@"
+}
+i=1
+while [ "$i" -le 10 ]; do
+	printf 'line %d\n' "$i" >>"$dir/app.txt"
+	i=$((i + 1))
+done
+git -C "$dir" add -A
+commit "$dir" "$BASE_TS" "+0000" "Ada Lovelace" "ada@example.com" "feat: add the app"
+
+git -C "$dir" checkout -q -b side
+sed 's/^line 4$/line 4 by grace/' "$dir/app.txt" >"$dir/app.new" && mv "$dir/app.new" "$dir/app.txt"
+printf 'grace 11\ngrace 12\n' >>"$dir/app.txt"
+printf 'side 1\nside 2\n' >"$dir/side.txt"
+git -C "$dir" add -A
+commit "$dir" "$((BASE_TS + DAY))" "+0000" "Grace Hopper" "grace@example.com" "feat: side work"
+
+git -C "$dir" checkout -q main
+sed -e 's/^line 4$/line 4 by alan/' -e 's/^line 8$/line 8 by alan/' "$dir/app.txt" >"$dir/app.new" &&
+	mv "$dir/app.new" "$dir/app.txt"
+git -C "$dir" add -A
+commit "$dir" "$((BASE_TS + 2 * DAY))" "+0000" "Alan Turing" "alan@example.com" "fix: main work"
+
+# Line 4 conflicts. The resolution is text neither parent has.
+merge_at "$dir" "$((BASE_TS + 3 * DAY))" "Ada Lovelace" "ada@example.com" --no-commit --no-ff side || true
+{
+	printf 'line 1\nline 2\nline 3\nline 4 resolved\nline 5\nline 6\nline 7\n'
+	printf 'line 8 by alan\nline 9\nline 10\ngrace 11\ngrace 12\n'
+} >"$dir/app.txt"
+git -C "$dir" add -A
+commit "$dir" "$((BASE_TS + 3 * DAY))" "+0000" "Ada Lovelace" "ada@example.com" "Merge branch 'side'"
+
+git -C "$dir" checkout -q -b declined
+printf 'declined\n' >>"$dir/app.txt"
+git -C "$dir" add -A
+commit "$dir" "$((BASE_TS + 4 * DAY))" "+0000" "Grace Hopper" "grace@example.com" "feat: declined work"
+git -C "$dir" checkout -q main
+merge_at "$dir" "$((BASE_TS + 5 * DAY))" "Ada Lovelace" "ada@example.com" -s ours --no-edit declined
+
+git -C "$dir" checkout -q -b notes
+printf 'note 1\nnote 2\n' >"$dir/notes.txt"
+git -C "$dir" add -A
+commit "$dir" "$((BASE_TS + 6 * DAY))" "+0000" "Alan Turing" "alan@example.com" "docs: add notes"
+git -C "$dir" checkout -q main
+merge_at "$dir" "$((BASE_TS + 7 * DAY))" "Ada Lovelace" "ada@example.com" --no-ff --no-edit notes
+
+# --------------------------------------------------------------------------
 # large-history/ - the designated large fixture for performance measurement
 #
 # LARGE_COMMITS commits by twelve authors over forty files, one commit every

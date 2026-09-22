@@ -1,0 +1,324 @@
+{
+  "document_version": {
+    "major": 1,
+    "minor": 4
+  },
+  "sections": {
+    "metadata": {
+      "major": 1,
+      "minor": 0
+    },
+    "repository": {
+      "major": 1,
+      "minor": 0
+    },
+    "configuration": {
+      "major": 1,
+      "minor": 0
+    },
+    "identities": {
+      "major": 2,
+      "minor": 0
+    }
+  },
+  "metadata": {
+    "generated_at": "<generated-at>",
+    "tool_version": "<tool-version>"
+  },
+  "repository": {
+    "name": "merged-side-branch",
+    "commit": "2454cdd22b92dc8843f1ff6b6c3ac83b14fadb09"
+  },
+  "configuration": {
+    "identities": [],
+    "exclude_authors": [
+      "dependabot[bot]",
+      "renovate[bot]",
+      "github-actions[bot]",
+      "gitlab-bot",
+      "imgbot[bot]",
+      "allcontributors[bot]",
+      "snyk-bot",
+      "greenkeeper[bot]",
+      "semantic-release-bot"
+    ],
+    "exclude_paths": [
+      "**/*.lock",
+      "package-lock.json",
+      "**/package-lock.json",
+      "yarn.lock",
+      "**/yarn.lock",
+      "pnpm-lock.yaml",
+      "**/pnpm-lock.yaml",
+      "Gemfile.lock",
+      "**/Gemfile.lock",
+      "composer.lock",
+      "**/composer.lock",
+      "go.sum",
+      "**/go.sum",
+      "Cargo.lock",
+      "**/Cargo.lock",
+      "poetry.lock",
+      "**/poetry.lock",
+      "vendor/**",
+      "**/vendor/**",
+      "node_modules/**",
+      "**/node_modules/**",
+      "third_party/**",
+      "**/third_party/**",
+      "Pods/**",
+      "**/Pods/**",
+      "dist/**",
+      "**/dist/**",
+      "build/**",
+      "**/build/**",
+      "out/**",
+      "**/out/**",
+      "target/**",
+      "**/target/**",
+      "**/*.min.js",
+      "**/*.min.css",
+      "**/*.map",
+      "**/*.generated.*",
+      "**/*.pb.go",
+      "**/*_pb2.py",
+      "**/migrations/**",
+      "**/*.snap"
+    ],
+    "outlier_threshold_lines": 10000,
+    "count_merges": false,
+    "date_source": "author",
+    "use_mailmap": true,
+    "anonymize": false,
+    "since": "",
+    "until": "",
+    "year": 0,
+    "recency_window_days": 30,
+    "cardinality_limits": {
+      "bulk_commits_listed": 10,
+      "churn_files": 100,
+      "coupling_graph_edges": 400,
+      "coupling_graph_nodes": 150,
+      "coupling_pairs": 200,
+      "directory_activity_entries": 50,
+      "extensions": 20,
+      "hotspot_entries": 100,
+      "identities": 200,
+      "identities_per_directory": 10,
+      "most_modified_files": 25
+    }
+  },
+  "identities": [
+    {
+      "id": "b5fc85e55755f9e0",
+      "display_name": "Ada Lovelace",
+      "first_commit_date": "2025-10-01",
+      "last_commit_date": "2025-10-01",
+      "commit_count": 1,
+      "source_address_count": 1,
+      "merge_candidates": []
+    },
+    {
+      "id": "b533d4547eaa5a0f",
+      "display_name": "Grace Hopper",
+      "first_commit_date": "2025-10-02",
+      "last_commit_date": "2025-10-05",
+      "commit_count": 2,
+      "source_address_count": 1,
+      "merge_candidates": []
+    },
+    {
+      "id": "61356ceff7537431",
+      "display_name": "Alan Turing",
+      "first_commit_date": "2025-10-03",
+      "last_commit_date": "2025-10-07",
+      "commit_count": 2,
+      "source_address_count": 1,
+      "merge_candidates": []
+    }
+  ],
+  "families": {
+    "temporal": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "hour_histogram": [
+          5,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "weekday_histogram": [
+          0,
+          1,
+          1,
+          1,
+          1,
+          0,
+          1
+        ],
+        "night_ratio": 1,
+        "weekend_ratio": 0.2,
+        "friday_evening_count": 0,
+        "busiest_day": {
+          "date": "2025-10-01",
+          "count": 1
+        },
+        "longest_streak_days": 3,
+        "longest_silence_days": 2,
+        "first_commit_date": "2025-10-01",
+        "last_commit_date": "2025-10-07"
+      }
+    },
+    "commit-size": {
+      "version": {
+        "major": 2,
+        "minor": 0
+      },
+      "status": "ok",
+      "method": "Effective lines are the lines git's diff adds and removes in each file that is not excluded. A file git detects as binary, by a NUL byte within its first 8 000 bytes unless a repository attribute says otherwise, contributes none. Rename detection is on, so a renamed file contributes the lines its content changed, and a file moved without change contributes none.",
+      "metrics": {
+        "mean_lines": 4.6,
+        "median_lines": 4,
+        "largest_commit": {
+          "hash": "90f33b7afe6515d1ecb70115b8836145588dd9d7",
+          "date": "2025-10-01",
+          "lines": 10,
+          "files": 1
+        }
+      }
+    },
+    "messages": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "conventional_ratio": 1,
+        "mean_subject_length": 16,
+        "revert_count": 0,
+        "fix_typo_count": 0
+      }
+    },
+    "files": {
+      "version": {
+        "major": 2,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "most_modified": [
+          {
+            "path": "app.txt",
+            "commits": 4,
+            "removed": false
+          },
+          {
+            "path": "notes.txt",
+            "commits": 1,
+            "removed": false
+          },
+          {
+            "path": "side.txt",
+            "commits": 1,
+            "removed": false
+          }
+        ],
+        "oldest_untouched": {
+          "path": "side.txt",
+          "date": "2025-10-02"
+        },
+        "head_file_count": 3,
+        "tracked_text_file_count": 3
+      }
+    },
+    "coupling": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "pairs": []
+      }
+    },
+    "ownership": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "worktype": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "ai-archaeology": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    },
+    "hotspot": {
+      "version": {
+        "major": 1,
+        "minor": 0
+      },
+      "status": "ok",
+      "metrics": {
+        "churn_files": []
+      }
+    },
+    "static-analysis": {
+      "version": {
+        "major": 0,
+        "minor": 0
+      },
+      "status": "skipped",
+      "reasons": [
+        "not_implemented"
+      ],
+      "metrics": {}
+    }
+  }
+}
