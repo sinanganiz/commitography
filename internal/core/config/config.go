@@ -124,13 +124,26 @@ type Operational struct {
 	// ListenAddress and AllowedRoots are the server's.
 	ListenAddress string
 	AllowedRoots  []string
+	// MaxFileBytes is the single-file-size limit of ADR-0048 clause 1: the
+	// largest file whose content the analysis reads. Replay caps each record
+	// of its object reader at it, and marks a text file over it degraded
+	// rather than reading it (ADR-0072 clause 5). No file sets it; the package
+	// that makes the resource limits settable, and binds public mode's values
+	// to the mode, does (WP-0043).
+	MaxFileBytes int64
 }
+
+// DefaultMaxFileBytes is the built-in single-file-size limit: 32 MiB, over
+// three times the largest single source file in wide circulation (the SQLite
+// amalgamation, under 10 MiB), and a bound on what one alignment holds in
+// memory at once.
+const DefaultMaxFileBytes = 32 << 20
 
 // OperationalKeys returns the name of every operational value, spelled as a
 // configuration file or a report would spell it. None of them may appear in a
 // report.
 func OperationalKeys() []string {
-	return []string{"output_dir", "allow_shallow", "listen_address", "allowed_roots"}
+	return []string{"output_dir", "allow_shallow", "listen_address", "allowed_roots", "max_file_bytes"}
 }
 
 // Settings is what loading a configuration produces: both planes.
@@ -259,6 +272,7 @@ func DefaultOperational() Operational {
 	return Operational{
 		OutputDir:     "./out",
 		ListenAddress: "127.0.0.1:8080",
+		MaxFileBytes:  DefaultMaxFileBytes,
 	}
 }
 

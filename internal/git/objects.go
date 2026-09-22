@@ -57,6 +57,12 @@ const (
 
 	// responseBuffer is the read buffer in front of the process's output.
 	responseBuffer = 64 << 10
+
+	// OversizedHeadBytes is how much of a record over the cap is kept: the
+	// window git's own binary detection inspects, so that a caller can still
+	// tell a large binary file, which has no lines to lose, from a large text
+	// file, which is degraded.
+	OversizedHeadBytes = 8000
 )
 
 // Object is one response of the object reader.
@@ -69,8 +75,11 @@ type Object struct {
 	// is nil when the object is over the cap or missing.
 	Content []byte
 	// Oversized marks an object larger than the reader's cap. Its content was
-	// skipped by its length and not held (ADR-0072 clause 5).
+	// skipped by its length and not held (ADR-0072 clause 5), but for Head.
 	Oversized bool
+	// Head is the first OversizedHeadBytes of an oversized object's content,
+	// and nil otherwise.
+	Head []byte
 	// Missing marks an object the repository does not contain.
 	Missing bool
 }
@@ -221,7 +230,11 @@ func readObject(r *bufio.Reader, name string, limit int64) (Object, error) {
 
 	object := Object{Type: fields[1], Size: size}
 	if size > limit {
-		if _, err := io.CopyN(io.Discard, r, size); err != nil {
+		object.Head = make([]byte, min(size, OversizedHeadBytes))
+		if _, err := io.ReadFull(r, object.Head); err != nil {
+			return Object{}, core.Internalf(err, "object %s: reading the head of content over the cap", name)
+		}
+		if _, err := io.CopyN(io.Discard, r, size-int64(len(object.Head))); err != nil {
 			return Object{}, core.Internalf(err, "object %s: skipping %d bytes of content over the cap", name, size)
 		}
 		object.Oversized = true

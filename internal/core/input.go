@@ -22,6 +22,10 @@ type Input struct {
 	Filtered   filter.Result
 	Resolver   *identity.Resolver
 	PathFilter *filter.PathFilter
+	// Replay is the replay stage's state: the analysed commit's tree and its
+	// line ownership (ADR-0020 clause 3). Aggregation reads the tree from here
+	// and never lists it itself.
+	Replay *ReplayState
 
 	// Progress, when set, is called as each stage begins.
 	Progress func(stage, detail string, current, total int)

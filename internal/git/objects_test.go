@@ -89,8 +89,10 @@ func TestReplayObjectsSkipARecordOverTheCap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading the oversized blob: %v", err)
 	}
-	if !big.Oversized || big.Content != nil || big.Size != int64(len("twenty bytes, exactly")) {
-		t.Errorf("the oversized blob came back as %+v, want it oversized, with its size and no content", big)
+	if !big.Oversized || big.Content != nil || big.Size != int64(len("twenty bytes, exactly")) ||
+		string(big.Head) != "twenty bytes, exactly" {
+		t.Errorf("the oversized blob came back as %+v, want it oversized, with its size, its head and no content",
+			big)
 	}
 	small, err := objects.Read(names[1])
 	if err != nil {
