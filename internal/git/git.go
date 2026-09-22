@@ -13,6 +13,10 @@
 // caller describes what it wants with a Spec; it cannot describe an invocation
 // that omits one of those.
 //
+// File contents, which git offers in no NUL-delimited form, are read
+// length-prefixed by the object reader in objects.go, whose framing no content
+// can forge (ADR-0072).
+//
 // Cancellation terminates the process group rather than the direct child, so a
 // descendant git spawns is not orphaned (ADR-0044 clause 4). The two platform
 // implementations sit behind the group interface in group_unix.go and

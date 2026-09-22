@@ -48,9 +48,23 @@ func TestEnvironmentAndFlagsOnEveryInvocation(t *testing.T) {
 		time.Date(2026, 3, 4, 6, 0, 0, 0, time.UTC)); err != nil {
 		t.Fatalf("ResolveDate: %v", err)
 	}
+	head, err := Output(ctx, At(repo, "rev-parse", "HEAD^{tree}"))
+	if err != nil {
+		t.Fatalf("naming a tree to read: %v", err)
+	}
+	objects, err := openObjects(ctx, recorder.spec(At(repo)), 1<<20)
+	if err != nil {
+		t.Fatalf("OpenObjects: %v", err)
+	}
+	if _, err := objects.Read(head); err != nil {
+		t.Fatalf("OpenObjects/Read: %v", err)
+	}
+	if err := objects.Close(); err != nil {
+		t.Fatalf("OpenObjects/Close: %v", err)
+	}
 
 	invocations := recorder.invocations(t)
-	if len(invocations) < 5 {
+	if len(invocations) < 6 {
 		t.Fatalf("ADR-0064: only %d invocations were recorded, so the checker is not reading the "+
 			"entry points it drives", len(invocations))
 	}
