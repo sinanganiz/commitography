@@ -131,7 +131,7 @@ to be amended mid-flight.
 | [0009](0009-identity-and-privacy.md) | core | Identity model and privacy layers | ADR-0033, ADR-0010, ADR-0032, ADR-0062 | WP-0008 | Done |
 | [0010](0010-configuration-planes.md) | core | Configuration planes and resolution | ADR-0026, ADR-0021, ADR-0062, ADR-0068, ADR-0069, ADR-0070, ADR-0053 | WP-0008 | Done |
 | [0011](0011-git-chokepoint.md) | pipeline | Git invocation chokepoint | ADR-0065, ADR-0044, ADR-0066, ADR-0041 | WP-0005, WP-0006, WP-0007 | Done |
-| [0012](0012-collect-stage.md) | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052, ADR-0062, ADR-0017, ADR-0071, ADR-0031 | WP-0009, WP-0010, WP-0011 | Ready |
+| [0012](0012-collect-stage.md) | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052, ADR-0062, ADR-0017, ADR-0071, ADR-0031 | WP-0009, WP-0010, WP-0011 | Done |
 | [0013](0013-replay-stage.md) | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051, ADR-0033, ADR-0019, ADR-0052 | WP-0012 | Ready |
 | [0014](0014-worktype-classification.md) | pipeline | Work-type classification | ADR-0020, ADR-0018, ADR-0019 | WP-0013 | Ready |
 | [0015](0015-family-contract-and-registry.md) | pipeline | Family contract and registry | ADR-0024, ADR-0032, ADR-0031, ADR-0062 | WP-0008 | Ready |
