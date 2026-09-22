@@ -29,17 +29,25 @@ classes (WP-0024).
    - age is the editing commit's day minus the replaced line's authoring day, by
      the configured date source, at day resolution.
 2. **Record inputs only** (ADR-0074 clause 8): for each pair of editing identity
-   and previous owner, a histogram of replaced and deleted line ages; for each
-   editing identity, the count of additions. **Apply no window.** Replay reads
-   no analysis parameter.
-3. Only **analysed commits** produce events (ADR-0073 clause 6). A merge counted
-   as analysed contributes only the lines it owns. Because the year deviation
-   recorded against WP-0017 acts through the analysed flag, events and the
-   identities section stay consistent with each other until WP-0017 removes it.
+   and previous owner, **one age histogram for replacements and one for
+   deletions**, whose sum is the histogram clause 8 describes; for each editing
+   identity, the count of additions. **Apply no window.** Replay reads no
+   analysis parameter beyond those it already reads to decide which lines exist
+   and who owns them — path exclusion, date source and identity resolution — and
+   **never the recency window**.
+3. Only **analysed commits** produce events (ADR-0073 clause 6).
+3a. **Record the year deviation.** The year restriction is applied in
+   aggregation, not through the analysed flag, so with a year set, replay's
+   events include other years while the identities section does not. Replay
+   cannot correct this without reading the year, which ADR-0074 forbids. Record
+   the gap next to the code and in the linter's tracking list, naming
+   **WP-0017**, which removes the year from the analysis altogether.
 4. A file whose previous or current version exceeded the size cap contributes
-   **no events**, and the `worktype` family is marked `degraded` with
-   `limit_reached_size`. Replay currently gives such lines to the commit author
-   as though they were new; this package stops that for classification.
+   **no events**. Replay currently gives such lines to the commit author as
+   though they were new; this package stops that for classification. **Carry
+   `limit_reached_size` in replay state**; the family cannot change in this
+   package, and WP-0024 turns the carried reason into the family's `degraded`
+   status.
 5. **No blame invocation** anywhere in this path.
 6. Add a **purpose-built fixture** in which the kind, editor, previous owner and
    age of every changed line are known by construction. It must contain at
@@ -55,6 +63,22 @@ classes (WP-0024).
 8. Every test this package adds is named with the prefix `TestWorkType`, so that
    its verification command matches nothing else.
 
+## Settled details
+
+1. **Merges, when counted as analysed.** Positional pairing runs over the whole
+   changed block against the first parent. An addition or replacement is
+   recorded only where the added line belongs to the merge itself, meaning it
+   matches no parent (ADR-0073 clause 5). **A deletion is recorded only for a
+   line present in every parent's version of the file and absent from the
+   result**; any other difference was made by a parent's own commit and is
+   already recorded there. If any parent's version of a file exceeded the size
+   cap, that file produces no events.
+2. **Binary.** A change to or from a binary version produces no events,
+   matching how effective lines are counted.
+3. **Version.** Editing section 8 does not increment the `worktype` family's
+   version: the family computes nothing yet. ADR-0031 clause 2 applies from
+   WP-0024, which is the first package to compute it.
+
 ## Out of scope
 - **Applying the window, producing class counts, the report breakdown, the
   bound at 200, repository shares and the projection checker.** All of that is
@@ -67,11 +91,14 @@ classes (WP-0024).
 
 ## Files
 **May create or modify:** `internal/pipeline/replay/**`, `internal/core/**`,
-`internal/checks/**`, `testdata/**` fixtures and the fixture manifest, and
-`docs/metrics.md` **section 8 only**.
+`internal/checks/**`, `testdata/**` fixtures and the fixture manifest,
+`testdata/golden/<the new fixture>.json` **as a new file only**,
+`.golangci.yml` **for the year deviation entry only**, and `docs/metrics.md`
+**section 8 only**.
 **Must not touch:** `internal/metrics/**`, `internal/pipeline/run.go`,
 `internal/pipeline/aggregate/**`, `internal/pipeline/collect/**`, `cmd/**`,
-`docs/decisions/**`, any other section of `docs/metrics.md`, golden files.
+`docs/decisions/**`, any other section of `docs/metrics.md`, **any existing
+golden file**.
 
 ## Steps
 1. Write the fixture first, with the expected event for every changed line
@@ -89,16 +116,23 @@ classes (WP-0024).
 - The line whose age equals the window is recorded with exactly that age, and
   the line a day younger with one less.
 - **Changing `recency_window_days` leaves replay state byte-identical.**
-- An oversized file contributes no events and marks the family `degraded`.
+- An oversized file contributes no events and replay state carries
+  `limit_reached_size` for it.
+- In the fixture's merge, a line present in every parent and removed by the
+  merge is recorded as a deletion by the merge author; a line removed on only
+  one side is not.
+- The year deviation is recorded and names WP-0017.
 - No blame invocation occurs in the path.
 - `docs/metrics.md` section 8 states the definition.
-- **Every golden file is byte-identical**: classification inputs are replay
-  state, and the report does not change until WP-0024.
+- **Every existing golden file is byte-identical**, and the only golden file
+  added is the new fixture's. Classification inputs are replay state, so no
+  existing report changes until WP-0024.
 
 ## Verification
 ```
 make gate-full
 go test ./internal/checks ./internal/pipeline/replay -run '^TestWorkType'
 git grep -n 'blame' -- internal/pipeline/replay     # no output
-git diff --stat <base> -- testdata/golden            # empty
+git diff --stat --diff-filter=a <base> -- testdata/golden   # empty: no existing golden changed
+git diff --stat --diff-filter=A <base> -- testdata/golden   # exactly one added file
 ```

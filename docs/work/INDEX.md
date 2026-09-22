@@ -118,6 +118,12 @@ to be amended mid-flight.
 - **Record inputs, apply parameters late.** Fixing a result in an early stage
   ties that stage to every parameter the result depends on. Where a later stage
   can apply the parameter, record what it needs and let it.
+- **A package that adds a fixture adds its golden file.** ADR-0019 requires one
+  per fixture and the harness enforces it. "No golden changes" means no existing
+  report changes; say that, and measure it with a filter that excludes additions.
+- **Check a claim about the tree against the tree.** WP-0014 asserted that the
+  year acted through the analysed flag. It did not. A package describing
+  existing behaviour must describe what is there, not what the design implies.
 - **Carry forward what a package defers.** WP-0012 moved "no family recomputes a
   section 1 value" to the family rebuilds. Every one of WP-0018 to WP-0027 must
   switch its family to read those values from the record. WP-0012 also made the
@@ -126,7 +132,14 @@ to be amended mid-flight.
   class counts, the bound at 200, repository shares and the projection checker,
   and it must **move the top-200 identity selection into `core`** so that the
   breakdown and the identities section fold exactly the same identities; a copy
-  held equal by a checker is the fallback only. WP-0026 must decide whether `worktree`
+  held equal by a checker is the fallback only. It must also turn the
+  `limit_reached_size` reason WP-0014 carries in replay state into the family's
+  `degraded` status, and it inherits the year deviation until WP-0017.
+  **WP-0034 must key the replay checkpoint on path exclusion, date source and
+  identity resolution as well as history** — but not on the recency window.
+  ADR-0074's consequences overstate replay's independence; its binding clause 9
+  is correct and only says the checkpoint does not depend on the window.
+  WP-0026 must decide whether `worktree`
   remains a distinct input kind, now that replay reads content from git objects
   (ADR-0073, out of scope).
 - **When a package hits a collision, look for the defect that predates it.**
