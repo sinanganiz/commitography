@@ -9,8 +9,6 @@
 package aggregate
 
 import (
-	"context"
-
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/metrics/commitsize"
 	"github.com/sinanganiz/commitography/internal/metrics/coupling"
@@ -21,16 +19,16 @@ import (
 )
 
 // Builder is the aggregate stage. It holds the clock that stamps the report's
-// generation time and the file access its working tree reads use, both
-// injected (ADR-0042 clause 1).
+// generation time, injected (ADR-0042 clause 1).
 type Builder struct {
 	clock core.Clock
-	files core.Filesystem
 }
 
-// New constructs the aggregate stage.
-func New(clock core.Clock, files core.Filesystem) *Builder {
-	return &Builder{clock: clock, files: files}
+// New constructs the aggregate stage. The file access it takes is not read:
+// the stage reads no file (ADR-0020 clause 3), and the parameter remains only
+// for the composition locations that still pass it.
+func New(clock core.Clock, _ core.Filesystem) *Builder {
+	return &Builder{clock: clock}
 }
 
 // Build computes the complete report, and returns with it the diagnostics
@@ -66,12 +64,11 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 
 	progress(in, "metrics", "code", 0, 0)
 	f.CommitSize = commitsize.Build(in, lineScoped)
-	files, fileWarnings, err := b.buildFiles(in, lineScoped)
+	files, err := b.buildFiles(in, lineScoped)
 	if err != nil {
 		return nil, nil, err
 	}
 	f.Files = files
-	warnings = append(warnings, fileWarnings...)
 
 	progress(in, "metrics", "messages", 0, 0)
 	f.Messages = messages.Build(analyzed)
@@ -112,13 +109,4 @@ func progress(in core.Input, stage, detail string, current, total int) {
 	if in.Progress != nil {
 		in.Progress(stage, detail, current, total)
 	}
-}
-
-// contextOf returns the input's context, or a background context when none
-// was given.
-func contextOf(in core.Input) context.Context {
-	if in.Context == nil {
-		return context.Background()
-	}
-	return in.Context
 }

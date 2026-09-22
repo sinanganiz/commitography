@@ -13,6 +13,7 @@ import (
 	"github.com/sinanganiz/commitography/internal/core/model"
 	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
 	"github.com/sinanganiz/commitography/internal/pipeline/collect"
+	"github.com/sinanganiz/commitography/internal/pipeline/replay"
 )
 
 const minWrappedCommits = 10
@@ -149,10 +150,10 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 
 	// The records carry every per-commit definition of docs/metrics.md
 	// section 1, decided by the collect stage. What follows reads them and
-	// rebuilds, from the artifact alone, what the aggregate stage still takes
-	// beside them: the identity layer, for the identities section, and the
-	// path filter, which the stage applies to the tree until WP-0013 moves the
-	// tree to replay. Neither reads the repository.
+	// rebuilds, from the artifact alone, what the later stages take beside
+	// them: the identity layer, for the identities section, and the path
+	// filter, which replay and the files family apply. Neither reads the
+	// repository.
 	emit.emit(StageIdentity, "resolving identities")
 	resolver := identity.NewResolver(cfg, history.Commits)
 	identities := resolver.Identities()
@@ -164,6 +165,24 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	}
 	filtered := filter.Summarize(history.Commits)
 	emit.emitCount(StageFiltering, fmt.Sprintf("%d excluded", filtered.TotalCommits-filtered.AnalyzedCommits), filtered.TotalCommits-filtered.AnalyzedCommits, filtered.TotalCommits)
+
+	// Replay is the only stage that reads the repository's contents
+	// (ADR-0020 clause 3): it derives line ownership from the records and the
+	// objects they name, and lists the analysed commit's tree for the files
+	// family.
+	replayed, _, err := replay.Run(replay.Options{
+		Context:      ctx,
+		RepoPath:     repoPath,
+		History:      history,
+		PathFilter:   pathFilter,
+		MaxFileBytes: operational.MaxFileBytes,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if err := contextError(ctx); err != nil {
+		return nil, err
+	}
 
 	// The year is an analysis value, from --wrapped or from the configuration,
 	// and filters every metric. Deviation, removed by WP-0017: ADR-0008
@@ -189,6 +208,7 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 		Filtered:    filtered,
 		Resolver:    resolver,
 		PathFilter:  pathFilter,
+		Replay:      replayed,
 		ToolVersion: opts.ToolVersion,
 		Progress: func(stage, detail string, current, total int) {
 			mapped := StageCode

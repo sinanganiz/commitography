@@ -38,9 +38,8 @@ import (
 //
 //   - writing the artifact and reading it back yields identical records;
 //   - a consumer of commit records alone runs from it with the repository
-//     unreadable. The whole aggregate stage is not such a consumer yet: it
-//     lists the tree and reads the working tree until WP-0013 moves both to
-//     replay, and WP-0061 proves the whole stage runs without the repository;
+//     unreadable. The whole aggregate stage also reads the replay stage's
+//     state, and WP-0061 proves it runs from both without the repository;
 //   - the stage writes into no family namespace, because it computes no
 //     metric (ADR-0020 clause 2);
 //   - no route, output path or exported artifact reads it, because it carries
