@@ -295,6 +295,7 @@
       "reasons": [
         "not_implemented"
       ],
+      "method": "Line ownership is derived by forward replay of the history's diffs over the commit graph, not by git blame. Each version of a file is aligned with the version it was changed from by one fixed alignment computed in-process, and a line keeps its owner for as long as it is unchanged; at a merge, a line keeps the owner it has in whichever parent holds it unchanged, and a line no parent holds is the merge's. Blame's copy and move detection is not reproduced, so a line copied or moved from another file is owned by the commit that copied or moved it. A text file larger than the single-file-size limit is not read, and is marked as such.",
       "metrics": {}
     },
     "worktype": {
