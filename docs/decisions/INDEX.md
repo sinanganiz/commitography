@@ -47,7 +47,7 @@ a superseding record is written first.
 | [0021](0021-report-json-is-the-snapshot-contract.md) | `report.json` is the snapshot contract; history lives behind the API | Accepted |
 | [0022](0022-no-required-external-services.md) | The product never requires an external service | Accepted |
 | [0023](0023-wrapped-subjects.md) | Wrapped exists for two subjects — the repository and the person within it | Accepted |
-| [0024](0024-metric-family-interface.md) | Metric families declare their inputs and never read each other | Accepted |
+| [0024](0024-metric-family-interface.md) | Metric families declare their inputs and never read each other | Superseded by ADR-0076 |
 | [0025](0025-cross-repository-person-records.md) | Cross-repository person records are data normalization, not accounts | Accepted |
 | [0026](0026-configuration-planes.md) | Configuration is split into an operational plane and an analysis plane | Accepted |
 | [0027](0027-concurrency-model.md) | Two job classes, interactive priority, and one active job per repository | Accepted |
@@ -98,9 +98,11 @@ a superseding record is written first.
 | [0072](0072-unforgeable-framing.md) | Framing that content cannot forge | Accepted |
 | [0073](0073-replay-follows-the-graph.md) | Replay follows the commit graph | Accepted |
 | [0074](0074-worktype-unit-and-window.md) | What work-type classification counts, and where its window applies | Accepted |
-| [0075](0075-files-family-inputs.md) | The files family declares replay state as well as commit records | Accepted |
+| [0075](0075-files-family-inputs.md) | The files family declares replay state as well as commit records | Superseded by ADR-0076 |
+| [0076](0076-family-contract-three-inputs.md) | Metric families declare three input kinds, and none is the working tree | Accepted |
+| [0077](0077-person-interpretation-at-view-time.md) | Person interpretation is computed at view time | Accepted |
 
-ADR-0047 is superseded by ADR-0065. ADR-0056 is superseded by ADR-0063.
+ADR-0024 and ADR-0075 are superseded by ADR-0076. ADR-0047 is superseded by ADR-0065. ADR-0056 is superseded by ADR-0063.
 
 ---
 
@@ -118,7 +120,7 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 | 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053, 0060, 0064 |
 | 6 | 0023, 0047, 0051, 0054, 0065, 0066, 0067, 0068, 0070, 0071, 0072 |
 | 7 | 0069, 0073 |
-| 8 | 0074, 0075 |
+| 8 | 0074, 0075, 0076, 0077 |
 
 Two records carry partial dependencies stated in prose rather than as a
 whole-record dependency, and are therefore placed earlier than their text
@@ -158,6 +160,8 @@ checked without reading the full set. The governing record is authoritative.
   an address or hostname. (0033, 0041, 0067)
 - In public mode, person-scoped content is never addressable, indexable or
   persisted. (0029, 0033)
+- No report contains a person's interpretation; it is computed on request.
+  (0077)
 - No static HTML generation; the CLI emits one file. (0034)
 - No flag to skip blame exists; replay makes it unnecessary. (0020)
 - No billing, entitlement, licence-key or quota code. (0003)
@@ -183,7 +187,7 @@ checked without reading the full set. The governing record is authoritative.
 - No metric family reads another family's output, and no metric package imports
   another metric package. (0024, 0040)
 - Resolving a family's declared inputs never changes its status; if it does, the
-  declaration is wrong. (0075)
+  declaration is wrong. No family reads the working tree. (0076)
 - No package sits outside the named layout; `internal/checks/` may import
   anything and nothing may import it. (0060)
 - Nothing under `internal/core` imports anything outside `core`, subpackages

@@ -1,11 +1,11 @@
 # WP-0015: Family contract
 
 **Area:** pipeline
-**Implements:** ADR-0024, ADR-0032, ADR-0031, ADR-0062, ADR-0075
+**Implements:** ADR-0076, ADR-0032, ADR-0031, ADR-0062
 **Requires:** WP-0008
 
 ## Goal
-Every metric family in ADR-0024 clause 5 has a package that declares its inputs,
+Every metric family in ADR-0076 clause 6 has a package that declares its inputs,
 its namespace, its version and its method statement through one interface, and a
 checker verifies every declaration against the catalogue — with nothing routed
 through the declarations yet and no golden file moved.
@@ -22,13 +22,14 @@ moved to WP-0061.
 ## In scope
 1. Define the family interface in `internal/core`. A family declares:
    - the inputs it requires, from exactly `commit-records`, `replay-state`,
-     `worktree`, `external-service`;
+     `external-service` — **three kinds**; the working tree is not one
+     (ADR-0076 clause 2);
    - its report namespace;
    - its family version (ADR-0031 clause 2);
    - its **method statement**, where the family has one (ADR-0032 clause 8).
      This is the place the pipeline root's comments anticipated; the root still
      writes method text into the report until WP-0061 reads it from here.
-2. Give **every family in ADR-0024 clause 5** a declaring package under
+2. Give **every family in ADR-0076 clause 6** a declaring package under
    `internal/metrics/`. Seven exist; add declaration-only packages for the
    families that have no implementation yet, each declaring `not_implemented`
    as its status source. A declaration-only package computes nothing.
@@ -37,12 +38,14 @@ moved to WP-0061.
    `commit_size`, `ai_archaeology`, `static_analysis`. The report keeps its
    current keys until WP-0061 routes output through the declarations; **record
    that gap as a deviation naming WP-0061**.
-4. The `files` family declares `commit-records` **and** `replay-state`
-   (ADR-0075). Every other family declares exactly its ADR-0024 clause 5 row.
+4. **Every family declares exactly its ADR-0076 clause 6 row.** In particular,
+   `files` and `hotspot` declare `commit-records` and `replay-state`, and
+   `static-analysis` declares `replay-state`.
 5. Add the **family declaration checker**, in `internal/checks`, which may
    import every family package. It fails when:
-   - a family in ADR-0024 clause 5 has no declaring package;
-   - an input outside the four kinds is declared, or none is;
+   - a family in ADR-0076 clause 6 has no declaring package;
+   - an input outside the three kinds is declared, or none is;
+   - a family's declared inputs differ from its ADR-0076 clause 6 row;
    - a declared namespace differs from the one `docs/metrics.md` gives;
    - two families declare the same namespace;
    - a family declares another family's namespace as an input;
@@ -62,7 +65,8 @@ moved to WP-0061.
 - **Renaming the report's keys.** WP-0061 does it, with the schema and the
   golden regeneration it requires.
 - Changing any metric computation.
-- The `worktree` input question (ADR-0075 clause 3).
+- Switching `hotspot` off the working tree. Declaring its ADR-0076 row is this
+  package's work; changing what it computes is WP-0061's and WP-0026's.
 
 ## Files
 **May create or modify:** `internal/core/family.go` and neighbouring core files,
@@ -81,9 +85,10 @@ only**, and `Makefile` **for the stale comment only**.
 6. Correct the Makefile comment.
 
 ## Definition of done
-- Every family in ADR-0024 clause 5 has a declaring package.
+- Every family in ADR-0076 clause 6 has a declaring package.
+- The interface admits exactly three input kinds.
 - Every declared namespace equals the one `docs/metrics.md` gives.
-- `files` declares `commit-records` and `replay-state`.
+- Every family declares exactly its ADR-0076 clause 6 row.
 - The declaration checker exists, and each failure mode in clause 5 has been
   observed failing and then passing.
 - The namespace gap is recorded as a deviation naming WP-0061.

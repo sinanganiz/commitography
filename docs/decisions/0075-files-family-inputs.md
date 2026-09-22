@@ -1,6 +1,7 @@
 # ADR-0075: The files family declares replay state as well as commit records
 
-**Status:** Accepted
+**Status:** Superseded
+**Superseded by:** ADR-0076
 **Note:** This record corrects one row of ADR-0024 clause 5. It supersedes it in
 no other part.
 

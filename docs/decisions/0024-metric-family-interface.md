@@ -1,6 +1,7 @@
 # ADR-0024: Metric families declare their inputs and never read each other
 
-**Status:** Accepted
+**Status:** Superseded
+**Superseded by:** ADR-0076
 
 ## Context
 Ten metric families are in scope (ADR-0012), including one that will be added

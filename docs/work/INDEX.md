@@ -148,9 +148,20 @@ to be amended mid-flight.
   identity resolution as well as history** — but not on the recency window.
   ADR-0074's consequences overstate replay's independence; its binding clause 9
   is correct and only says the checkpoint does not depend on the window.
-  WP-0026 must decide whether `worktree`
-  remains a distinct input kind, now that replay reads content from git objects
-  (ADR-0073, out of scope).
+  **WP-0026 rebuilds `hotspot` on replay state** (ADR-0076): replay must carry
+  what the complexity proxy needs — per-line leading whitespace for each tracked
+  text file at the analysed commit — so that WP-0026 needs replay in its `Files`
+  list or a replay package before it.
+  **WP-0016** carries only the repository's interpretation in the report and
+  exposes interpretation as a function of report, selection and taxonomy version,
+  for the server to call at view time (ADR-0077). It must also define the
+  interpretation section in `docs/metrics.md`, as WP-0008 did for identities,
+  because the catalogue checker admits no undefined section.
+  **WP-0017** starts by removing an unrecorded violation of ADR-0034: the command
+  writes `index.html` and `wrapped-<year>.html` besides `report.json`. It removes
+  the page rendering and the Wrapped HTML but keeps the embedded assets, which
+  the server still serves until WP-0046. It also removes `--no-blame`,
+  `--per-author` and the year's effect on the analysis, as recorded against it.
 - **When a package hits a collision, look for the defect that predates it.**
   Merge candidates drawing on configuration-only addresses contradicted ADR-0007
   from the start; digests merely made it visible. Fixing the visible symptom
@@ -176,9 +187,9 @@ to be amended mid-flight.
 | [0012](0012-collect-stage.md) | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052, ADR-0062, ADR-0017, ADR-0071, ADR-0031 | WP-0009, WP-0010, WP-0011 | Done |
 | [0013](0013-replay-stage.md) | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051, ADR-0072, ADR-0073, ADR-0033, ADR-0019, ADR-0052 | WP-0012 | Done |
 | [0014](0014-worktype-classification.md) | pipeline | Work-type classification inputs | ADR-0074, ADR-0020, ADR-0073, ADR-0019, ADR-0062 | WP-0013 | Done |
-| [0015](0015-family-contract.md) | pipeline | Family contract | ADR-0024, ADR-0032, ADR-0031, ADR-0062, ADR-0075 | WP-0008 | Ready |
-| 0016 | pipeline | Interpret stage | ADR-0020, ADR-0014 | WP-0061 | Draft |
-| 0017 | pipeline | Render boundary and CLI | ADR-0034, ADR-0021 | WP-0061, WP-0016 | Draft |
+| [0015](0015-family-contract.md) | pipeline | Family contract | ADR-0076, ADR-0032, ADR-0031, ADR-0062 | WP-0008 | Ready |
+| 0016 | pipeline | Interpret stage | ADR-0020, ADR-0014, ADR-0077 | WP-0061 | Draft |
+| 0017 | pipeline | Render boundary and CLI | ADR-0034, ADR-0021, ADR-0020 | WP-0061, WP-0016 | Draft |
 | 0018 | metrics | temporal family | ADR-0024 | WP-0061 | Draft |
 | 0019 | metrics | commit-size family | ADR-0024 | WP-0061 | Draft |
 | 0020 | metrics | messages family | ADR-0024 | WP-0061 | Draft |
@@ -222,7 +233,7 @@ to be amended mid-flight.
 | 0058 | distribution | Container image and deployment documentation | ADR-0046, ADR-0016 | WP-0045 | Draft |
 | 0059 | distribution | Release pipeline | ADR-0049, ADR-0057 | WP-0058, WP-0003 | Draft |
 | 0060 | distribution | User documentation rewrite | ADR-0001 | WP-0057, WP-0058 | Draft |
-| [0061](0061-aggregate-stage.md) | pipeline | Aggregate stage and family registry | ADR-0020, ADR-0024, ADR-0052, ADR-0032, ADR-0031, ADR-0062, ADR-0075 | WP-0013, WP-0015 | Ready |
+| [0061](0061-aggregate-stage.md) | pipeline | Aggregate stage and family registry | ADR-0020, ADR-0076, ADR-0052, ADR-0032, ADR-0031, ADR-0062 | WP-0013, WP-0015 | Ready |
 
 ---
 
