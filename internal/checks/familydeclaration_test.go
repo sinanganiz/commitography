@@ -19,8 +19,8 @@ import (
 	"github.com/sinanganiz/commitography/internal/metrics/worktype"
 )
 
-// The family declaration checker (ADR-0024 clause 1, ADR-0031 clause 2,
-// ADR-0062 clause 3): every family of ADR-0024 clause 5 has a package that
+// The family declaration checker (ADR-0076 clause 1, ADR-0031 clause 2,
+// ADR-0062 clause 3): every family of ADR-0076 clause 6 has a package that
 // declares its contract, and every declaration agrees with the catalogue.
 //
 // It checks the declarations, not the report. Nothing routes a family's output
@@ -71,7 +71,7 @@ type declarationViolation struct {
 }
 
 // declarationViolations compares declarations with the family set of
-// ADR-0024 clause 5 and the namespaces of docs/metrics.md.
+// ADR-0076 clause 6 and the namespaces of docs/metrics.md.
 func declarationViolations(declared []core.FamilyDeclaration, families map[string]bool,
 	namespaces map[string]string) []declarationViolation {
 	var out []declarationViolation
@@ -85,7 +85,7 @@ func declarationViolations(declared []core.FamilyDeclaration, families map[strin
 	}
 	for _, f := range sortedKeys(families) {
 		if !byName[f] {
-			add(24, "the family %s of %s clause 5 has no declaring package", f, familyRecord)
+			add(76, "the family %s of %s clause 6 has no declaring package", f, familyRecord)
 		}
 	}
 
@@ -109,16 +109,16 @@ func declarationViolations(declared []core.FamilyDeclaration, families map[strin
 
 	for _, d := range declared {
 		if len(d.Inputs) == 0 {
-			add(24, "the family %s declares no input", d.Name)
+			add(76, "the family %s declares no input", d.Name)
 		}
 		for _, in := range d.Inputs {
 			if other, ok := owner[string(in)]; ok && other != d.Name {
-				add(24, "the family %s declares the namespace %s of the family %s as an input; a family never "+
-					"reads another family's output (clause 3)", d.Name, in, other)
+				add(76, "the family %s declares the namespace %s of the family %s as an input; a family never "+
+					"reads another family's output (clause 4)", d.Name, in, other)
 				continue
 			}
 			if !kinds[in] {
-				add(24, "the family %s declares the input %q, which is not one of the four kinds %v",
+				add(76, "the family %s declares the input %q, which is not one of the three kinds %v",
 					d.Name, in, core.InputKinds())
 			}
 		}
@@ -140,7 +140,7 @@ func declarationViolations(declared []core.FamilyDeclaration, families map[strin
 
 	for _, ns := range sortedKeys(claimed) {
 		if names := claimed[ns]; len(names) > 1 {
-			add(24, "the families %s all declare the namespace %q; a namespace has one owner (clause 4)",
+			add(76, "the families %s all declare the namespace %q; a namespace has one owner (clause 5)",
 				strings.Join(names, ", "), ns)
 		}
 	}
@@ -156,12 +156,12 @@ func declarationsOf(families []core.MetricFamily) []core.FamilyDeclaration {
 	return out
 }
 
-// TestFamilyDeclarations holds every family's declaration to ADR-0024 clause 5
+// TestFamilyDeclarations holds every family's declaration to ADR-0076 clause 6
 // and to the namespaces docs/metrics.md gives.
 func TestFamilyDeclarations(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
-	families := recordFamilies(repo.read(t, 24, familyRecord))
+	families := recordFamilies(repo.read(t, 76, familyRecord))
 	namespaces := catalogueNamespaces(repo.read(t, 62, metricsCatalogue))
 	if len(families) == 0 || len(namespaces) == 0 {
 		fatal(t, 64, "no family was read from %s or no namespace from %s; the checker would pass vacuously",
@@ -217,15 +217,15 @@ func TestFamilyDeclarationRejectsEachViolation(t *testing.T) {
 		{"a family has no declaring package", func(d []core.FamilyDeclaration) []core.FamilyDeclaration {
 			i := index(d, "coupling")
 			return append(d[:i:i], d[i+1:]...)
-		}, 24, "coupling of " + familyRecord + " clause 5 has no declaring package"},
-		{"an input outside the four kinds", func(d []core.FamilyDeclaration) []core.FamilyDeclaration {
+		}, 76, "coupling of " + familyRecord + " clause 6 has no declaring package"},
+		{"an input outside the three kinds", func(d []core.FamilyDeclaration) []core.FamilyDeclaration {
 			d[index(d, "temporal")].Inputs = []core.InputKind{"commit-log"}
 			return d
-		}, 24, `temporal declares the input "commit-log", which is not one of the four kinds`},
+		}, 76, `temporal declares the input "commit-log", which is not one of the three kinds`},
 		{"no input", func(d []core.FamilyDeclaration) []core.FamilyDeclaration {
 			d[index(d, "messages")].Inputs = nil
 			return d
-		}, 24, "messages declares no input"},
+		}, 76, "messages declares no input"},
 		{"a namespace the catalogue does not give", func(d []core.FamilyDeclaration) []core.FamilyDeclaration {
 			d[index(d, "commit-size")].Namespace = "commit-size"
 			return d
@@ -233,11 +233,11 @@ func TestFamilyDeclarationRejectsEachViolation(t *testing.T) {
 		{"two families declare one namespace", func(d []core.FamilyDeclaration) []core.FamilyDeclaration {
 			d[index(d, "hotspot")].Namespace = "files"
 			return d
-		}, 24, `files, hotspot all declare the namespace "files"`},
+		}, 76, `files, hotspot all declare the namespace "files"`},
 		{"another family's namespace as an input", func(d []core.FamilyDeclaration) []core.FamilyDeclaration {
 			d[index(d, "hotspot")].Inputs = []core.InputKind{core.InputCommitRecords, "coupling"}
 			return d
-		}, 24, "hotspot declares the namespace coupling of the family coupling as an input"},
+		}, 76, "hotspot declares the namespace coupling of the family coupling as an input"},
 		{"a missing version", func(d []core.FamilyDeclaration) []core.FamilyDeclaration {
 			d[index(d, "files")].Version = core.Version{}
 			return d

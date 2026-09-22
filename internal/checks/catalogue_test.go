@@ -26,7 +26,7 @@ import (
 // TestReasonCodeCatalogue.
 
 const (
-	familyRecord      = "docs/decisions/0024-metric-family-interface.md"
+	familyRecord      = "docs/decisions/0076-family-contract-three-inputs.md"
 	limitsSection     = "## 12. Cardinality limits, collected"
 	identitiesSection = "## 14. The identities section"
 )
@@ -113,7 +113,7 @@ func catalogueFamilies(content string) map[string]map[string]bool {
 	return families
 }
 
-// recordFamilies returns the family names of ADR-0024 clause 5.
+// recordFamilies returns the family names of ADR-0076 clause 6.
 func recordFamilies(content string) map[string]bool {
 	row := regexp.MustCompile("(?m)^\\s*\\| `([a-z][a-z-]*)` \\|")
 	out := map[string]bool{}
@@ -198,12 +198,12 @@ func sortedKeys[V any](m map[string]V) []string {
 }
 
 // TestMetricCatalogueFamilies requires the report's families, the catalogue's
-// family sections and ADR-0024 clause 5 to be one set.
+// family sections and ADR-0076 clause 6 to be one set.
 func TestMetricCatalogueFamilies(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
 	catalogue := catalogueFamilies(repo.read(t, 62, metricsCatalogue))
-	record := recordFamilies(repo.read(t, 24, familyRecord))
+	record := recordFamilies(repo.read(t, 76, familyRecord))
 	if len(catalogue) == 0 || len(record) == 0 {
 		fatal(t, 64, "no family was read from %s or %s; the checker would pass vacuously", metricsCatalogue, familyRecord)
 	}
@@ -215,7 +215,7 @@ func TestMetricCatalogueFamilies(t *testing.T) {
 	}
 	for _, f := range sortedKeys(record) {
 		if catalogue[f] == nil {
-			report(t, 62, "%s clause 5 names the family %s, which %s has no section for", familyRecord, f, metricsCatalogue)
+			report(t, 62, "%s clause 6 names the family %s, which %s has no section for", familyRecord, f, metricsCatalogue)
 		}
 		if !inReport[f] {
 			report(t, 32, "the family %s is absent from the report type, so it is absent from every report", f)
@@ -223,12 +223,12 @@ func TestMetricCatalogueFamilies(t *testing.T) {
 	}
 	for _, f := range sortedKeys(catalogue) {
 		if !record[f] {
-			report(t, 24, "%s has a section for %s, which %s clause 5 does not list", metricsCatalogue, f, familyRecord)
+			report(t, 76, "%s has a section for %s, which %s clause 6 does not list", metricsCatalogue, f, familyRecord)
 		}
 	}
 	for _, f := range sortedKeys(inReport) {
 		if !record[f] {
-			report(t, 24, "the report type carries the family %s, which %s clause 5 does not list", f, familyRecord)
+			report(t, 76, "the report type carries the family %s, which %s clause 6 does not list", f, familyRecord)
 		}
 	}
 }
@@ -292,7 +292,7 @@ func TestMetricCatalogueIdentities(t *testing.T) {
 	families := reflect.TypeOf(core.Families{})
 	for i := 0; i < families.NumField(); i++ {
 		if jsonName(families.Field(i)) == "identities" {
-			report(t, 24, "the report type carries identities as a family; %s clause 5 fixes the family set "+
+			report(t, 76, "the report type carries identities as a family; %s clause 6 fixes the family set "+
 				"and it is not in it", familyRecord)
 		}
 	}
