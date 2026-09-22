@@ -157,6 +157,8 @@ func TestCollectArtifactRoundTripRejectsALostValue(t *testing.T) {
 		"the local offset":  func(h *model.History) { h.Commits[0].LocalTime = h.Commits[0].LocalTime.UTC() },
 		"the attributes":    func(h *model.History) { h.Attributes += "x" },
 		"a record entirely": func(h *model.History) { h.Commits = h.Commits[1:] },
+		"an object name":    func(h *model.History) { h.Commits[0].Files[0].NewBlob = "" },
+		"the tree":          func(h *model.History) { h.Commits[0].Tree = "" },
 	} {
 		read := *written
 		read.Commits = append([]model.Commit(nil), written.Commits...)
@@ -570,7 +572,8 @@ func exportPaths() []string {
 func artifactReads(fset *token.FileSet, parsed *ast.File) []string {
 	forbidden := map[string]map[string]bool{
 		modulePath + "/internal/pipeline/collect": {"WriteHistory": true, "ReadHistory": true},
-		modulePath + "/internal/core/model":       {"History": true, "Commit": true, "FileChange": true},
+		modulePath + "/internal/core/model": {"History": true, "Commit": true, "FileChange": true,
+			"MergeChange": true, "ParentVersion": true},
 	}
 	local := map[string]string{}
 	for _, spec := range parsed.Imports {
@@ -602,9 +605,11 @@ func artifactReads(fset *token.FileSet, parsed *ast.File) []string {
 // artifactTypesIn returns the collect artifact's types reachable from t.
 func artifactTypesIn(t reflect.Type) []string {
 	artifact := map[reflect.Type]bool{
-		reflect.TypeOf(model.History{}):    true,
-		reflect.TypeOf(model.Commit{}):     true,
-		reflect.TypeOf(model.FileChange{}): true,
+		reflect.TypeOf(model.History{}):       true,
+		reflect.TypeOf(model.Commit{}):        true,
+		reflect.TypeOf(model.FileChange{}):    true,
+		reflect.TypeOf(model.MergeChange{}):   true,
+		reflect.TypeOf(model.ParentVersion{}): true,
 	}
 	var out []string
 	seen := map[reflect.Type]bool{}

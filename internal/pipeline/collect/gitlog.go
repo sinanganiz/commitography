@@ -27,20 +27,21 @@ const (
 	fieldSep = "\x1f"
 
 	// headerFields is the number of %-placeholders in the pretty format below.
-	headerFields = 8
+	headerFields = 9
 
 	// prettyFormat lays out one record header per commit: hash, author name,
 	// author email, the author email as the commit records it, author date,
-	// committer date, parents, subject. The name and the first email have
+	// committer date, parents, tree, subject. The name and the first email have
 	// .mailmap applied, which is the first step of identity resolution
 	// (docs/metrics.md section 1); the second email is the source address
-	// before it, which the identity layer counts (section 14).
+	// before it, which the identity layer counts (section 14). The tree is
+	// what tells a merge's per-parent diffs apart (merges.go).
 	//
 	// The subject is last because it is the one field that may contain the
 	// field separator; %s is the first line of the message, so it cannot
 	// contain a newline, which is what lets the header be cut from the first
 	// file entry that follows it.
-	prettyFormat = "format:%H%x1f%aN%x1f%aE%x1f%ae%x1f%aI%x1f%cI%x1f%P%x1f%s"
+	prettyFormat = "format:%H%x1f%aN%x1f%aE%x1f%ae%x1f%aI%x1f%cI%x1f%P%x1f%T%x1f%s"
 
 	// maxParseFailureRatio is the share of unparsable records above which the
 	// history is considered untrustworthy rather than merely imperfect.
@@ -178,17 +179,24 @@ func (c *Collector) Collect(opts Options) (*model.History, error) {
 		return nil, err
 	}
 
-	commits, failed, total, err := readHistory(opts)
+	result, err := readHistory(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	if failed > 0 {
+	if failed, total := result.failed, result.total; failed > 0 {
 		opts.warn("%d of %d commit records could not be parsed and were skipped", failed, total)
 		if total > 0 && float64(failed)/float64(total) > maxParseFailureRatio {
 			return nil, core.Internalf(nil, "%d of %d commit records failed to parse, over %.0f%%; refusing to report statistics from an unreliable read",
 				failed, total, maxParseFailureRatio*100)
 		}
+	}
+	// A merge's diffs are placed against its parents once every record is in,
+	// because a parent's tree arrives after the merge in the stream and may sit
+	// in another reader's share.
+	commits, err := resolveMerges(result.commits, result.sections)
+	if err != nil {
+		return nil, err
 	}
 
 	attributes, err := analysedAttributes(opts.context(), opts.RepoPath, info.HeadCommit)
@@ -210,8 +218,18 @@ func (c *Collector) Collect(opts Options) (*model.History, error) {
 	}, nil
 }
 
+// read is what reading the history produced, before a merge's diffs are placed
+// against its parents.
+type read struct {
+	commits []model.Commit
+	// sections holds each merge's raw diffs, one per parent git showed a diff
+	// against, in the order git showed them, by the merge's object name.
+	sections      map[string][][]rawChange
+	failed, total int
+}
+
 // readHistory picks between the sharded and single-stream readers.
-func readHistory(opts Options) (commits []model.Commit, failed, total int, err error) {
+func readHistory(opts Options) (read, error) {
 	// rev-list carries no diff cost, so asking for the commit list first is
 	// cheap enough to be worth it even when sharding is then declined.
 	hashes, err := revList(opts)
@@ -294,8 +312,16 @@ func boundArgs(opts Options) []string {
 // every invocation along with its limit (ADR-0071): a file moved without
 // change is one entry with no lines, not its whole length removed and added
 // (docs/metrics.md section 1). The parser reads a rename's paths by position.
+//
+// --raw puts each changed file's object names before and after beside its line
+// counts, in full with --no-abbrev, so replay can read the contents without a
+// second walk over the history (ADR-0072, ADR-0073). -m gives a merge one diff
+// per parent, which the merge rule of ADR-0073 clause 5 needs; git shows none
+// for a merge otherwise. --ignore-submodules=none keeps a submodule change in
+// the diff whatever the configuration says, so that an empty diff means an
+// identical tree, which is what places a merge's diffs against its parents.
 func logArgs(opts Options, fromStdin bool) []string {
-	args := []string{"log", "-z", "--numstat"}
+	args := []string{"log", "-z", "--raw", "--numstat", "--no-abbrev", "-m", "--ignore-submodules=none"}
 	if fromStdin {
 		args = append(args, "--no-walk", "--stdin")
 	} else {
@@ -310,12 +336,12 @@ func logArgs(opts Options, fromStdin bool) []string {
 
 // collectStream runs one git log and parses its output. When hashes is non-nil
 // they are fed on stdin and only those commits are read.
-func collectStream(opts Options, hashes []string) (commits []model.Commit, failed, total int, err error) {
+func collectStream(opts Options, hashes []string) (read, error) {
 	expected := len(hashes)
 	return collectStreamWithTotal(opts, hashes, expected)
 }
 
-func collectStreamWithTotal(opts Options, hashes []string, expected int) (commits []model.Commit, failed, total int, err error) {
+func collectStreamWithTotal(opts Options, hashes []string, expected int) (read, error) {
 	spec := git.At(opts.RepoPath, logArgs(opts, hashes != nil)...).Pathspecs()
 	if hashes != nil {
 		// The object names were produced by the enumeration pass above, so
@@ -324,34 +350,33 @@ func collectStreamWithTotal(opts Options, hashes []string, expected int) (commit
 	}
 	process, err := git.Start(opts.context(), spec)
 	if err != nil {
-		return nil, 0, 0, err
+		return read{}, err
 	}
 	defer process.Close()
 
 	parser := newLogParser(opts, expected)
 	if parseErr := process.Scan(parser.record); parseErr != nil {
-		return nil, 0, 0, parseErr
+		return read{}, parseErr
 	}
 	parser.finish()
 
 	// Wait drains what is left, so git never blocks on a full pipe, and
 	// classifies a failure (ADR-0041).
 	if err := process.Wait(); err != nil {
-		return nil, 0, 0, err
+		return read{}, err
 	}
-	return parser.commits, parser.failed, parser.total, nil
+	return parser.result(), nil
 }
 
 // collectSharded splits the commit list into contiguous runs and reads each with
 // its own git process. The runs are contiguous slices of the rev-list order and
 // are reassembled in that order, so the result is identical to a single walk.
-func collectSharded(opts Options, hashes []string, shards int) (commits []model.Commit, failed, total int, err error) {
+func collectSharded(opts Options, hashes []string, shards int) (read, error) {
 	type result struct {
-		commits       []model.Commit
-		failed, total int
-		progress      int
-		warnings      []string
-		err           error
+		read     read
+		progress int
+		warnings []string
+		err      error
 	}
 
 	results := make([]result, shards)
@@ -380,113 +405,161 @@ func collectSharded(opts Options, hashes []string, shards int) (commits []model.
 			local.OnProgress = func(current, _ int) {
 				results[idx].progress = current
 			}
-			c, f, t, err := collectStreamWithTotal(local, chunk, len(chunk))
-			results[idx].commits, results[idx].failed, results[idx].total, results[idx].err = c, f, t, err
+			results[idx].read, results[idx].err = collectStreamWithTotal(local, chunk, len(chunk))
 		})
 	}
 	wg.Wait()
 
-	commits = make([]model.Commit, 0, len(hashes))
+	all := read{commits: make([]model.Commit, 0, len(hashes)), sections: map[string][][]rawChange{}}
 	progress := 0
 	for _, r := range results {
 		if r.err != nil {
-			return nil, 0, 0, r.err
+			return read{}, r.err
 		}
 		for _, msg := range r.warnings {
 			if opts.OnWarning != nil {
 				opts.OnWarning(msg)
 			}
 		}
-		commits = append(commits, r.commits...)
-		failed += r.failed
-		total += r.total
+		all.commits = append(all.commits, r.read.commits...)
+		for hash, sections := range r.read.sections {
+			all.sections[hash] = sections
+		}
+		all.failed += r.read.failed
+		all.total += r.read.total
 		progress += r.progress
 		opts.progress(progress, len(hashes))
 	}
-	return commits, failed, total, nil
+	return all, nil
 }
 
-// logParser turns the NUL-delimited record stream of `git log -z --numstat`
-// into commits. It holds one record at a time, so a repository with a million
-// commits costs no more than its largest record.
+// logParser turns the NUL-delimited record stream of
+// `git log -z --raw --numstat -m` into commits. It holds one record at a time,
+// so a repository with a million commits costs no more than its largest
+// record.
 //
 // The stream's framing is git's own. Each commit is
 //
-//	<header>\n<added>\t<deleted>\t<path>\0<added>\t<deleted>\t<path>\0 ... \0
+//	<header>\n<raw entry>\0<path>\0 ... <added>\t<deleted>\t<path>\0 ... \0
 //
-// where the last NUL is the commit separator -z adds, so a commit with file
-// entries produces an empty record before the next header, and a commit with
-// none — a merge, an empty commit — produces a header record and nothing
-// else. Nothing is split on a newline: the header's own newline is cut once,
-// which is exact because %s is the first line of the message and cannot
-// contain one, and a path is whatever remains of its record, newlines and
-// quotes included (ADR-0045).
+// where every changed file has a raw entry, giving its modes, its object names
+// before and after and its status, followed by the file's line counts in the
+// same order, and the last NUL is the commit separator -z adds. A commit with
+// no change produces a header record and nothing else. Nothing is split on a
+// newline: the header's own newline is cut once, which is exact because %s is
+// the first line of the message and cannot contain one, and a path is whatever
+// remains of its record, newlines and quotes included (ADR-0045).
 //
-// A rename is an entry whose path field is empty, followed by two records of
-// its own: the path before and the path after,
+// A raw entry's paths are records of their own, one after it, or two for a
+// rename: the path before and the path after. A rename's line counts carry an
+// empty path field and are followed by the same two paths,
 //
+//	:<mode> <mode> <object> <object> R<score>\0<previous path>\0<path>\0
 //	<added>\t<deleted>\t\0<previous path>\0<path>\0
 //
-// Those two records are taken as paths because of where they sit, never
-// because of what they look like (WP-0012 clause 10a). A path is repository
-// content and can be crafted to resemble a commit header, and a reader that
-// asked what a record looks like would start a commit in the middle of one.
+// Those records are taken as paths because of where they sit, never because
+// of what they look like (WP-0012 clause 10a). A path is repository content
+// and can be crafted to resemble a commit header or an entry, and a reader
+// that asked what a record looks like would start a commit in the middle of
+// one.
+//
+// A merge's header comes once for each parent it differs from, each followed
+// by its diff against that parent. Its raw diffs are kept, one list per header,
+// for merges.go to place against its parents; its line counts are read for
+// their position and not kept, so a merge's Files stays empty as it always
+// was.
 type logParser struct {
 	opts     Options
 	expected int
 
 	commits       []model.Commit
+	sections      map[string][][]rawChange
 	failed, total int
 
 	// pending is the commit being assembled, which stays open until a header
-	// or the end of the stream closes it, because its file entries arrive as
+	// or the end of the stream closes it, because its entries arrive as
 	// separate records.
 	pending *model.Commit
 
-	// owed is how many path records the pending commit's last entry, a
-	// rename, is still owed. While it is above zero, the next record is a
-	// path, whatever it contains.
-	owed int
+	// raw holds a non-merge's raw entries, to be paired with its line counts
+	// when it closes. merge holds a merge's raw diffs, one per header.
+	raw   []rawChange
+	merge [][]rawChange
+
+	// broken, when not empty, says why the pending commit's entries cannot all
+	// be read. It is counted and skipped when it closes: replay derives line
+	// ownership from every entry, so a commit missing one would give a wrong
+	// state rather than a smaller one.
+	broken string
+
+	// owed is how many path records the pending commit's last entry is still
+	// owed, and owedTo which kind of entry that is. While owed is above zero,
+	// the next record is a path, whatever it contains.
+	owed   int
+	owedTo entryKind
 }
+
+// entryKind names the entry a path record belongs to.
+type entryKind int
+
+const (
+	// ownedByRaw is the last raw entry.
+	ownedByRaw entryKind = iota
+	// ownedByFile is the last line-count entry.
+	ownedByFile
+	// ownedByNothing is a merge's line-count entry, whose paths are read for
+	// their position and dropped.
+	ownedByNothing
+)
 
 func newLogParser(opts Options, expected int) *logParser {
 	return &logParser{opts: opts, expected: expected}
 }
 
+// result is what the parser produced.
+func (p *logParser) result() read {
+	return read{commits: p.commits, sections: p.sections, failed: p.failed, total: p.total}
+}
+
 // record consumes one NUL-delimited record.
 func (p *logParser) record(chunk string) error {
-	// A rename's paths come first, by position, before anything asks what
-	// the record looks like.
+	// An entry's paths come first, by position, before anything asks what the
+	// record looks like.
 	if p.owed > 0 && p.pending != nil {
-		last := &p.pending.Files[len(p.pending.Files)-1]
-		if p.owed == 2 {
-			last.PreviousPath = chunk
-		} else {
-			last.Path = chunk
-		}
-		p.owed--
+		p.takePath(chunk)
 		return nil
 	}
 	switch {
 	case isRecordStart(chunk):
+		header, first, hasEntries := strings.Cut(chunk, "\n")
+		commit, err := parseHeader(header)
+		if err == nil && p.pending != nil && p.pending.IsMerge && commit.Hash == p.pending.Hash {
+			// The merge's diff against its next parent.
+			p.merge = append(p.merge, nil)
+			if hasEntries {
+				p.entry(first)
+			}
+			return nil
+		}
 		p.finish()
 		p.total++
 		p.opts.progress(p.total, p.expected)
-		header, first, hasFiles := strings.Cut(chunk, "\n")
-		commit, err := parseHeader(header)
 		if err != nil {
 			p.failed++
 			p.opts.warn("skipping unparsable commit record: %v", err)
 			return nil
 		}
 		p.pending = &commit
-		if hasFiles {
-			commit.Files, p.owed = appendFileChange(commit.Files, first)
+		if commit.IsMerge {
+			p.merge = [][]rawChange{nil}
+		}
+		if hasEntries {
+			p.entry(first)
 		}
 	case chunk == "":
 		// The separator git writes between commits.
 	case p.pending != nil:
-		p.pending.Files, p.owed = appendFileChange(p.pending.Files, chunk)
+		p.entry(chunk)
 	default:
 		// Output before any header. The read is producing something this
 		// parser does not recognise, which the caller turns into a refusal
@@ -499,18 +572,101 @@ func (p *logParser) record(chunk string) error {
 	return nil
 }
 
-// finish closes the commit being assembled. A rename the stream ended in the
-// middle of has no path to stand for, so it is dropped rather than kept with
-// one of its two.
-func (p *logParser) finish() {
-	if p.pending != nil {
-		if p.owed > 0 {
-			p.pending.Files = p.pending.Files[:len(p.pending.Files)-1]
-			p.owed = 0
-		}
-		p.commits = append(p.commits, *p.pending)
-		p.pending = nil
+// entry reads one raw or line-count entry of the pending commit.
+func (p *logParser) entry(chunk string) {
+	if chunk == "" {
+		return
 	}
+	if strings.HasPrefix(chunk, ":") {
+		change, paths, ok := parseRaw(chunk)
+		if !ok {
+			p.breaks("a raw diff entry does not parse")
+		}
+		if p.pending.IsMerge {
+			last := len(p.merge) - 1
+			p.merge[last] = append(p.merge[last], change)
+		} else {
+			p.raw = append(p.raw, change)
+		}
+		p.owed, p.owedTo = paths, ownedByRaw
+		return
+	}
+	if p.pending.IsMerge {
+		_, p.owed = appendFileChange(nil, chunk)
+		p.owedTo = ownedByNothing
+		return
+	}
+	before := len(p.pending.Files)
+	p.pending.Files, p.owed = appendFileChange(p.pending.Files, chunk)
+	p.owedTo = ownedByFile
+	if len(p.pending.Files) == before {
+		p.breaks("a line-count entry does not parse")
+	}
+}
+
+// takePath gives a path record to the entry that is owed it.
+func (p *logParser) takePath(chunk string) {
+	switch p.owedTo {
+	case ownedByRaw:
+		var last *rawChange
+		if p.pending.IsMerge {
+			section := p.merge[len(p.merge)-1]
+			last = &section[len(section)-1]
+		} else {
+			last = &p.raw[len(p.raw)-1]
+		}
+		if p.owed == 2 {
+			last.previousPath = chunk
+		} else {
+			last.path = chunk
+		}
+	case ownedByFile:
+		last := &p.pending.Files[len(p.pending.Files)-1]
+		if p.owed == 2 {
+			last.PreviousPath = chunk
+		} else {
+			last.Path = chunk
+		}
+	case ownedByNothing:
+	}
+	p.owed--
+}
+
+// breaks marks the pending commit unreadable, keeping the first reason.
+func (p *logParser) breaks(reason string) {
+	if p.broken == "" {
+		p.broken = reason
+	}
+}
+
+// finish closes the commit being assembled. An entry the stream ended in the
+// middle of has no path to stand for, so the commit cannot be read whole and
+// is skipped with the others that cannot.
+func (p *logParser) finish() {
+	if p.pending == nil {
+		return
+	}
+	if p.owed > 0 {
+		p.breaks("the stream ended inside an entry")
+	}
+	c := p.pending
+	if p.broken == "" && !c.IsMerge {
+		p.broken = pairBlobs(c.Files, p.raw)
+	}
+	switch {
+	case p.broken != "":
+		p.failed++
+		p.opts.warn("skipping unparsable commit record %s: %s", short(c.Hash), p.broken)
+	case c.IsMerge:
+		if p.sections == nil {
+			p.sections = map[string][][]rawChange{}
+		}
+		p.sections[c.Hash] = p.merge
+		p.commits = append(p.commits, *c)
+	default:
+		p.commits = append(p.commits, *c)
+	}
+	p.pending, p.raw, p.merge, p.broken, p.owed = nil, nil, nil, "", 0
 }
 
 // isRecordStart reports whether a record begins with a header: an object name
@@ -565,6 +721,7 @@ func parseHeader(header string) (model.Commit, error) {
 
 	c = model.Commit{
 		Hash:                     fields[0],
+		Tree:                     fields[7],
 		AuthorName:               fields[1],
 		AuthorEmail:              fields[2],
 		AuthorSourceEmail:        fields[3],
@@ -574,7 +731,7 @@ func parseHeader(header string) (model.Commit, error) {
 		CommitterTZOffsetMinutes: committerOffset,
 		Parents:                  parents,
 		IsMerge:                  len(parents) > 1,
-		Subject:                  fields[7],
+		Subject:                  fields[8],
 	}
 	return c, nil
 }
@@ -582,8 +739,8 @@ func parseHeader(header string) (model.Commit, error) {
 // appendFileChange reads one `<added>\t<deleted>\t<path>` entry and appends
 // it, and returns how many path records the entry is still owed: two for a
 // rename, whose path field is empty, and none otherwise. A malformed entry is
-// skipped rather than failing the commit, since a missing file row is less
-// damaging than a lost commit.
+// not appended, and the caller counts the commit unreadable: its line counts
+// would no longer pair with its raw entries.
 //
 // The path is everything after the second tab, whatever it contains: with -z
 // git neither quotes nor escapes it, so a name holding a newline, a quote or

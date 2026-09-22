@@ -19,7 +19,10 @@ import "time"
 //	   reasons a commit is not analysed, and the analysed commit's attributes
 //	4  rename detection on: a renamed file is one change carrying its previous
 //	   path, and its lines are what its content changed
-const SchemaVersion = 4
+//	5  the object names of each changed file's content before and after, the
+//	   commit's tree, and a merge's changes against its first parent with each
+//	   parent's version of every changed file, which replay reads (WP-0013)
+const SchemaVersion = 5
 
 // FileChange is a single file's line delta within one commit.
 type FileChange struct {
@@ -33,6 +36,14 @@ type FileChange struct {
 	Deleted      int    `json:"deleted"`
 	IsBinary     bool   `json:"isBinary"`
 
+	// OldBlob and NewBlob are the object names of the file's content before
+	// and after the commit, as git's raw diff states them. OldBlob is empty
+	// for a file the commit adds and NewBlob for one it deletes; either is
+	// empty where the path holds a submodule rather than a file. Replay reads
+	// the contents through them (ADR-0072, ADR-0073).
+	OldBlob string `json:"oldBlob,omitempty"`
+	NewBlob string `json:"newBlob,omitempty"`
+
 	// Excluded marks an excluded path (docs/metrics.md section 1): one that
 	// matches an exclusion pattern or that the analysed commit's attributes
 	// mark generated. The change counts toward its commit's existence but not
@@ -42,21 +53,30 @@ type FileChange struct {
 
 // Commit is one normalized commit record.
 type Commit struct {
-	Hash        string `json:"hash"`
+	Hash string `json:"hash"`
+	// Tree is the object name of the commit's tree.
+	Tree        string `json:"tree"`
 	AuthorName  string `json:"authorName"`
 	AuthorEmail string `json:"authorEmail"`
 	// AuthorSourceEmail is the author's address as the commit records it,
 	// before .mailmap; AuthorName and AuthorEmail are after it. The two
 	// differ where .mailmap folds an address into another.
-	AuthorSourceEmail        string       `json:"authorSourceEmail"`
-	AuthorDate               time.Time    `json:"authorDate"`
-	AuthorTZOffsetMinutes    int          `json:"authorTzOffsetMinutes"`
-	CommitterDate            time.Time    `json:"committerDate"`
-	CommitterTZOffsetMinutes int          `json:"committerTzOffsetMinutes"`
-	Parents                  []string     `json:"parents"`
-	IsMerge                  bool         `json:"isMerge"`
-	Subject                  string       `json:"subject"`
-	Files                    []FileChange `json:"files"`
+	AuthorSourceEmail        string    `json:"authorSourceEmail"`
+	AuthorDate               time.Time `json:"authorDate"`
+	AuthorTZOffsetMinutes    int       `json:"authorTzOffsetMinutes"`
+	CommitterDate            time.Time `json:"committerDate"`
+	CommitterTZOffsetMinutes int       `json:"committerTzOffsetMinutes"`
+	Parents                  []string  `json:"parents"`
+	IsMerge                  bool      `json:"isMerge"`
+	Subject                  string    `json:"subject"`
+	// Files is empty for a merge: its changes are in MergeChanges, so that
+	// nothing counted from Files depends on whether merges are counted.
+	Files []FileChange `json:"files"`
+	// MergeChanges, on a merge, are the files whose content or path differs
+	// from the first parent's, each with its version in every parent. Replay
+	// derives a merge's line ownership from them (ADR-0073 clause 5). It is
+	// empty for a merge whose tree is its first parent's.
+	MergeChanges []MergeChange `json:"mergeChanges,omitempty"`
 
 	// The fields below are decided by the collect stage under the analysis
 	// configuration, which is why the record depends on that configuration
@@ -100,6 +120,27 @@ type Commit struct {
 	// date is an active date when an analysed commit carries it
 	// (docs/metrics.md section 1).
 	ActiveDate string `json:"activeDate"`
+}
+
+// MergeChange is one file a merge changes relative to its first parent.
+type MergeChange struct {
+	// Path is the file's path in the merge.
+	Path string `json:"path"`
+	// NewBlob is the object name of the file's content in the merge; empty
+	// where the merge deletes the file or the path holds a submodule.
+	NewBlob string `json:"newBlob,omitempty"`
+	// Parents is the file's version in each parent, in parent order.
+	Parents []ParentVersion `json:"parents"`
+}
+
+// ParentVersion is a file's version in one parent of a merge.
+type ParentVersion struct {
+	// Path is where the parent holds the file: the merge's own path, or the
+	// path git detected the file as renamed from.
+	Path string `json:"path"`
+	// Blob is the object name of the file's content there; empty where the
+	// parent holds no file at Path.
+	Blob string `json:"blob,omitempty"`
 }
 
 // RepositoryInfo describes the analyzed repository.
