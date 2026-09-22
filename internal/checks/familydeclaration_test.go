@@ -64,15 +64,43 @@ func catalogueNamespaces(content string) map[string]string {
 	return out
 }
 
+// recordInputs returns each family's row of ADR-0076 clause 6: the family
+// name and the input kinds its second column lists.
+func recordInputs(content string) map[string][]core.InputKind {
+	row := regexp.MustCompile("(?m)^\\s*\\| `([a-z][a-z-]*)` \\| ([a-z, -]+?) \\|\\s*$")
+	out := map[string][]core.InputKind{}
+	for _, m := range row.FindAllStringSubmatch(strings.ReplaceAll(content, "\r\n", "\n"), -1) {
+		var inputs []core.InputKind
+		for _, in := range strings.Split(m[2], ",") {
+			inputs = append(inputs, core.InputKind(strings.TrimSpace(in)))
+		}
+		out[m[1]] = inputs
+	}
+	return out
+}
+
+// sameInputs reports whether two input lists hold the same kinds, in any
+// order.
+func sameInputs(a, b []core.InputKind) bool {
+	set := func(l []core.InputKind) string {
+		names := map[string]bool{}
+		for _, k := range l {
+			names[string(k)] = true
+		}
+		return strings.Join(sortedKeys(names), ",")
+	}
+	return len(a) == len(b) && set(a) == set(b)
+}
+
 // declarationViolation is one failure, with the record it breaks.
 type declarationViolation struct {
 	record int
 	text   string
 }
 
-// declarationViolations compares declarations with the family set of
-// ADR-0076 clause 6 and the namespaces of docs/metrics.md.
-func declarationViolations(declared []core.FamilyDeclaration, families map[string]bool,
+// declarationViolations compares declarations with the rows of ADR-0076
+// clause 6 and the namespaces of docs/metrics.md.
+func declarationViolations(declared []core.FamilyDeclaration, rows map[string][]core.InputKind,
 	namespaces map[string]string) []declarationViolation {
 	var out []declarationViolation
 	add := func(record int, format string, args ...any) {
@@ -83,7 +111,7 @@ func declarationViolations(declared []core.FamilyDeclaration, families map[strin
 	for _, d := range declared {
 		byName[d.Name] = true
 	}
-	for _, f := range sortedKeys(families) {
+	for _, f := range sortedKeys(rows) {
 		if !byName[f] {
 			add(76, "the family %s of %s clause 6 has no declaring package", f, familyRecord)
 		}
@@ -121,6 +149,11 @@ func declarationViolations(declared []core.FamilyDeclaration, families map[strin
 				add(76, "the family %s declares the input %q, which is not one of the three kinds %v",
 					d.Name, in, core.InputKinds())
 			}
+		}
+
+		if row, ok := rows[d.Name]; ok && !sameInputs(d.Inputs, row) {
+			add(76, "the family %s declares the inputs %v, and %s clause 6 gives it %v",
+				d.Name, d.Inputs, familyRecord, row)
 		}
 
 		switch want, ok := namespaces[d.Name]; {
@@ -161,9 +194,9 @@ func declarationsOf(families []core.MetricFamily) []core.FamilyDeclaration {
 func TestFamilyDeclarations(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
-	families := recordFamilies(repo.read(t, 76, familyRecord))
+	rows := recordInputs(repo.read(t, 76, familyRecord))
 	namespaces := catalogueNamespaces(repo.read(t, 62, metricsCatalogue))
-	if len(families) == 0 || len(namespaces) == 0 {
+	if len(rows) == 0 || len(namespaces) == 0 {
 		fatal(t, 64, "no family was read from %s or no namespace from %s; the checker would pass vacuously",
 			familyRecord, metricsCatalogue)
 	}
@@ -173,7 +206,7 @@ func TestFamilyDeclarations(t *testing.T) {
 		t.Logf("%-15s inputs %v namespace %s version %s status %s method %t",
 			d.Name, d.Inputs, d.Namespace, d.Version, d.Status, d.Method != "")
 	}
-	for _, v := range declarationViolations(declared, families, namespaces) {
+	for _, v := range declarationViolations(declared, rows, namespaces) {
 		report(t, v.record, "%s", v.text)
 	}
 }
@@ -184,15 +217,15 @@ func TestFamilyDeclarations(t *testing.T) {
 // it, under the record it breaks.
 func TestFamilyDeclarationRejectsEachViolation(t *testing.T) {
 	t.Parallel()
-	valid := func() ([]core.FamilyDeclaration, map[string]bool, map[string]string) {
+	valid := func() ([]core.FamilyDeclaration, map[string][]core.InputKind, map[string]string) {
 		declared := declarationsOf(familyDeclarations())
-		families := map[string]bool{}
+		rows := map[string][]core.InputKind{}
 		namespaces := map[string]string{}
 		for _, d := range declared {
-			families[d.Name] = true
+			rows[d.Name] = append([]core.InputKind(nil), d.Inputs...)
 			namespaces[d.Name] = d.Namespace
 		}
-		return declared, families, namespaces
+		return declared, rows, namespaces
 	}
 	index := func(declared []core.FamilyDeclaration, name string) int {
 		for i, d := range declared {
@@ -238,14 +271,19 @@ func TestFamilyDeclarationRejectsEachViolation(t *testing.T) {
 			d[index(d, "hotspot")].Inputs = []core.InputKind{core.InputCommitRecords, "coupling"}
 			return d
 		}, 76, "hotspot declares the namespace coupling of the family coupling as an input"},
+		{"inputs that differ from the clause 6 row", func(d []core.FamilyDeclaration) []core.FamilyDeclaration {
+			d[index(d, "files")].Inputs = []core.InputKind{core.InputCommitRecords}
+			return d
+		}, 76, "files declares the inputs [commit-records], and " + familyRecord + " clause 6 gives it " +
+			"[commit-records replay-state]"},
 		{"a missing version", func(d []core.FamilyDeclaration) []core.FamilyDeclaration {
 			d[index(d, "files")].Version = core.Version{}
 			return d
 		}, 31, "files declares no version"},
 	}
 	for _, c := range cases {
-		declared, families, namespaces := valid()
-		got := declarationViolations(c.breaks(declared), families, namespaces)
+		declared, rows, namespaces := valid()
+		got := declarationViolations(c.breaks(declared), rows, namespaces)
 		found := false
 		for _, v := range got {
 			if v.record == c.record && strings.Contains(v.text, c.want) {
@@ -272,5 +310,25 @@ func TestFamilyDeclarationCatalogueParsing(t *testing.T) {
 	want := map[string]string{"alpha": "alpha", "beta-gamma": "beta_gamma"}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		report(t, 64, "namespaces = %v, want %v", got, want)
+	}
+}
+
+// TestFamilyDeclarationRecordParsing exercises the row parsing the input check
+// depends on.
+func TestFamilyDeclarationRecordParsing(t *testing.T) {
+	t.Parallel()
+	content := "   | Family | Inputs |\n   |---|---|\n   | `temporal` | commit-records |\r\n" +
+		"   | `ai-archaeology` | commit-records, replay-state |\n\nProse `not-a-row`.\n"
+	got := recordInputs(content)
+	want := map[string][]core.InputKind{
+		"temporal":       {core.InputCommitRecords},
+		"ai-archaeology": {core.InputCommitRecords, core.InputReplayState},
+	}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		report(t, 64, "rows = %v, want %v", got, want)
+	}
+	if !sameInputs(want["ai-archaeology"], []core.InputKind{core.InputReplayState, core.InputCommitRecords}) ||
+		sameInputs(want["ai-archaeology"], []core.InputKind{core.InputReplayState, core.InputReplayState}) {
+		report(t, 64, "sameInputs does not compare input lists as sets")
 	}
 }
