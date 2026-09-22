@@ -15,7 +15,7 @@ const method = "Line ownership is derived by forward replay of the history's dif
 	"the commit that copied or moved it. A text file larger than the single-file-size limit is not read, and is " +
 	"marked as such."
 
-// Family is the ownership family's contract (ADR-0024 clause 1).
+// Family is the ownership family's contract (ADR-0076 clause 1).
 type Family struct{}
 
 // Declaration returns what the family declares about itself. Nothing routes

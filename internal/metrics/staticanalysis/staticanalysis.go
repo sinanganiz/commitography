@@ -1,6 +1,7 @@
-// Package staticanalysis is the static-analysis metric family (ADR-0024,
-// ADR-0040): a non-priority family that reads the working tree (ADR-0012
-// clauses 2 and 3). Its metrics are those of docs/metrics.md section 11
+// Package staticanalysis is the static-analysis metric family (ADR-0076,
+// ADR-0040): a non-priority family (ADR-0012 clauses 2 and 3) that reads file
+// content at the analysed commit through replay state, never the working tree
+// (ADR-0076 clause 2). Its metrics are those of docs/metrics.md section 11
 // (ADR-0062).
 //
 // It has no implementation yet and computes nothing. It declares its contract
@@ -10,7 +11,7 @@ package staticanalysis
 
 import "github.com/sinanganiz/commitography/internal/core"
 
-// Family is the static-analysis family's contract (ADR-0024 clause 1).
+// Family is the static-analysis family's contract (ADR-0076 clause 1).
 type Family struct{}
 
 // Declaration returns what the family declares about itself. Nothing routes
@@ -19,7 +20,7 @@ type Family struct{}
 func (Family) Declaration() core.FamilyDeclaration {
 	return core.FamilyDeclaration{
 		Name:   "static-analysis",
-		Inputs: []core.InputKind{core.InputWorktree},
+		Inputs: []core.InputKind{core.InputReplayState},
 		// The catalogue's namespace (ADR-0062 clause 3). The report still
 		// writes the family under static-analysis until WP-0061 renames the key.
 		Namespace: "static_analysis",

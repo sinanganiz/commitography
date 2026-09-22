@@ -2,7 +2,7 @@ package messages
 
 import "github.com/sinanganiz/commitography/internal/core"
 
-// Family is the messages family's contract (ADR-0024 clause 1).
+// Family is the messages family's contract (ADR-0076 clause 1).
 type Family struct{}
 
 // Declaration returns what the family declares about itself. Nothing routes

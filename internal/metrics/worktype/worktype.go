@@ -1,4 +1,4 @@
-// Package worktype is the worktype metric family (ADR-0024, ADR-0040): how the
+// Package worktype is the worktype metric family (ADR-0076, ADR-0040): how the
 // analysed commits' line-level changes divide into new work, rework, help
 // others and legacy refactor (ADR-0020 clause 4). Its metrics are those of
 // docs/metrics.md section 8 (ADR-0062).
@@ -10,7 +10,7 @@ package worktype
 
 import "github.com/sinanganiz/commitography/internal/core"
 
-// Family is the worktype family's contract (ADR-0024 clause 1).
+// Family is the worktype family's contract (ADR-0076 clause 1).
 type Family struct{}
 
 // Declaration returns what the family declares about itself. Nothing routes

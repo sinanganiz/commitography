@@ -133,7 +133,7 @@ is stated in the family's method field (ADR-0032 clause 8).
 
 ## 5. `files`
 
-**Input:** commit-records. **Namespace:** `files`.
+**Input:** commit-records and replay-state. **Namespace:** `files`.
 
 | Metric | Definition |
 |---|---|
@@ -302,7 +302,7 @@ unassisted lines is the finding.
 
 ## 10. `hotspot`
 
-**Input:** worktree and commit-records. **Namespace:** `hotspot`.
+**Input:** commit-records and replay-state. **Namespace:** `hotspot`.
 
 **Complexity proxy.** Language-agnostic, computed per tracked text file:
 
@@ -331,7 +331,7 @@ Without working tree access, the family is `skipped` with reason
 
 ## 11. `static-analysis`
 
-**Input:** worktree. **Namespace:** `static_analysis`.
+**Input:** replay-state. **Namespace:** `static_analysis`.
 
 This family is in scope and is **non-priority** (ADR-0012 clause 2). Until it is
 implemented, it is present in every report with status `skipped` and reason

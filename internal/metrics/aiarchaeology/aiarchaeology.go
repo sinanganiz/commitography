@@ -1,4 +1,4 @@
-// Package aiarchaeology is the ai-archaeology metric family (ADR-0024,
+// Package aiarchaeology is the ai-archaeology metric family (ADR-0076,
 // ADR-0040): the traces assisted authorship leaves in the history. Its metrics
 // are those of docs/metrics.md section 9 (ADR-0062).
 //
@@ -9,7 +9,7 @@ package aiarchaeology
 
 import "github.com/sinanganiz/commitography/internal/core"
 
-// Family is the ai-archaeology family's contract (ADR-0024 clause 1).
+// Family is the ai-archaeology family's contract (ADR-0076 clause 1).
 type Family struct{}
 
 // Declaration returns what the family declares about itself. Nothing routes

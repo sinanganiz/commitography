@@ -11,7 +11,7 @@ const method = "Effective lines are the lines git's diff adds and removes in eac
 	"attribute says otherwise, contributes none. Rename detection is on, so a renamed file contributes the " +
 	"lines its content changed, and a file moved without change contributes none."
 
-// Family is the commit-size family's contract (ADR-0024 clause 1).
+// Family is the commit-size family's contract (ADR-0076 clause 1).
 type Family struct{}
 
 // Declaration returns what the family declares about itself. Nothing routes
