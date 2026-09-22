@@ -99,6 +99,9 @@ type walker struct {
 	identities []string
 	identity   map[string]uint32
 
+	// events accumulates the work-type classification inputs (worktype.go).
+	events tally
+
 	stats Stats
 }
 
@@ -112,7 +115,11 @@ func (w *walker) run() (*core.ReplayState, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &core.ReplayState{Tracked: tracked, TextFileCount: text, Ownership: ownership, Unavailable: unavailable}, nil
+	state := &core.ReplayState{Tracked: tracked, TextFileCount: text, Ownership: ownership, Unavailable: unavailable}
+	if ownership != nil {
+		state.Worktype = w.worktypeInputs()
+	}
+	return state, nil
 }
 
 // walk replays the analysed commit's ancestry and returns its ownership, or
@@ -307,8 +314,10 @@ func apply(base trie, removals []int, sets []write) trie {
 	return t
 }
 
-// change derives a non-merge commit's state from its parent's.
+// change derives a non-merge commit's state from its parent's, and records its
+// change events when it is counted.
 func (w *walker) change(c *model.Commit, base trie) (trie, error) {
+	events := counted(c)
 	var removals []int
 	var sets []write
 	for _, f := range c.Files {
@@ -331,13 +340,24 @@ func (w *walker) change(c *model.Commit, base trie) (trie, error) {
 		if !held {
 			continue
 		}
+		versions := []*core.OwnedFile{old}
 		if f.NewBlob == "" {
 			removals = append(removals, id)
+			if events {
+				if err := w.record(c, versions, nil, nil); err != nil {
+					return trie{}, err
+				}
+			}
 			continue
 		}
-		file, err := w.derive(c, f.Path, f.NewBlob, []*core.OwnedFile{old})
+		file, d, err := w.derive(c, f.Path, f.NewBlob, versions)
 		if err != nil {
 			return trie{}, err
+		}
+		if events {
+			if err := w.record(c, versions, file, d); err != nil {
+				return trie{}, err
+			}
 		}
 		sets = append(sets, write{id: id, file: file})
 	}
@@ -349,8 +369,10 @@ func (w *walker) change(c *model.Commit, base trie) (trie, error) {
 // clause 5. The file's new version is aligned with the first parent's version,
 // and a line that alignment leaves new but which another parent's version
 // holds unchanged inherits that parent's owner. Only a line no parent holds is
-// the merge's own: a conflict resolved by hand, or an evil merge.
+// the merge's own: a conflict resolved by hand, or an evil merge. A merge
+// counted as analysed records the change events of its own lines.
 func (w *walker) merge(c *model.Commit, parents []trie) (trie, error) {
+	events := counted(c)
 	var removals []int
 	var sets []write
 	for _, m := range c.MergeChanges {
@@ -379,11 +401,21 @@ func (w *walker) merge(c *model.Commit, parents []trie) (trie, error) {
 		}
 		if m.NewBlob == "" {
 			removals = append(removals, id)
+			if events {
+				if err := w.record(c, versions, nil, nil); err != nil {
+					return trie{}, err
+				}
+			}
 			continue
 		}
-		file, err := w.derive(c, m.Path, m.NewBlob, versions)
+		file, d, err := w.derive(c, m.Path, m.NewBlob, versions)
 		if err != nil {
 			return trie{}, err
+		}
+		if events {
+			if err := w.record(c, versions, file, d); err != nil {
+				return trie{}, err
+			}
 		}
 		sets = append(sets, write{id: id, file: file})
 	}
@@ -395,29 +427,33 @@ func (w *walker) merge(c *model.Commit, parents []trie) (trie, error) {
 // with the same content is the file, owners and all. Otherwise each line of the
 // new content aligned with a line of a version takes that line's owner, the
 // first version to align it deciding, and every other line is the commit's.
-func (w *walker) derive(c *model.Commit, path, blob string, versions []*core.OwnedFile) (*core.OwnedFile, error) {
+//
+// Where it aligned the new content, it also returns how each line came about,
+// which the change events are read from (worktype.go); otherwise nil.
+func (w *walker) derive(c *model.Commit, path, blob string, versions []*core.OwnedFile) (*core.OwnedFile, *derivation, error) {
 	for _, v := range versions {
 		if v != nil && v.Blob == blob {
 			kept := *v
 			kept.Path = path
-			return &kept, nil
+			return &kept, nil, nil
 		}
 	}
 	content, oversized, err := w.read(blob)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if w.binary.IsBinary(path, content) {
-		return &core.OwnedFile{Path: path, Blob: blob, Binary: true}, nil
+		return &core.OwnedFile{Path: path, Blob: blob, Binary: true}, nil, nil
 	}
 	if oversized {
-		return &core.OwnedFile{Path: path, Blob: blob, Degraded: core.ReasonLimitReachedSize}, nil
+		return &core.OwnedFile{Path: path, Blob: blob, Degraded: core.ReasonLimitReachedSize}, nil, nil
 	}
 
 	lines := splitLines(content)
 	file := &core.OwnedFile{Path: path, Blob: blob, Lines: make([]core.OwnedLine, len(lines))}
 	settled := make([]bool, len(lines))
-	for _, v := range versions {
+	d := &derivation{own: make([]bool, len(lines))}
+	for k, v := range versions {
 		if v == nil || v.Binary {
 			continue
 		}
@@ -429,21 +465,32 @@ func (w *walker) derive(c *model.Commit, path, blob string, versions []*core.Own
 		}
 		older, err := w.linesOf(v)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		for j, i := range align(older, lines) {
+		matched := align(older, lines)
+		if k == 0 {
+			d.first = matched
+		}
+		for j, i := range matched {
 			if i >= 0 && !settled[j] {
 				file.Lines[j], settled[j] = v.Lines[i], true
 			}
+		}
+	}
+	if d.first == nil {
+		d.first = make([]int32, len(lines))
+		for j := range d.first {
+			d.first[j] = -1
 		}
 	}
 	author := w.author(c)
 	for j := range file.Lines {
 		if !settled[j] {
 			file.Lines[j] = author
+			d.own[j] = true
 		}
 	}
-	return file, nil
+	return file, d, nil
 }
 
 // linesOf reads a version's content again, to align against it.

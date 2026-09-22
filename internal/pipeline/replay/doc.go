@@ -30,6 +30,13 @@
 // (ADR-0033); a line's authoring time is a day; a file's lines are one
 // contiguous slice.
 //
+// As it replays an analysed commit, the walk also records the commit's
+// line-level change events, the inputs of work-type classification (ADR-0074,
+// worktype.go): each replacement and deletion counted by editor, previous
+// owner and the removed line's age, and each addition by editor. The walk
+// applies no recency window to them, and reads no analysis parameter to
+// record them.
+//
 // A file's content is read through the length-framed object reader of the git
 // package (ADR-0072), capped at the single-file-size limit (ADR-0048). A text
 // file over the cap is marked degraded; a file whose first bytes show it

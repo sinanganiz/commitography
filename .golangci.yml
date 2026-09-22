@@ -18,7 +18,13 @@
 # dependency in web/package.json.
 #
 # Known deviations the rules below do not catch, with the package that
-# removes each: none.
+# removes each:
+#
+#   with a year set, internal/core/input.go leaves the    ADR-0008  WP-0017
+#     other years out of every family and the identities
+#     section, and internal/pipeline/replay, which reads
+#     no year (ADR-0074), counts their work-type change
+#     events all the same
 #
 # Two rules from table 1 are enforced by a checker rather than here, because
 # this linter's configuration cannot express them (ADR-0055 clause 2):
