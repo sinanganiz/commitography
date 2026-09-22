@@ -319,8 +319,9 @@ func divergence(t *testing.T, run replayRun, options ...string) (float64, int) {
 }
 
 // The blame divergence thresholds of ADR-0019 clause 6, per fixture and per
-// blame. Each is the measured divergence, as a share of lines, with nothing
-// added: a change to the alignment or the walk that moves more lines away
+// blame, as shares of the fixture's lines. The divergence must stay below its
+// threshold, and each threshold is one line above the measured divergence, so
+// a change to the alignment or the walk that moves a single further line away
 // from blame fails here and has to say why.
 //
 // Plain blame follows a file's renames, as replay does, and on these fixtures
@@ -332,16 +333,18 @@ func divergence(t *testing.T, run replayRun, options ...string) (float64, int) {
 // the parser's author and replay to the commit that copied it.
 func blameThresholds() map[string]map[string]float64 {
 	return map[string]map[string]float64{
-		"renames-and-copied-block": {"blame": 0, "blame -M -C -C": 10.0 / 44},
-		"merged-side-branch":       {"blame": 0, "blame -M -C -C": 0},
+		// Measured: 0 and 10 of 44 lines.
+		"renames-and-copied-block": {"blame": 1.0 / 44, "blame -M -C -C": 11.0 / 44},
+		// Measured: 0 and 0 of 16 lines.
+		"merged-side-branch": {"blame": 1.0 / 16, "blame -M -C -C": 1.0 / 16},
 	}
 }
 
 // TestReplayBlameDivergence measures replay-derived ownership against git
 // blame on the renames-and-copied-block fixture and on a fixture with a
-// merged side branch, and requires each divergence to stay at or below its
-// recorded threshold (ADR-0019 clause 6, ADR-0073). A line diverges when its
-// owner or its day differs from those of the commit blame names for it.
+// merged side branch, and requires each divergence to stay below its recorded
+// threshold (ADR-0019 clause 6, ADR-0073). A line diverges when its owner or
+// its day differs from those of the commit blame names for it.
 func TestReplayBlameDivergence(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
@@ -355,8 +358,8 @@ func TestReplayBlameDivergence(t *testing.T) {
 			// ADR-0050 clause 3 asks for measurements to be recorded on every
 			// enforcing run.
 			t.Logf("%s: %d lines, %.4f diverge from %s", fixture, lines, share, name)
-			if share > thresholds[name]+1e-9 {
-				report(t, 19, "%s: %.4f of %d lines diverge from %s, over the recorded threshold of %.4f",
+			if share >= thresholds[name]-1e-9 {
+				report(t, 19, "%s: %.4f of %d lines diverge from %s, not below the recorded threshold of %.4f",
 					fixture, share, lines, name, thresholds[name])
 			}
 		}
