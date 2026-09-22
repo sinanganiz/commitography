@@ -18,13 +18,16 @@ import (
 func bindingSubjects() []string {
 	return []string{
 		// Each metric family package.
+		"internal/metrics/aiarchaeology/aiarchaeology.go",
 		"internal/metrics/commitsize/commitsize.go",
 		"internal/metrics/coupling/coupling.go",
 		"internal/metrics/files/files.go",
 		"internal/metrics/hotspot/hotspot.go",
 		"internal/metrics/messages/messages.go",
 		"internal/metrics/ownership/ownership.go",
+		"internal/metrics/staticanalysis/staticanalysis.go",
 		"internal/metrics/temporal/temporal.go",
+		"internal/metrics/worktype/worktype.go",
 		// Each pipeline stage package.
 		"internal/pipeline/collect/gitlog.go",
 		"internal/pipeline/replay/doc.go",
