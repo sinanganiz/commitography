@@ -95,6 +95,8 @@ a superseding record is written first.
 | [0069](0069-candidate-evidence-from-history.md) | Merge candidates are evidence from the analysed history | Accepted |
 | [0070](0070-section-versions.md) | Top-level report sections carry their own version | Accepted |
 | [0071](0071-pinned-git-configuration.md) | Git configuration that affects output is pinned on every invocation | Accepted |
+| [0072](0072-unforgeable-framing.md) | Framing that content cannot forge | Accepted |
+| [0073](0073-replay-follows-the-graph.md) | Replay follows the commit graph | Accepted |
 
 ADR-0047 is superseded by ADR-0065. ADR-0056 is superseded by ADR-0063.
 
@@ -112,8 +114,8 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 | 3 | 0014, 0017, 0024, 0033, 0037, 0038, 0043, 0045, 0049, 0056, 0058, 0059, 0063 |
 | 4 | 0009, 0011, 0012, 0015, 0027, 0032, 0035, 0040, 0046, 0052, 0057, 0061, 0062 |
 | 5 | 0016, 0025, 0039, 0041, 0044, 0048, 0050, 0053, 0060, 0064 |
-| 6 | 0023, 0047, 0051, 0054, 0065, 0066, 0067, 0068, 0070, 0071 |
-| 7 | 0069 |
+| 6 | 0023, 0047, 0051, 0054, 0065, 0066, 0067, 0068, 0070, 0071, 0072 |
+| 7 | 0069, 0073 |
 
 Two records carry partial dependencies stated in prose rather than as a
 whole-record dependency, and are therefore placed earlier than their text
@@ -183,8 +185,9 @@ checked without reading the full set. The governing record is authoritative.
   included, and a subpackage exists only to resolve a name collision. (0066)
 - No package outside the git package invokes git. Non-git subprocesses run only
   at the closed set of sites in ADR-0065 clause 3. (0065)
-- No subprocess anywhere is invoked through a shell, and git output is never
-  line-parsed. (0065)
+- No subprocess anywhere is invoked through a shell. Record framing is
+  NUL-delimited or length-prefixed, never line-framed, and a malformed
+  length header aborts rather than resynchronises. (0065, 0072)
 - No operator's personal git configuration can change a report; every
   output-affecting key is pinned on the invocation. (0071)
 - No globals, package-level mutable singletons, services in `context`, or direct
@@ -200,6 +203,8 @@ checked without reading the full set. The governing record is authoritative.
 - No raw colour, spacing, typography or radius value in the frontend. (0038)
 - Replay is never parallelised; parallelism degree never changes the report.
   (0052)
+- Replay never walks history as a single running state, never reads the working
+  tree, and never uses git's diff output for line ownership. (0073)
 - No visualisation renders unbounded cardinality; limits are applied in the
   report. (0053)
 
