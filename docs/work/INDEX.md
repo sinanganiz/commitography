@@ -195,7 +195,7 @@ to be amended mid-flight.
 | [0012](0012-collect-stage.md) | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052, ADR-0062, ADR-0017, ADR-0071, ADR-0031 | WP-0009, WP-0010, WP-0011 | Done |
 | [0013](0013-replay-stage.md) | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051, ADR-0072, ADR-0073, ADR-0033, ADR-0019, ADR-0052 | WP-0012 | Done |
 | [0014](0014-worktype-classification.md) | pipeline | Work-type classification inputs | ADR-0074, ADR-0020, ADR-0073, ADR-0019, ADR-0062 | WP-0013 | Done |
-| [0015](0015-family-contract.md) | pipeline | Family contract | ADR-0076, ADR-0032, ADR-0031, ADR-0062 | WP-0008 | Ready |
+| [0015](0015-family-contract.md) | pipeline | Family contract | ADR-0076, ADR-0032, ADR-0031, ADR-0062 | WP-0008 | Done |
 | 0016 | pipeline | Interpret stage | ADR-0020, ADR-0014, ADR-0077 | WP-0061 | Draft |
 | 0017 | pipeline | Render boundary and CLI | ADR-0034, ADR-0021, ADR-0020 | WP-0061, WP-0016 | Draft |
 | 0018 | metrics | temporal family | ADR-0024 | WP-0061 | Draft |
