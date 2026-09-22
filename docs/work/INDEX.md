@@ -118,6 +118,15 @@ to be amended mid-flight.
 - **Record inputs, apply parameters late.** Fixing a result in an early stage
   ties that stage to every parameter the result depends on. Where a later stage
   can apply the parameter, record what it needs and let it.
+- **Separate the shape from the composition.** WP-0015 bundled the family
+  interface with the registry that assembles every family. The interface can
+  live in `core`; assembling concrete families needs imports only `pipeline`
+  may make. A package that defines a contract and a package that wires its
+  implementations together are usually two packages.
+- **When two binding sources disagree, the one given authority wins even if it
+  is the expensive side.** The catalogue said `commit_size`; the report said
+  `commit-size`. Editing the catalogue was cheaper and would have inverted
+  ADR-0062. The report keys change instead.
 - **A package that adds a fixture adds its golden file.** ADR-0019 requires one
   per fixture and the harness enforces it. "No golden changes" means no existing
   report changes; say that, and measure it with a filter that excludes additions.
@@ -166,8 +175,8 @@ to be amended mid-flight.
 | [0011](0011-git-chokepoint.md) | pipeline | Git invocation chokepoint | ADR-0065, ADR-0044, ADR-0066, ADR-0041 | WP-0005, WP-0006, WP-0007 | Done |
 | [0012](0012-collect-stage.md) | pipeline | Collect stage | ADR-0020, ADR-0007, ADR-0052, ADR-0062, ADR-0017, ADR-0071, ADR-0031 | WP-0009, WP-0010, WP-0011 | Done |
 | [0013](0013-replay-stage.md) | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051, ADR-0072, ADR-0073, ADR-0033, ADR-0019, ADR-0052 | WP-0012 | Done |
-| [0014](0014-worktype-classification.md) | pipeline | Work-type classification inputs | ADR-0074, ADR-0020, ADR-0073, ADR-0019, ADR-0062 | WP-0013 | Done|
-| [0015](0015-family-contract-and-registry.md) | pipeline | Family contract and registry | ADR-0024, ADR-0032, ADR-0031, ADR-0062 | WP-0008 | Ready |
+| [0014](0014-worktype-classification.md) | pipeline | Work-type classification inputs | ADR-0074, ADR-0020, ADR-0073, ADR-0019, ADR-0062 | WP-0013 | Done |
+| [0015](0015-family-contract.md) | pipeline | Family contract | ADR-0024, ADR-0032, ADR-0031, ADR-0062, ADR-0075 | WP-0008 | Ready |
 | 0016 | pipeline | Interpret stage | ADR-0020, ADR-0014 | WP-0061 | Draft |
 | 0017 | pipeline | Render boundary and CLI | ADR-0034, ADR-0021 | WP-0061, WP-0016 | Draft |
 | 0018 | metrics | temporal family | ADR-0024 | WP-0061 | Draft |
@@ -213,7 +222,7 @@ to be amended mid-flight.
 | 0058 | distribution | Container image and deployment documentation | ADR-0046, ADR-0016 | WP-0045 | Draft |
 | 0059 | distribution | Release pipeline | ADR-0049, ADR-0057 | WP-0058, WP-0003 | Draft |
 | 0060 | distribution | User documentation rewrite | ADR-0001 | WP-0057, WP-0058 | Draft |
-| [0061](0061-aggregate-stage.md) | pipeline | Aggregate stage | ADR-0020, ADR-0024, ADR-0052, ADR-0032 | WP-0013, WP-0015 | Ready |
+| [0061](0061-aggregate-stage.md) | pipeline | Aggregate stage and family registry | ADR-0020, ADR-0024, ADR-0052, ADR-0032, ADR-0031, ADR-0062, ADR-0075 | WP-0013, WP-0015 | Ready |
 
 ---
 
@@ -259,7 +268,7 @@ to be amended mid-flight.
 | 0012 | A single pass produces normalized commit records, independently cacheable, computing no metric. |
 | 0013 | Graph-following replay derives ownership from parents, reads git objects, and closes the deviation. |
 | 0014 | Replay records each change's kind, editor, previous owner and age, applying no window. |
-| 0015 | Families declare inputs, own namespaces, carry versions and report status; goldens unchanged. |
+| 0015 | Every family declares inputs, namespace, version and method through one interface; goldens unchanged. |
 | 0016 | A stateless stage assigns archetypes and badges over a stored report. |
 | 0017 | The CLI emits exactly one file, deterministic and identical to server output. |
 | 0018 | Temporal metrics as defined in docs/metrics.md section 2. |
@@ -305,4 +314,4 @@ to be amended mid-flight.
 | 0058 | One image serves both modes; private remotes are documented via host secrets. |
 | 0059 | Release artifacts are reproducible, accompanied by an SBOM and signed. |
 | 0060 | README and user documentation describe what exists, with no invalidated claim. |
-| 0061 | Aggregate runs registered families from cached inputs with the repository unreadable. |
+| 0061 | One registry routes every family, keys match the catalogue, and aggregate runs with the repository removed. |
