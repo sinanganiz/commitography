@@ -13,7 +13,11 @@
 // it.
 package core
 
-import "time"
+import (
+	"reflect"
+	"strings"
+	"time"
+)
 
 // DocumentVersion is the version of the report's structure: its top-level
 // shape, identity representation, status fields and metadata section
@@ -116,6 +120,67 @@ type Families struct {
 	AIArchaeology  Family[AIArchaeologyMetrics]  `json:"ai-archaeology"`
 	Hotspot        Family[HotspotMetrics]        `json:"hotspot"`
 	StaticAnalysis Family[StaticAnalysisMetrics] `json:"static-analysis"`
+}
+
+// Place writes one family's section into the report under namespace, the key
+// the report writes that family under (ADR-0076 clauses 1 and 5). The
+// aggregate stage's registry places every family's section through it, each
+// under the namespace the family declares.
+//
+// It refuses a namespace the report has no family for, a section whose
+// metric type is not the one that namespace holds, a section with no status,
+// and a namespace already written. So a family's output cannot land outside
+// its namespace, or in a namespace another family has written.
+func Place[M any](f *Families, namespace string, section Family[M]) error {
+	slot, ok := familySlot(f, namespace)
+	if !ok {
+		return Internalf(nil, "placing a family section under %q, which is no family namespace of the report", namespace)
+	}
+	target, ok := slot.Addr().Interface().(*Family[M])
+	if !ok {
+		return Internalf(nil, "placing a %T under %q, which holds a %s: a family writes only into its own "+
+			"namespace (ADR-0076 clause 5)", section, namespace, slot.Type())
+	}
+	if section.Status == "" {
+		return Internalf(nil, "placing a section with no status under %q (ADR-0032 clause 2)", namespace)
+	}
+	if target.Status != "" {
+		return Internalf(nil, "placing a second section under %q: a namespace has one owner (ADR-0076 clause 5)",
+			namespace)
+	}
+	*target = section
+	return nil
+}
+
+// Unplaced returns the namespaces no section has been placed under, in the
+// order the report writes them. A report with any is missing a family, which
+// no report may be (ADR-0032 clause 1).
+func (f *Families) Unplaced() []string {
+	var out []string
+	v := reflect.ValueOf(f).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		if v.Field(i).FieldByName("Status").String() == "" {
+			out = append(out, familyKey(v.Type().Field(i)))
+		}
+	}
+	return out
+}
+
+// familySlot returns the field of f the report writes under namespace.
+func familySlot(f *Families, namespace string) (reflect.Value, bool) {
+	v := reflect.ValueOf(f).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		if familyKey(v.Type().Field(i)) == namespace {
+			return v.Field(i), true
+		}
+	}
+	return reflect.Value{}, false
+}
+
+// familyKey returns the key the report writes a family field under.
+func familyKey(field reflect.StructField) string {
+	name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+	return name
 }
 
 // Degrade marks every computed family degraded for a condition that affects

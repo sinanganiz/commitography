@@ -15,7 +15,6 @@ import (
 	"github.com/sinanganiz/commitography/internal/metrics/hotspot"
 	"github.com/sinanganiz/commitography/internal/metrics/messages"
 	"github.com/sinanganiz/commitography/internal/metrics/ownership"
-	"github.com/sinanganiz/commitography/internal/metrics/temporal"
 )
 
 // Builder is the aggregate stage. It holds the clock that stamps the report's
@@ -59,8 +58,11 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 	r.Configuration = core.EmbedConfiguration(in.Config, in.Resolver, r.Identities)
 	f := &r.Families
 
-	progress(in, "metrics", "temporal", 0, 0)
-	f.Temporal = temporal.Build(in, analyzed)
+	routed, err := runFamilies(in, f)
+	if err != nil {
+		return nil, nil, err
+	}
+	warnings = append(warnings, routed...)
 
 	progress(in, "metrics", "code", 0, 0)
 	f.CommitSize = commitsize.Build(in, lineScoped)
@@ -101,6 +103,10 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 		f.Degrade(core.ReasonShallowClone, core.ConfidenceLow)
 	}
 
+	// Every family is present in every report (ADR-0032 clause 1).
+	if missing := f.Unplaced(); len(missing) > 0 {
+		return nil, nil, core.Internalf(nil, "the report has no section for the families %v", missing)
+	}
 	return r, warnings, nil
 }
 

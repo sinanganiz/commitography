@@ -70,10 +70,15 @@ func Computed[M any](version Version, metrics M) Family[M] {
 	return Family[M]{Version: version, Status: StatusOK, Metrics: metrics}
 }
 
-// Skipped returns a skipped family. Its metrics are the zero value, which
-// serialises as an empty object.
-func Skipped[M any](version Version, reason Reason) Family[M] {
-	return Family[M]{Version: version, Status: StatusSkipped, Reasons: []Reason{reason}}
+// Skipped returns a skipped family, for the reason given and any others that
+// also apply, listed in enumeration order. Its metrics are the zero value,
+// which serialises as an empty object.
+func Skipped[M any](version Version, reason Reason, more ...Reason) Family[M] {
+	reasons := []Reason{reason}
+	for _, r := range more {
+		reasons = withReason(reasons, r)
+	}
+	return Family[M]{Version: version, Status: StatusSkipped, Reasons: reasons}
 }
 
 // Degrade marks a computed family degraded for reason. The confidence it ends

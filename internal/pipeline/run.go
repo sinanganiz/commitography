@@ -221,6 +221,9 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 		PathFilter:  pathFilter,
 		Replay:      replayed,
 		ToolVersion: opts.ToolVersion,
+		// One degree governs both parallel stages: collect's readers and
+		// aggregate's families (ADR-0052 clauses 1, 3 and 5).
+		Parallelism: opts.Parallelism,
 		Progress: func(stage, detail string, current, total int) {
 			mapped := StageCode
 			if stage == "metrics" {
