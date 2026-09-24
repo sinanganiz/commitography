@@ -21,7 +21,6 @@ type Reason string
 // declares them, so the enumeration is complete from here on and each later
 // package fills a slot rather than extending the set.
 const (
-	ReasonWorktreeUnavailable         Reason = "worktree_unavailable"
 	ReasonNotImplemented              Reason = "not_implemented"
 	ReasonEmptyPopulation             Reason = "empty_population"
 	ReasonCardinalityLimit            Reason = "cardinality_limit"
@@ -63,7 +62,6 @@ const (
 // omitted here is caught rather than silently unlisted.
 func Reasons() []Reason {
 	return []Reason{
-		ReasonWorktreeUnavailable,
 		ReasonNotImplemented,
 		ReasonEmptyPopulation,
 		ReasonCardinalityLimit,

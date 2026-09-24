@@ -7,13 +7,17 @@
 //
 // The report document follows docs/metrics.md, which is authoritative
 // (ADR-0062): no field exists in it that the catalogue does not define, every
-// family of ADR-0024 clause 5 is present with a status (ADR-0032 clause 1),
-// and everything that varies between two runs over one commit is confined to
-// the metadata section (ADR-0021 clause 6). docs/report-schema.json describes
-// it.
+// family of ADR-0076 clause 6 is present with a status (ADR-0032 clause 1)
+// under the namespace the catalogue gives it, and everything that varies
+// between two runs over one commit is confined to the metadata section
+// (ADR-0021 clause 6). docs/report-schema.json describes it.
 package core
 
-import "time"
+import (
+	"reflect"
+	"strings"
+	"time"
+)
 
 // DocumentVersion is the version of the report's structure: its top-level
 // shape, identity representation, status fields and metadata section
@@ -30,8 +34,14 @@ import "time"
 //	     configuration (ADR-0026 clause 2)
 //	1.4  the sections object added, carrying a version for every top-level
 //	     section that is not a family (ADR-0070 clause 1)
+//	2.0  every family written under the namespace docs/metrics.md gives it,
+//	     so commit-size, ai-archaeology and static-analysis became
+//	     commit_size, ai_archaeology and static_analysis (ADR-0062 clause 3,
+//	     ADR-0076 clause 1); and the family status code naming a missing
+//	     working tree removed, which nothing produced once no family read the
+//	     working tree (ADR-0076 clause 11)
 func DocumentVersion() Version {
-	return Version{Major: 1, Minor: 4}
+	return Version{Major: 2, Minor: 0}
 }
 
 // Report is the complete analysis artifact: one repository, at one commit,
@@ -102,34 +112,80 @@ type MergeCandidate struct {
 	Signal string `json:"signal"`
 }
 
-// Families holds every family of ADR-0024 clause 5, in that order, keyed by
-// family name. A struct rather than a map, so that no report can be built
-// without one of them.
+// Families holds every family of ADR-0076 clause 6, in that order, each keyed
+// by the namespace docs/metrics.md gives it, which is the namespace the family
+// declares (ADR-0076 clause 1, ADR-0062 clause 3). A struct rather than a map,
+// so that no report can be built without one of them.
 type Families struct {
 	Temporal       Family[TemporalMetrics]       `json:"temporal"`
-	CommitSize     Family[CommitSizeMetrics]     `json:"commit-size"`
+	CommitSize     Family[CommitSizeMetrics]     `json:"commit_size"`
 	Messages       Family[MessagesMetrics]       `json:"messages"`
 	Files          Family[FilesMetrics]          `json:"files"`
 	Coupling       Family[CouplingMetrics]       `json:"coupling"`
 	Ownership      Family[OwnershipMetrics]      `json:"ownership"`
 	Worktype       Family[WorktypeMetrics]       `json:"worktype"`
-	AIArchaeology  Family[AIArchaeologyMetrics]  `json:"ai-archaeology"`
+	AIArchaeology  Family[AIArchaeologyMetrics]  `json:"ai_archaeology"`
 	Hotspot        Family[HotspotMetrics]        `json:"hotspot"`
-	StaticAnalysis Family[StaticAnalysisMetrics] `json:"static-analysis"`
+	StaticAnalysis Family[StaticAnalysisMetrics] `json:"static_analysis"`
 }
 
-// Degrade marks every computed family degraded for a condition that affects
-// all of them, such as an incomplete history. Skipped families are left as
-// they are.
-func (f *Families) Degrade(reason Reason, confidence Confidence) {
-	f.Temporal.Degrade(reason, confidence)
-	f.CommitSize.Degrade(reason, confidence)
-	f.Messages.Degrade(reason, confidence)
-	f.Files.Degrade(reason, confidence)
-	f.Coupling.Degrade(reason, confidence)
-	f.Ownership.Degrade(reason, confidence)
-	f.Worktype.Degrade(reason, confidence)
-	f.AIArchaeology.Degrade(reason, confidence)
-	f.Hotspot.Degrade(reason, confidence)
-	f.StaticAnalysis.Degrade(reason, confidence)
+// Place writes one family's section into the report under namespace, the key
+// the report writes that family under (ADR-0076 clauses 1 and 5). The
+// aggregate stage's registry places every family's section through it, each
+// under the namespace the family declares.
+//
+// It refuses a namespace the report has no family for, a section whose
+// metric type is not the one that namespace holds, a section with no status,
+// and a namespace already written. So a family's output cannot land outside
+// its namespace, or in a namespace another family has written.
+func Place[M any](f *Families, namespace string, section Family[M]) error {
+	slot, ok := familySlot(f, namespace)
+	if !ok {
+		return Internalf(nil, "placing a family section under %q, which is no family namespace of the report", namespace)
+	}
+	target, ok := slot.Addr().Interface().(*Family[M])
+	if !ok {
+		return Internalf(nil, "placing a %T under %q, which holds a %s: a family writes only into its own "+
+			"namespace (ADR-0076 clause 5)", section, namespace, slot.Type())
+	}
+	if section.Status == "" {
+		return Internalf(nil, "placing a section with no status under %q (ADR-0032 clause 2)", namespace)
+	}
+	if target.Status != "" {
+		return Internalf(nil, "placing a second section under %q: a namespace has one owner (ADR-0076 clause 5)",
+			namespace)
+	}
+	*target = section
+	return nil
+}
+
+// Unplaced returns the namespaces no section has been placed under, in the
+// order the report writes them. A report with any is missing a family, which
+// no report may be (ADR-0032 clause 1).
+func (f *Families) Unplaced() []string {
+	var out []string
+	v := reflect.ValueOf(f).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		if v.Field(i).FieldByName("Status").String() == "" {
+			out = append(out, familyKey(v.Type().Field(i)))
+		}
+	}
+	return out
+}
+
+// familySlot returns the field of f the report writes under namespace.
+func familySlot(f *Families, namespace string) (reflect.Value, bool) {
+	v := reflect.ValueOf(f).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		if familyKey(v.Type().Field(i)) == namespace {
+			return v.Field(i), true
+		}
+	}
+	return reflect.Value{}, false
+}
+
+// familyKey returns the key the report writes a family field under.
+func familyKey(field reflect.StructField) string {
+	name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+	return name
 }

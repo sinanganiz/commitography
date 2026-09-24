@@ -324,9 +324,6 @@ family's method field says so.
 | `hotspots` | Top 100 files by `hotspot_score`, with all three values. |
 | `churn_files` | Files receiving at least 5 analysed commits within any rolling 30-day window, limit 100. |
 
-Without working tree access, the family is `skipped` with reason
-`worktree_unavailable`.
-
 ---
 
 ## 11. `static-analysis`
@@ -373,7 +370,7 @@ so the set can be read mechanically.
 Family status codes, carried by a skipped or degraded family (ADR-0032
 clause 2):
 
-`worktree_unavailable`, `not_implemented`, `empty_population`,
+`not_implemented`, `empty_population`,
 `cardinality_limit`, `low_classification_confidence`, `shallow_clone`,
 `limit_reached_commits`, `limit_reached_size`, `limit_reached_duration`,
 `limit_reached_memory`, `symlink_escaped_root`, `capability_unavailable_in_mode`,

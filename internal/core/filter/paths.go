@@ -80,6 +80,16 @@ func NewPathFilterFromAttributes(cfg config.Analysis, attributes []byte) (*PathF
 	return f, nil
 }
 
+// Clone returns a filter that decides every path as f does, with a memo of its
+// own. The memo is written as paths are decided, so a filter is not safe for
+// concurrent use; each concurrent reader takes a clone instead.
+func (f *PathFilter) Clone() *PathFilter {
+	if f == nil {
+		return nil
+	}
+	return &PathFilter{exclude: f.exclude, negated: f.negated, cache: make(map[string]bool)}
+}
+
 // Excluded reports whether a path should be omitted from line-based metrics.
 // Results are memoized because the same paths recur across thousands of commits.
 func (f *PathFilter) Excluded(path string) bool {

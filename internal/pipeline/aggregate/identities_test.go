@@ -9,6 +9,7 @@ import (
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/config"
+	"github.com/sinanganiz/commitography/internal/core/filter"
 	"github.com/sinanganiz/commitography/internal/core/identity"
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
@@ -172,14 +173,19 @@ func TestAnUnresolvableAuthorDegradesTheIdentityAttributedFamilies(t *testing.T)
 		t.Fatal("a commit carrying an address was treated as unresolved")
 	}
 
-	// The identity-attributed families are computed here, as they will be
-	// once their packages exist, so the degradation can be observed.
+	// The identity-attributed families compute nothing yet, so stand-ins that
+	// compute take their places, and the degradation is observed on the route
+	// every family takes into the report.
+	in.Filtered = filter.Summarize(commits)
 	var f core.Families
-	f.Temporal = core.Computed(core.Version{Major: 1}, core.TemporalMetrics{})
-	f.Ownership = core.Computed(core.Version{Major: 1}, core.OwnershipMetrics{})
-	f.Worktype = core.Computed(core.Version{Major: 1}, core.WorktypeMetrics{})
-	f.AIArchaeology = core.Skipped[core.AIArchaeologyMetrics](core.Version{}, core.ReasonNotImplemented)
-	degradeIdentityAttributed(&f)
+	if _, err := route(in, &f, []entry{
+		computedStandIn[core.TemporalMetrics]("temporal", false),
+		computedStandIn[core.OwnershipMetrics]("ownership", true),
+		computedStandIn[core.WorktypeMetrics]("worktype", true),
+		notImplementedStandIn[core.AIArchaeologyMetrics]("ai_archaeology", true),
+	}); err != nil {
+		t.Fatalf("routing the stand-ins: %v", err)
+	}
 
 	for name, got := range map[string]struct {
 		status  core.Status

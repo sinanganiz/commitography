@@ -80,9 +80,10 @@ repository unreadable.
 `internal/pipeline/run.go`, `internal/core/**`, `internal/checks/**`,
 `docs/report-schema.json`, `testdata/**` golden files, `docs/metrics.md`
 **for the section 10 sentence and the section 13 code in clause 4a only**, `internal/metrics/hotspot/**`
-and `internal/metrics/staticanalysis/**` **for their declarations only**, and
-`.golangci.yml` **for the namespace deviation entry and the hotspot deviation
-entry only**.
+and `internal/metrics/staticanalysis/**` **for their declarations only**,
+`internal/server/api_test.go` **for the report schema version assertion
+only**, and `.golangci.yml` **for the namespace deviation entry and the
+hotspot deviation entry only**.
 **Must not touch:** `internal/metrics/**` other than the two declarations above,
 `internal/pipeline/collect/**`, `internal/pipeline/replay/**`, `cmd/**`,
 `docs/decisions/**`, `docs/metrics.md`.

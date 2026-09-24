@@ -106,7 +106,7 @@ func TestReportSchemaRejectsMalformedReports(t *testing.T) {
 		"a section version has no major component": func(d map[string]any) {
 			d["sections"].(map[string]any)["configuration"] = map[string]any{"minor": 0.0}
 		},
-		"a family is absent":          func(d map[string]any) { delete(families(d), "static-analysis") },
+		"a family is absent":          func(d map[string]any) { delete(families(d), "static_analysis") },
 		"a top-level key is invented": func(d map[string]any) { d["warnings"] = []any{} },
 		"a skipped family carries a metric": func(d map[string]any) {
 			family(d, "ownership")["metrics"] = map[string]any{"bus_factor": 0.0}

@@ -29,7 +29,7 @@ func TestAPICapabilitiesAndJobList(t *testing.T) {
 	if err := json.Unmarshal(res.Body.Bytes(), &capabilities); err != nil {
 		t.Fatal(err)
 	}
-	if capabilities.APIVersion != "v1" || capabilities.ReportSchemaVersion != 1 || capabilities.ActiveJobLimit != 1 {
+	if capabilities.APIVersion != "v1" || capabilities.ReportSchemaVersion != 2 || capabilities.ActiveJobLimit != 1 {
 		t.Fatalf("capabilities = %+v", capabilities)
 	}
 

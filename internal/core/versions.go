@@ -76,15 +76,15 @@ func (r *Report) Versions() VersionSet {
 		},
 		Families: map[string]Version{
 			"temporal":        f.Temporal.Version,
-			"commit-size":     f.CommitSize.Version,
+			"commit_size":     f.CommitSize.Version,
 			"messages":        f.Messages.Version,
 			"files":           f.Files.Version,
 			"coupling":        f.Coupling.Version,
 			"ownership":       f.Ownership.Version,
 			"worktype":        f.Worktype.Version,
-			"ai-archaeology":  f.AIArchaeology.Version,
+			"ai_archaeology":  f.AIArchaeology.Version,
 			"hotspot":         f.Hotspot.Version,
-			"static-analysis": f.StaticAnalysis.Version,
+			"static_analysis": f.StaticAnalysis.Version,
 		},
 	}
 }

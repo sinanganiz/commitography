@@ -195,7 +195,7 @@ func (s smoke) cliDefaultCommandWritesTheDashboard(t *testing.T) {
 	}
 	// The CLI names the repository after the path it analyzed, here /repo.
 	data, err := os.ReadFile(filepath.Join(repo, "out", "report.json"))
-	if err != nil || json.Unmarshal(data, &report) != nil || report.DocumentVersion.Major != 1 || report.Repository.Name != "repo" {
+	if err != nil || json.Unmarshal(data, &report) != nil || report.DocumentVersion.Major != 2 || report.Repository.Name != "repo" {
 		t.Fatalf("out/report.json = %+v (%v)", report, err)
 	}
 }

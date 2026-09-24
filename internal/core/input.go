@@ -30,6 +30,11 @@ type Input struct {
 	// Progress, when set, is called as each stage begins.
 	Progress func(stage, detail string, current, total int)
 
+	// Parallelism is how many metric families the aggregate stage runs at
+	// once (ADR-0052 clauses 3 and 5). Zero derives it from the available
+	// cores. It changes no value in the report (clause 6).
+	Parallelism int
+
 	// ToolVersion is the build's version, recorded in the report's generation
 	// metadata (ADR-0061 clause 6).
 	ToolVersion string

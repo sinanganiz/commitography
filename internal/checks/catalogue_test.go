@@ -152,17 +152,29 @@ func familyStatusCodes(section string) map[string]bool {
 	return out
 }
 
+// namespaceOwners inverts the namespaces docs/metrics.md gives the families:
+// the family whose namespace each report key is.
+func namespaceOwners(namespaces map[string]string) map[string]string {
+	out := map[string]string{}
+	for family, namespace := range namespaces {
+		out[namespace] = family
+	}
+	return out
+}
+
 // typeViolations compares a Families-shaped type with the catalogue: every
-// field is a family the catalogue defines, and every JSON name of that
-// family's metric type is a metric its section defines.
-func typeViolations(families reflect.Type, catalogue map[string]map[string]bool) []string {
+// field's key is the namespace of a family the catalogue defines, and every
+// JSON name of that family's metric type is a metric its section defines.
+// owners gives the family each namespace belongs to.
+func typeViolations(families reflect.Type, catalogue map[string]map[string]bool, owners map[string]string) []string {
 	var out []string
 	for i := 0; i < families.NumField(); i++ {
 		field := families.Field(i)
-		family := jsonName(field)
-		metrics, known := catalogue[family]
-		if !known {
-			out = append(out, "the report type has a family "+family+", which "+metricsCatalogue+" does not define")
+		family, known := owners[jsonName(field)]
+		metrics := catalogue[family]
+		if !known || metrics == nil {
+			out = append(out, "the report type has a family under "+jsonName(field)+", which is the namespace of "+
+				"no family "+metricsCatalogue+" defines")
 			continue
 		}
 		mf, ok := field.Type.FieldByName("Metrics")
@@ -198,13 +210,17 @@ func sortedKeys[V any](m map[string]V) []string {
 }
 
 // TestMetricCatalogueFamilies requires the report's families, the catalogue's
-// family sections and ADR-0076 clause 6 to be one set.
+// family sections and ADR-0076 clause 6 to be one set, with the report
+// writing each family under the namespace the catalogue gives it (ADR-0076
+// clause 1, ADR-0062 clause 3).
 func TestMetricCatalogueFamilies(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
-	catalogue := catalogueFamilies(repo.read(t, 62, metricsCatalogue))
+	content := repo.read(t, 62, metricsCatalogue)
+	catalogue := catalogueFamilies(content)
+	namespaces := catalogueNamespaces(content)
 	record := recordFamilies(repo.read(t, 76, familyRecord))
-	if len(catalogue) == 0 || len(record) == 0 {
+	if len(catalogue) == 0 || len(namespaces) == 0 || len(record) == 0 {
 		fatal(t, 64, "no family was read from %s or %s; the checker would pass vacuously", metricsCatalogue, familyRecord)
 	}
 
@@ -217,8 +233,9 @@ func TestMetricCatalogueFamilies(t *testing.T) {
 		if catalogue[f] == nil {
 			report(t, 62, "%s clause 6 names the family %s, which %s has no section for", familyRecord, f, metricsCatalogue)
 		}
-		if !inReport[f] {
-			report(t, 32, "the family %s is absent from the report type, so it is absent from every report", f)
+		if namespace, ok := namespaces[f]; !ok || !inReport[namespace] {
+			report(t, 32, "the family %s is absent from the report type under the namespace %s gives it, so it "+
+				"is absent from every report", f, metricsCatalogue)
 		}
 	}
 	for _, f := range sortedKeys(catalogue) {
@@ -226,9 +243,11 @@ func TestMetricCatalogueFamilies(t *testing.T) {
 			report(t, 76, "%s has a section for %s, which %s clause 6 does not list", metricsCatalogue, f, familyRecord)
 		}
 	}
-	for _, f := range sortedKeys(inReport) {
-		if !record[f] {
-			report(t, 76, "the report type carries the family %s, which %s clause 6 does not list", f, familyRecord)
+	owners := namespaceOwners(namespaces)
+	for _, key := range sortedKeys(inReport) {
+		if family, ok := owners[key]; !ok || !record[family] {
+			report(t, 76, "the report type carries a family under %s, which is the namespace of no family %s "+
+				"clause 6 lists", key, familyRecord)
 		}
 	}
 }
@@ -238,8 +257,9 @@ func TestMetricCatalogueFamilies(t *testing.T) {
 func TestMetricCatalogueTypes(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
-	catalogue := catalogueFamilies(repo.read(t, 62, metricsCatalogue))
-	for _, v := range typeViolations(reflect.TypeOf(core.Families{}), catalogue) {
+	content := repo.read(t, 62, metricsCatalogue)
+	owners := namespaceOwners(catalogueNamespaces(content))
+	for _, v := range typeViolations(reflect.TypeOf(core.Families{}), catalogueFamilies(content), owners) {
 		report(t, 62, "%s", v)
 	}
 }
@@ -259,7 +279,8 @@ func TestMetricCatalogueRejectsAnInventedMetric(t *testing.T) {
 		Mood     core.Family[struct{}]        `json:"mood"`
 	}
 	catalogue := map[string]map[string]bool{"temporal": {"hour_histogram": true}}
-	got := strings.Join(typeViolations(reflect.TypeOf(invented{}), catalogue), "\n")
+	owners := map[string]string{"temporal": "temporal"}
+	got := strings.Join(typeViolations(reflect.TypeOf(invented{}), catalogue, owners), "\n")
 	for _, want := range []string{"hour_weekday_grid", "mood"} {
 		if !strings.Contains(got, want) {
 			report(t, 64, "the catalogue checker did not report the invented %s; it reported:\n%s", want, got)
@@ -326,7 +347,9 @@ func TestMetricCatalogueRejectsAnInventedIdentityField(t *testing.T) {
 func TestMetricCatalogueGolden(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
-	catalogue := catalogueFamilies(repo.read(t, 62, metricsCatalogue))
+	content := repo.read(t, 62, metricsCatalogue)
+	catalogue := catalogueFamilies(content)
+	owners := namespaceOwners(catalogueNamespaces(content))
 	codes := familyStatusCodes(catalogueSection(t, repo, reasonSection))
 	if len(codes) == 0 {
 		fatal(t, 64, "no family status code was read from %s section 13", metricsCatalogue)
@@ -364,7 +387,7 @@ func TestMetricCatalogueGolden(t *testing.T) {
 		for _, name := range sortedKeys(document.Families) {
 			family := document.Families[name]
 			for _, metric := range sortedKeys(family.Metrics) {
-				if !catalogue[name][metric] {
+				if !catalogue[owners[name]][metric] {
 					report(t, 62, "%s carries the metric %s.%s, which %s does not define", file, name, metric, metricsCatalogue)
 				}
 			}

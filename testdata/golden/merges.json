@@ -1,7 +1,7 @@
 {
   "document_version": {
-    "major": 1,
-    "minor": 4
+    "major": 2,
+    "minor": 0
   },
   "sections": {
     "metadata": {
@@ -193,7 +193,7 @@
         "last_commit_date": "2025-10-31"
       }
     },
-    "commit-size": {
+    "commit_size": {
       "version": {
         "major": 2,
         "minor": 0
@@ -329,7 +329,7 @@
       ],
       "metrics": {}
     },
-    "ai-archaeology": {
+    "ai_archaeology": {
       "version": {
         "major": 0,
         "minor": 0
@@ -350,7 +350,7 @@
         "churn_files": []
       }
     },
-    "static-analysis": {
+    "static_analysis": {
       "version": {
         "major": 0,
         "minor": 0
