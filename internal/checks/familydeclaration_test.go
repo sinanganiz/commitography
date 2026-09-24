@@ -7,42 +7,16 @@ import (
 	"testing"
 
 	"github.com/sinanganiz/commitography/internal/core"
-	"github.com/sinanganiz/commitography/internal/metrics/aiarchaeology"
-	"github.com/sinanganiz/commitography/internal/metrics/commitsize"
-	"github.com/sinanganiz/commitography/internal/metrics/coupling"
-	"github.com/sinanganiz/commitography/internal/metrics/files"
-	"github.com/sinanganiz/commitography/internal/metrics/hotspot"
-	"github.com/sinanganiz/commitography/internal/metrics/messages"
-	"github.com/sinanganiz/commitography/internal/metrics/ownership"
-	"github.com/sinanganiz/commitography/internal/metrics/staticanalysis"
-	"github.com/sinanganiz/commitography/internal/metrics/temporal"
-	"github.com/sinanganiz/commitography/internal/metrics/worktype"
+	"github.com/sinanganiz/commitography/internal/pipeline/aggregate"
 )
 
 // The family declaration checker (ADR-0076 clause 1, ADR-0031 clause 2,
 // ADR-0062 clause 3): every family of ADR-0076 clause 6 has a package that
 // declares its contract, and every declaration agrees with the catalogue.
 //
-// It checks the declarations, not the report. Nothing routes a family's output
-// through its declaration yet, so the report's keys are not compared here.
-
-// familyDeclarations is the checker's own list of the ten family packages.
-// WP-0061 replaces it with the aggregate stage's registry, so that one list
-// exists in the end.
-func familyDeclarations() []core.MetricFamily {
-	return []core.MetricFamily{
-		temporal.Family{},
-		commitsize.Family{},
-		messages.Family{},
-		files.Family{},
-		coupling.Family{},
-		ownership.Family{},
-		worktype.Family{},
-		aiarchaeology.Family{},
-		hotspot.Family{},
-		staticanalysis.Family{},
-	}
-}
+// It checks the declarations, not the report. The families it checks are the
+// aggregate stage's registry, the one list of families in the tree, so a
+// family the stage runs cannot escape it and it holds no list of its own.
 
 // catalogueNamespaces returns the namespace docs/metrics.md gives each family:
 // the backticked name after "**Namespace:**" in the family's section. A
@@ -201,7 +175,7 @@ func TestFamilyDeclarations(t *testing.T) {
 			familyRecord, metricsCatalogue)
 	}
 
-	declared := declarationsOf(familyDeclarations())
+	declared := declarationsOf(aggregate.Registry())
 	for _, d := range declared {
 		t.Logf("%-15s inputs %v namespace %s version %s status %s method %t",
 			d.Name, d.Inputs, d.Namespace, d.Version, d.Status, d.Method != "")
@@ -218,7 +192,7 @@ func TestFamilyDeclarations(t *testing.T) {
 func TestFamilyDeclarationRejectsEachViolation(t *testing.T) {
 	t.Parallel()
 	valid := func() ([]core.FamilyDeclaration, map[string][]core.InputKind, map[string]string) {
-		declared := declarationsOf(familyDeclarations())
+		declared := declarationsOf(aggregate.Registry())
 		rows := map[string][]core.InputKind{}
 		namespaces := map[string]string{}
 		for _, d := range declared {
