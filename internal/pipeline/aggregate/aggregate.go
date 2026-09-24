@@ -10,7 +10,6 @@ package aggregate
 
 import (
 	"github.com/sinanganiz/commitography/internal/core"
-	"github.com/sinanganiz/commitography/internal/metrics/commitsize"
 )
 
 // Builder is the aggregate stage. It holds the clock that stamps the report's
@@ -31,7 +30,6 @@ func New(clock core.Clock, _ core.Filesystem) *Builder {
 // them where it shows its other warnings.
 func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 	analyzed := in.Analyzed()
-	lineScoped := in.LineScoped()
 	var warnings []string
 
 	r := &core.Report{
@@ -59,9 +57,6 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 		return nil, nil, err
 	}
 	warnings = append(warnings, routed...)
-
-	progress(in, "metrics", "code", 0, 0)
-	f.CommitSize = commitsize.Build(in, lineScoped)
 
 	// The families below have no implementation yet. Each is present, as
 	// skipped, so the document's shape is final and the package that

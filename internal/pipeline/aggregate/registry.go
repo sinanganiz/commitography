@@ -47,7 +47,13 @@ func entries() []entry {
 			}),
 			progress: "temporal",
 		},
-		{family: commitsize.Family{}},
+		{
+			family: commitsize.Family{},
+			section: computed(func(in core.Input) (core.Family[core.CommitSizeMetrics], []string) {
+				return commitsize.Build(in, in.LineScoped()), nil
+			}),
+			progress: "code",
+		},
 		{
 			family: messages.Family{},
 			section: computed(func(in core.Input) (core.Family[core.MessagesMetrics], []string) {
