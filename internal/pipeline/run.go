@@ -18,24 +18,6 @@ import (
 
 const minWrappedCommits = 10
 
-// commitSizeMethod states how effective lines are counted (docs/metrics.md
-// section 1), where that differs from counting a file's lines.
-const commitSizeMethod = "Effective lines are the lines git's diff adds and removes in each file that is not " +
-	"excluded. A file git detects as binary, by a NUL byte within its first 8 000 bytes unless a repository " +
-	"attribute says otherwise, contributes none. Rename detection is on, so a renamed file contributes the " +
-	"lines its content changed, and a file moved without change contributes none."
-
-// ownershipMethod states how line ownership is derived (ADR-0032 clause 8,
-// docs/metrics.md section 7), where that differs from git blame, the
-// reference implementation.
-const ownershipMethod = "Line ownership is derived by forward replay of the history's diffs over the commit graph, " +
-	"not by git blame. Each version of a file is aligned with the version it was changed from by one fixed " +
-	"alignment computed in-process, and a line keeps its owner for as long as it is unchanged; at a merge, a line " +
-	"keeps the owner it has in whichever parent holds it unchanged, and a line no parent holds is the merge's. " +
-	"Blame's copy and move detection is not reproduced, so a line copied or moved from another file is owned by " +
-	"the commit that copied or moved it. A text file larger than the single-file-size limit is not read, and is " +
-	"marked as such."
-
 // configurationRemedy is the remedy for every configuration refusal: they all
 // come from the same file and are all fixed the same way.
 const configurationRemedy = "Correct the setting in " + config.FileName +
@@ -254,19 +236,6 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	for _, message := range buildWarnings {
 		collectWarn(message)
 	}
-	// Effective lines rest on how the collect stage reads a diff, which
-	// differs from a plain line count in two ways a reader must be told of
-	// (ADR-0032 clause 8, WP-0012 clause 10c). The statement is set here, on
-	// the family whose values are effective lines, until the family registry
-	// of WP-0015 gives a family's own declaration a place to carry it.
-	if report.Families.CommitSize.Status != core.StatusSkipped {
-		report.Families.CommitSize.Method = commitSizeMethod
-	}
-	// Replay-derived ownership differs from blame, and the report says so
-	// whatever the family's status (ADR-0020, ADR-0032 clause 8). The family
-	// stays skipped until WP-0023 computes it from the replay state, and its
-	// own declaration carries the statement once WP-0015 gives it a place.
-	report.Families.Ownership.Method = ownershipMethod
 
 	var previousYearCommits *int
 	if cfg.Year != 0 {

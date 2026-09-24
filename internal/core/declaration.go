@@ -3,10 +3,11 @@
 //
 // A declaration is a shape, not a composition. Assembling the ten families
 // needs imports only the pipeline may make (ADR-0040), so the registry that
-// holds them, and the routing of each family's output through its declaration,
-// belong to the aggregate stage (WP-0061). Until then nothing reads a
-// declaration but the family declaration checker, and the report is written as
-// it was.
+// holds them belongs to the aggregate stage. The stage routes each family's
+// output into the report through its declaration: the family is given the
+// inputs it declares, its section must carry the version it declares, and it
+// is placed under the namespace the family declares, carrying the method
+// statement the family declares.
 
 package core
 

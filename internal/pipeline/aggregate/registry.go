@@ -108,7 +108,8 @@ type sectionFunc func(in core.Input, declared core.FamilyDeclaration, skip []cor
 
 // computed is the section of a family whose status comes from its
 // computation: run over the family's resolved input unless the family is
-// skipped, in which case it is never run (ADR-0076 clause 3).
+// skipped, in which case it is never run (ADR-0076 clause 3). It carries the
+// method statement the family declares.
 func computed[M any](run func(core.Input) (core.Family[M], []string)) sectionFunc {
 	return func(in core.Input, declared core.FamilyDeclaration, skip []core.Reason) (section, []string, error) {
 		if declared.Status != core.StatusFromComputation {
@@ -116,14 +117,14 @@ func computed[M any](run func(core.Input) (core.Family[M], []string)) sectionFun
 				"registration computes it", declared.Name, declared.Status)
 		}
 		if len(skip) > 0 {
-			return &sectionOf[M]{core.Skipped[M](declared.Version, skip[0], skip[1:]...)}, nil, nil
+			return declaredSection(core.Skipped[M](declared.Version, skip[0], skip[1:]...), declared), nil, nil
 		}
 		family, warnings := run(in)
 		if family.Version != declared.Version {
 			return nil, nil, core.Internalf(nil, "the family %s computed version %s and declares version %s",
 				declared.Name, family.Version, declared.Version)
 		}
-		return &sectionOf[M]{family}, warnings, nil
+		return declaredSection(family, declared), warnings, nil
 	}
 }
 
@@ -136,8 +137,18 @@ func notImplemented[M any]() sectionFunc {
 			return nil, nil, core.Internalf(nil, "the family %s declares the status source %s, and its "+
 				"registration computes nothing", declared.Name, declared.Status)
 		}
-		return &sectionOf[M]{core.Skipped[M](declared.Version, core.ReasonNotImplemented, skip...)}, nil, nil
+		skipped := core.Skipped[M](declared.Version, core.ReasonNotImplemented, skip...)
+		return declaredSection(skipped, declared), nil, nil
 	}
+}
+
+// declaredSection returns a family's section carrying the method statement
+// its declaration gives (ADR-0032 clause 8, ADR-0076 clause 1). The
+// statement is carried whatever the family's status: it says how the family's
+// values are derived, which a reader of a skipped family learns as well.
+func declaredSection[M any](family core.Family[M], declared core.FamilyDeclaration) section {
+	family.Method = declared.Method
+	return &sectionOf[M]{family}
 }
 
 // section is one family's section on its way into the report, whatever the
