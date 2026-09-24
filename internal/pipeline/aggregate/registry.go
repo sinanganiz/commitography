@@ -81,7 +81,7 @@ func entries() []entry {
 		},
 		{family: ownership.Family{}, section: notImplemented[core.OwnershipMetrics](), identities: true},
 		{family: worktype.Family{}, section: notImplemented[core.WorktypeMetrics](), identities: true},
-		{family: aiarchaeology.Family{}, identities: true},
+		{family: aiarchaeology.Family{}, section: notImplemented[core.AIArchaeologyMetrics](), identities: true},
 		{
 			family: hotspot.Family{},
 			section: computed(func(in core.Input) (core.Family[core.HotspotMetrics], []string) {

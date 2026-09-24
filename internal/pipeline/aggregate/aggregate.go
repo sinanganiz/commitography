@@ -61,7 +61,6 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 	// The families below have no implementation yet. Each is present, as
 	// skipped, so the document's shape is final and the package that
 	// implements a family replaces one line here (ADR-0032 clause 1).
-	f.AIArchaeology = core.Skipped[core.AIArchaeologyMetrics](core.Version{}, core.ReasonNotImplemented)
 	f.StaticAnalysis = core.Skipped[core.StaticAnalysisMetrics](core.Version{}, core.ReasonNotImplemented)
 
 	// An author that cannot be resolved into an identity is neither dropped
