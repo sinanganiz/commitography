@@ -28,9 +28,10 @@ import (
 // hide.
 //
 // The parallelism half: the collect stage splits a large history across
-// concurrent readers, and the degree changes neither a commit record nor the
-// report (ADR-0052 clause 6). The aggregate stage's degree joins it with
-// WP-0061.
+// concurrent readers, the aggregate stage runs the families concurrently, one
+// degree governs both, and the degree changes neither a commit record nor the
+// report (ADR-0052 clause 6). TestAggregateAcrossParallelism holds the family
+// degree alone to the same degrees on every fixture.
 
 // metadataSection is the path of the generation metadata in the report.
 const metadataSection = "metadata"
@@ -134,7 +135,8 @@ func parallelDegrees() []int {
 }
 
 // TestDeterminismAcrossParallelism requires the commit records and the report
-// to be identical at every degree.
+// to be identical at every degree, which reaches the collect stage's readers
+// and the aggregate stage's families alike.
 func TestDeterminismAcrossParallelism(t *testing.T) {
 	t.Parallel()
 	repo := openRepository(t)
