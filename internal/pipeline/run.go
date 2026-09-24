@@ -44,19 +44,146 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	emit := eventEmitter{sink: sink}
+	p, err := a.prepare(ctx, opts, &emit)
+	if err != nil {
+		return nil, err
+	}
+	cfg, filtered := p.inputs.Analysis, p.derived.filtered
+
+	// The year is an analysis value, from --wrapped or from the configuration,
+	// and filters every metric. Deviation, removed by WP-0017: ADR-0008
+	// clause 2 requires Wrapped to be generated from the same report as the
+	// dashboard, so the year must stop reaching the pipeline at all. Removing
+	// it changes what callers see, which is that package's to do.
+	if cfg.Year != 0 {
+		inYear := countInYear(filtered.Commits, cfg.Year, cfg)
+		if inYear < minWrappedCommits {
+			return nil, core.NewUserError(core.ReasonYearBelowThreshold, strconv.Itoa(cfg.Year),
+				fmt.Sprintf("Choose a year with at least %d analysed commits, or drop --wrapped and the year setting.",
+					minWrappedCommits),
+				"the requested year has %d analysed commits and the year in review needs %d",
+				inYear, minWrappedCommits)
+		}
+	}
+
+	if err := contextError(ctx); err != nil {
+		return nil, err
+	}
+	report, buildWarnings, err := a.aggregate(ctx, p.inputs, p.derived, opts, &emit)
+	if err != nil {
+		return nil, err
+	}
+	for _, message := range buildWarnings {
+		p.warnings.add(message)
+	}
+
+	var previousYearCommits *int
+	if cfg.Year != 0 {
+		previous := countInYear(filtered.Commits, cfg.Year-1, cfg)
+		if previous > 0 {
+			previousYearCommits = &previous
+		}
+	}
+	emit.emit(StageFinalizing, "analysis complete")
+
+	history := p.inputs.History
+	result := &Result{
+		Report:              report,
+		Repository:          history.Repository,
+		Analysis:            cfg,
+		Operational:         p.operational,
+		Warnings:            append([]string(nil), p.warnings.messages...),
+		PreviousYearCommits: previousYearCommits,
+	}
+	if opts.CheckConsistency {
+		if err := contextError(ctx); err != nil {
+			return nil, err
+		}
+		end, err := a.collector.Preflight(ctx, p.repoPath, opts.SuppliedPath())
+		if err != nil {
+			result.Stale = true
+			result.StaleReason = fmt.Sprintf("%s: %s", StaleRevalidationFailed, core.Artifact(err))
+		} else {
+			result.EndRepository = &end
+			result.Stale, result.StaleReason = repositoryChanged(history.Repository, end)
+		}
+	}
+	return result, nil
+}
+
+// Inputs are what the aggregate stage runs over: the collect stage's history,
+// the replay stage's state, and the analysis configuration both were produced
+// under. Each is independently cacheable (ADR-0020 clauses 2 and 5), and
+// aggregation reads nothing else.
+type Inputs struct {
+	History  *model.History
+	Replay   *core.ReplayState
+	Analysis config.Analysis
+}
+
+// Prepare runs the stages before aggregation as Run does, and returns what
+// aggregation runs over. Prepare followed by Aggregate is Run in two halves,
+// without the progress events and without the checks Run makes around
+// aggregation: the year threshold and the end-of-run consistency check.
+func (a *Analyzer) Prepare(ctx context.Context, opts Options) (*Inputs, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	p, err := a.prepare(ctx, opts, &eventEmitter{})
+	if err != nil {
+		return nil, err
+	}
+	return &p.inputs, nil
+}
+
+// Aggregate runs the aggregate stage alone, over inputs. It rebuilds the
+// identity layer and the path filter from the history, as Run does, and
+// reads no file and starts no process. So it produces the report Run
+// produces, whether the inputs come straight from the earlier stages or from
+// a cache, and whether the repository is still there or not (ADR-0020
+// clause 5). Of opts it reads the build's version and the degree of
+// parallelism alone.
+func (a *Analyzer) Aggregate(ctx context.Context, in Inputs, opts Options) (*core.Report, []string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if in.History == nil || in.Replay == nil {
+		return nil, nil, core.Internalf(nil, "aggregating without the collect stage's history or the replay "+
+			"stage's state")
+	}
+	d, err := derive(in.Analysis, in.History)
+	if err != nil {
+		return nil, nil, err
+	}
+	return a.aggregate(ctx, in, d, opts, &eventEmitter{})
+}
+
+// prepared is what the stages before aggregation leave for the rest of a run.
+type prepared struct {
+	inputs      Inputs
+	derived     derived
+	operational config.Operational
+	warnings    *warningLog
+	// repoPath is the resolved form of the repository path, used for every
+	// git invocation and every containment check. opts.RepoPath is the form
+	// the operator supplied, and is the only one a message may name
+	// (ADR-0067 clause 5).
+	repoPath string
+}
+
+// prepare runs every stage before aggregation: preflight, configuration,
+// collect and replay.
+func (a *Analyzer) prepare(ctx context.Context, opts Options, emit *eventEmitter) (*prepared, error) {
 	if err := contextError(ctx); err != nil {
 		return nil, err
 	}
 
-	// repoPath is the resolved form, used for every git invocation and every
-	// containment check. opts.RepoPath is the form the operator supplied, and
-	// is the only one a message may name (ADR-0067 clause 5).
 	repoPath, err := filepath.Abs(opts.RepoPath)
 	if err != nil {
 		return nil, core.Internalf(err, "resolving the repository path")
 	}
 
-	emit := eventEmitter{sink: sink}
 	emit.emit(StagePreflight, "validating repository")
 	info, err := a.collector.Preflight(ctx, repoPath, opts.SuppliedPath())
 	if err != nil {
@@ -111,13 +238,7 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 			configurationRemedy, "an exclude_paths pattern could not be compiled")
 	}
 
-	warnings := make([]string, 0)
-	collectWarn := func(message string) {
-		warnings = append(warnings, message)
-		if opts.OnWarning != nil {
-			opts.OnWarning(message)
-		}
-	}
+	warnings := &warningLog{onWarning: opts.OnWarning}
 	emit.emit(StageCollecting, "reading history")
 	history, err := a.collector.Collect(collect.Options{
 		RepoPath:     repoPath,
@@ -126,7 +247,7 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 		Parallelism:  opts.Parallelism,
 		ToolVersion:  opts.ToolVersion,
 		Context:      ctx,
-		OnWarning:    collectWarn,
+		OnWarning:    warnings.add,
 		OnProgress: func(current, total int) {
 			if total > 0 {
 				emit.emitCount(StageCollecting, fmt.Sprintf("%d of %d commits", current, total), current, total)
@@ -148,15 +269,13 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	// filter, which replay and the files family apply. Neither reads the
 	// repository.
 	emit.emit(StageIdentity, "resolving identities")
-	resolver := identity.NewResolver(cfg, history.Commits)
-	identities := resolver.Identities()
-	emit.emitCount(StageIdentity, fmt.Sprintf("%d contributors", len(identities)), len(identities), len(identities))
-
-	pathFilter, err := filter.NewPathFilterFromAttributes(cfg, []byte(history.Attributes))
+	d, err := derive(cfg, history)
 	if err != nil {
-		return nil, core.Internalf(err, "building the path filter from the collected attributes")
+		return nil, err
 	}
-	filtered := filter.Summarize(history.Commits)
+	identities := d.resolver.Identities()
+	emit.emitCount(StageIdentity, fmt.Sprintf("%d contributors", len(identities)), len(identities), len(identities))
+	filtered := d.filtered
 	emit.emitCount(StageFiltering, fmt.Sprintf("%d excluded", filtered.TotalCommits-filtered.AnalyzedCommits), filtered.TotalCommits-filtered.AnalyzedCommits, filtered.TotalCommits)
 
 	// Replay is the only stage that reads the repository's contents
@@ -167,7 +286,7 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 		Context:      ctx,
 		RepoPath:     repoPath,
 		History:      history,
-		PathFilter:   pathFilter,
+		PathFilter:   d.pathFilter,
 		MaxFileBytes: operational.MaxFileBytes,
 	})
 	if err != nil {
@@ -176,32 +295,46 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 	if err := contextError(ctx); err != nil {
 		return nil, err
 	}
+	return &prepared{
+		inputs:      Inputs{History: history, Replay: replayed, Analysis: cfg},
+		derived:     d,
+		operational: operational,
+		warnings:    warnings,
+		repoPath:    repoPath,
+	}, nil
+}
 
-	// The year is an analysis value, from --wrapped or from the configuration,
-	// and filters every metric. Deviation, removed by WP-0017: ADR-0008
-	// clause 2 requires Wrapped to be generated from the same report as the
-	// dashboard, so the year must stop reaching the pipeline at all. Removing
-	// it changes what callers see, which is that package's to do.
-	if cfg.Year != 0 {
-		inYear := countInYear(filtered.Commits, cfg.Year, cfg)
-		if inYear < minWrappedCommits {
-			return nil, core.NewUserError(core.ReasonYearBelowThreshold, strconv.Itoa(cfg.Year),
-				fmt.Sprintf("Choose a year with at least %d analysed commits, or drop --wrapped and the year setting.",
-					minWrappedCommits),
-				"the requested year has %d analysed commits and the year in review needs %d",
-				inYear, minWrappedCommits)
-		}
+// derived is what the stages after collection rebuild from its history
+// alone: the identity layer, the path filter and the filtered records.
+// Nothing in it reads the repository.
+type derived struct {
+	resolver   *identity.Resolver
+	pathFilter *filter.PathFilter
+	filtered   filter.Result
+}
+
+func derive(cfg config.Analysis, history *model.History) (derived, error) {
+	resolver := identity.NewResolver(cfg, history.Commits)
+	pathFilter, err := filter.NewPathFilterFromAttributes(cfg, []byte(history.Attributes))
+	if err != nil {
+		return derived{}, core.Internalf(err, "building the path filter from the collected attributes")
 	}
+	return derived{resolver: resolver, pathFilter: pathFilter, filtered: filter.Summarize(history.Commits)}, nil
+}
 
-	input := core.Input{
+// aggregate runs the aggregate stage over the inputs and what derive rebuilt
+// from their history. The stage is given no repository location: nothing it
+// does needs one (ADR-0020 clause 5).
+func (a *Analyzer) aggregate(ctx context.Context, in Inputs, d derived, opts Options,
+	emit *eventEmitter) (*core.Report, []string, error) {
+	return a.builder.Build(core.Input{
 		Context:     ctx,
-		RepoPath:    repoPath,
-		Repository:  history.Repository,
-		Config:      cfg,
-		Filtered:    filtered,
-		Resolver:    resolver,
-		PathFilter:  pathFilter,
-		Replay:      replayed,
+		Repository:  in.History.Repository,
+		Config:      in.Analysis,
+		Filtered:    d.filtered,
+		Resolver:    d.resolver,
+		PathFilter:  d.pathFilter,
+		Replay:      in.Replay,
 		ToolVersion: opts.ToolVersion,
 		// One degree governs both parallel stages: collect's readers and
 		// aggregate's families (ADR-0052 clauses 1, 3 and 5).
@@ -224,50 +357,21 @@ func (a *Analyzer) Run(ctx context.Context, opts Options, sink ProgressSink) (*R
 			}
 			emit.emitProgress(mapped, detail, current, total)
 		},
-	}
+	})
+}
 
-	if err := contextError(ctx); err != nil {
-		return nil, err
-	}
-	report, buildWarnings, err := a.builder.Build(input)
-	if err != nil {
-		return nil, err
-	}
-	for _, message := range buildWarnings {
-		collectWarn(message)
-	}
+// warningLog keeps a run's warnings for its result, and hands each to the
+// caller as it arrives.
+type warningLog struct {
+	messages  []string
+	onWarning func(string)
+}
 
-	var previousYearCommits *int
-	if cfg.Year != 0 {
-		previous := countInYear(filtered.Commits, cfg.Year-1, cfg)
-		if previous > 0 {
-			previousYearCommits = &previous
-		}
+func (w *warningLog) add(message string) {
+	w.messages = append(w.messages, message)
+	if w.onWarning != nil {
+		w.onWarning(message)
 	}
-	emit.emit(StageFinalizing, "analysis complete")
-
-	result := &Result{
-		Report:              report,
-		Repository:          history.Repository,
-		Analysis:            cfg,
-		Operational:         operational,
-		Warnings:            append([]string(nil), warnings...),
-		PreviousYearCommits: previousYearCommits,
-	}
-	if opts.CheckConsistency {
-		if err := contextError(ctx); err != nil {
-			return nil, err
-		}
-		end, err := a.collector.Preflight(ctx, repoPath, opts.SuppliedPath())
-		if err != nil {
-			result.Stale = true
-			result.StaleReason = fmt.Sprintf("%s: %s", StaleRevalidationFailed, core.Artifact(err))
-		} else {
-			result.EndRepository = &end
-			result.Stale, result.StaleReason = repositoryChanged(history.Repository, end)
-		}
-	}
-	return result, nil
 }
 
 func repositoryChanged(start, end model.RepositoryInfo) (bool, string) {
