@@ -7,10 +7,10 @@
 //
 // The report document follows docs/metrics.md, which is authoritative
 // (ADR-0062): no field exists in it that the catalogue does not define, every
-// family of ADR-0024 clause 5 is present with a status (ADR-0032 clause 1),
-// and everything that varies between two runs over one commit is confined to
-// the metadata section (ADR-0021 clause 6). docs/report-schema.json describes
-// it.
+// family of ADR-0076 clause 6 is present with a status (ADR-0032 clause 1)
+// under the namespace the catalogue gives it, and everything that varies
+// between two runs over one commit is confined to the metadata section
+// (ADR-0021 clause 6). docs/report-schema.json describes it.
 package core
 
 import (
@@ -34,8 +34,14 @@ import (
 //	     configuration (ADR-0026 clause 2)
 //	1.4  the sections object added, carrying a version for every top-level
 //	     section that is not a family (ADR-0070 clause 1)
+//	2.0  every family written under the namespace docs/metrics.md gives it,
+//	     so commit-size, ai-archaeology and static-analysis became
+//	     commit_size, ai_archaeology and static_analysis (ADR-0062 clause 3,
+//	     ADR-0076 clause 1); and the family status code worktree_unavailable
+//	     removed, which nothing produced once no family read the working tree
+//	     (ADR-0076 clause 11)
 func DocumentVersion() Version {
-	return Version{Major: 1, Minor: 4}
+	return Version{Major: 2, Minor: 0}
 }
 
 // Report is the complete analysis artifact: one repository, at one commit,
@@ -106,20 +112,21 @@ type MergeCandidate struct {
 	Signal string `json:"signal"`
 }
 
-// Families holds every family of ADR-0024 clause 5, in that order, keyed by
-// family name. A struct rather than a map, so that no report can be built
-// without one of them.
+// Families holds every family of ADR-0076 clause 6, in that order, each keyed
+// by the namespace docs/metrics.md gives it, which is the namespace the family
+// declares (ADR-0076 clause 1, ADR-0062 clause 3). A struct rather than a map,
+// so that no report can be built without one of them.
 type Families struct {
 	Temporal       Family[TemporalMetrics]       `json:"temporal"`
-	CommitSize     Family[CommitSizeMetrics]     `json:"commit-size"`
+	CommitSize     Family[CommitSizeMetrics]     `json:"commit_size"`
 	Messages       Family[MessagesMetrics]       `json:"messages"`
 	Files          Family[FilesMetrics]          `json:"files"`
 	Coupling       Family[CouplingMetrics]       `json:"coupling"`
 	Ownership      Family[OwnershipMetrics]      `json:"ownership"`
 	Worktype       Family[WorktypeMetrics]       `json:"worktype"`
-	AIArchaeology  Family[AIArchaeologyMetrics]  `json:"ai-archaeology"`
+	AIArchaeology  Family[AIArchaeologyMetrics]  `json:"ai_archaeology"`
 	Hotspot        Family[HotspotMetrics]        `json:"hotspot"`
-	StaticAnalysis Family[StaticAnalysisMetrics] `json:"static-analysis"`
+	StaticAnalysis Family[StaticAnalysisMetrics] `json:"static_analysis"`
 }
 
 // Place writes one family's section into the report under namespace, the key

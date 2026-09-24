@@ -25,12 +25,6 @@
 #     section, and internal/pipeline/replay, which reads
 #     no year (ADR-0074), counts their work-type change
 #     events all the same
-#   the report writes the families commit-size,          ADR-0062  WP-0061
-#     ai-archaeology and static-analysis under those
-#     keys, while their declarations give the
-#     catalogue's namespaces commit_size, ai_archaeology
-#     and static_analysis (clause 3); nothing routes
-#     output through a declaration until WP-0061
 #
 # Two rules from table 1 are enforced by a checker rather than here, because
 # this linter's configuration cannot express them (ADR-0055 clause 2):

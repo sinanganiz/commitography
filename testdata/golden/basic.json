@@ -1,7 +1,7 @@
 {
   "document_version": {
-    "major": 1,
-    "minor": 4
+    "major": 2,
+    "minor": 0
   },
   "sections": {
     "metadata": {
@@ -202,7 +202,7 @@
         "last_commit_date": "2026-02-25"
       }
     },
-    "commit-size": {
+    "commit_size": {
       "version": {
         "major": 2,
         "minor": 0
@@ -313,7 +313,7 @@
       ],
       "metrics": {}
     },
-    "ai-archaeology": {
+    "ai_archaeology": {
       "version": {
         "major": 0,
         "minor": 0
@@ -339,7 +339,7 @@
         ]
       }
     },
-    "static-analysis": {
+    "static_analysis": {
       "version": {
         "major": 0,
         "minor": 0

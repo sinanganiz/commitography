@@ -27,7 +27,7 @@
         "major": {
           "type": "integer",
           "enum": [
-            1
+            2
           ]
         },
         "minor": {
@@ -193,18 +193,18 @@
     "families": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Every family of ADR-0024 clause 5, each with a version and a status (ADR-0031 clause 2, ADR-0032).",
+      "description": "Every family of ADR-0076 clause 6, each under the namespace docs/metrics.md gives it (ADR-0076 clause 1, ADR-0062 clause 3), with a version and a status (ADR-0031 clause 2, ADR-0032). The namespaces became the keys in document version 2.0.",
       "required": [
         "temporal",
-        "commit-size",
+        "commit_size",
         "messages",
         "files",
         "coupling",
         "ownership",
         "worktype",
-        "ai-archaeology",
+        "ai_archaeology",
         "hotspot",
-        "static-analysis"
+        "static_analysis"
       ],
       "properties": {
         "temporal": {
@@ -278,7 +278,7 @@
             }
           ]
         },
-        "commit-size": {
+        "commit_size": {
           "oneOf": [
             {
               "type": "object",
@@ -570,7 +570,7 @@
           "$ref": "#/$defs/skippedFamily",
           "description": "Not implemented yet; present as skipped (ADR-0032 clause 1)."
         },
-        "ai-archaeology": {
+        "ai_archaeology": {
           "$ref": "#/$defs/skippedFamily",
           "description": "Not implemented yet; present as skipped (ADR-0032 clause 1)."
         },
@@ -645,7 +645,7 @@
             }
           ]
         },
-        "static-analysis": {
+        "static_analysis": {
           "$ref": "#/$defs/skippedFamily",
           "description": "Not implemented yet; present as skipped (ADR-0032 clause 1)."
         }
@@ -749,7 +749,6 @@
       "items": {
         "type": "string",
         "enum": [
-          "worktree_unavailable",
           "not_implemented",
           "empty_population",
           "cardinality_limit",

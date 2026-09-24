@@ -203,7 +203,7 @@ func recordConsumerFamilies(t *testing.T, history *model.History, repoPath strin
 	couplingFamily, _ := coupling.Build(core.ScopedCommits(in, in.LineScoped()))
 	families := map[string]any{
 		"temporal":    temporal.Build(in, in.Analyzed()).Metrics,
-		"commit-size": commitsize.Build(in, in.LineScoped()).Metrics,
+		"commit_size": commitsize.Build(in, in.LineScoped()).Metrics,
 		"messages":    messages.Build(in.Analyzed()).Metrics,
 		"coupling":    couplingFamily.Metrics,
 	}
