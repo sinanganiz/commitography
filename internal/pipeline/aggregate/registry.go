@@ -25,9 +25,14 @@ type entry struct {
 	family core.MetricFamily
 	// section produces the family's section.
 	section sectionFunc
-	// identities marks a family whose values are attributed to identities,
-	// which an unresolved author therefore degrades (docs/metrics.md
-	// section 13).
+	// identities marks a family whose values are attributed to identities:
+	// ownership's lines by identity and bus factor, worktype's editor-by-owner
+	// breakdown, and ai-archaeology's identity ratio (docs/metrics.md
+	// sections 7 to 9). An author that cannot be resolved into an identity
+	// degrades such a family with unresolved_identity: the author's commits
+	// are counted, so values may be attributed wrongly, which is low
+	// confidence (ADR-0032 clause 2, docs/metrics.md section 13). A skipped
+	// family stays skipped, having computed nothing to distrust.
 	identities bool
 	// progress is the progress detail reported as the family is started, for
 	// the families that begin a progress stage.

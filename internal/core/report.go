@@ -37,9 +37,9 @@ import (
 //	2.0  every family written under the namespace docs/metrics.md gives it,
 //	     so commit-size, ai-archaeology and static-analysis became
 //	     commit_size, ai_archaeology and static_analysis (ADR-0062 clause 3,
-//	     ADR-0076 clause 1); and the family status code worktree_unavailable
-//	     removed, which nothing produced once no family read the working tree
-//	     (ADR-0076 clause 11)
+//	     ADR-0076 clause 1); and the family status code naming a missing
+//	     working tree removed, which nothing produced once no family read the
+//	     working tree (ADR-0076 clause 11)
 func DocumentVersion() Version {
 	return Version{Major: 2, Minor: 0}
 }
