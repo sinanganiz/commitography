@@ -241,7 +241,7 @@ to be amended mid-flight.
 | 0058 | distribution | Container image and deployment documentation | ADR-0046, ADR-0016 | WP-0045 | Draft |
 | 0059 | distribution | Release pipeline | ADR-0049, ADR-0057 | WP-0058, WP-0003 | Draft |
 | 0060 | distribution | User documentation rewrite | ADR-0001 | WP-0057, WP-0058 | Draft |
-| [0061](0061-aggregate-stage.md) | pipeline | Aggregate stage and family registry | ADR-0020, ADR-0076, ADR-0052, ADR-0032, ADR-0031, ADR-0062 | WP-0013, WP-0015 | Ready |
+| [0061](0061-aggregate-stage.md) | pipeline | Aggregate stage and family registry | ADR-0020, ADR-0076, ADR-0052, ADR-0032, ADR-0031, ADR-0062 | WP-0013, WP-0015 | Done |
 
 ---
 
