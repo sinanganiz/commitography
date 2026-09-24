@@ -23,9 +23,7 @@ import (
 // entry is one family's registration.
 type entry struct {
 	family core.MetricFamily
-	// section produces the family's section. It is nil for a family the
-	// stage still builds directly, until the family is routed through the
-	// registry.
+	// section produces the family's section.
 	section sectionFunc
 	// identities marks a family whose values are attributed to identities,
 	// which an unresolved author therefore degrades (docs/metrics.md
@@ -88,7 +86,7 @@ func entries() []entry {
 				return hotspot.Build(core.ScopedCommits(in, in.LineScoped())), nil
 			}),
 		},
-		{family: staticanalysis.Family{}},
+		{family: staticanalysis.Family{}, section: notImplemented[core.StaticAnalysisMetrics]()},
 	}
 }
 

@@ -28,22 +28,24 @@ type outcome struct {
 	err      error
 }
 
-// runFamilies runs every routed family and places its section into families.
-// The families run at once, up to the stage's degree of parallelism, and
-// nothing they produce depends on the order they finish in: sections are
-// placed and warnings returned in registry order (ADR-0052 clause 6).
-func runFamilies(in core.Input, families *core.Families) ([]string, error) {
+// route runs every registered family and places its section into families:
+// the only route by which a family's output reaches the report. The families
+// run at once, up to the stage's degree of parallelism, and nothing they
+// produce depends on the order they finish in: sections are placed and
+// warnings returned in registry order (ADR-0052 clause 6).
+func route(in core.Input, families *core.Families, registered []entry) ([]string, error) {
 	ctx := in.Context
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	var jobs []job
-	for _, e := range entries() {
-		if e.section == nil {
-			continue
-		}
+	jobs := make([]job, 0, len(registered))
+	for _, e := range registered {
 		declared := e.family.Declaration()
+		if e.section == nil {
+			return nil, core.Internalf(nil, "the family %s is registered with no way to produce its section",
+				declared.Name)
+		}
 		input, skip, err := resolve(in, declared)
 		if err != nil {
 			return nil, err

@@ -178,16 +178,3 @@ func unresolvedAuthor(in core.Input, analyzed []model.Commit) bool {
 	}
 	return false
 }
-
-// degradeIdentityAttributed marks degraded, with reason unresolved_identity,
-// every family whose values are attributed to identities: ownership's lines by
-// identity and bus factor, worktype's editor-by-owner breakdown, and
-// ai-archaeology's identity ratio (docs/metrics.md sections 7 to 9). The
-// commits of an unresolved author are counted, so the values present may be
-// attributed wrongly, which is low confidence (ADR-0032 clause 2). A family
-// that is skipped stays skipped: it computed nothing to distrust.
-func degradeIdentityAttributed(f *core.Families) {
-	f.Ownership.Degrade(core.ReasonUnresolvedIdentity, core.ConfidenceLow)
-	f.Worktype.Degrade(core.ReasonUnresolvedIdentity, core.ConfidenceLow)
-	f.AIArchaeology.Degrade(core.ReasonUnresolvedIdentity, core.ConfidenceLow)
-}

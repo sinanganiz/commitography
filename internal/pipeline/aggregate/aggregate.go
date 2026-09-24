@@ -1,11 +1,16 @@
 // Package aggregate is the aggregate stage (ADR-0020): it builds the report
-// document by running the metric families over the filtered commits
-// (ADR-0024, ADR-0040). Every family of ADR-0024 clause 5 is placed in the
-// document with a status (ADR-0032 clause 1); a family with no implementation
-// yet is skipped with reason not_implemented. Generation values go to the
-// metadata section alone (ADR-0021 clause 6). Beside the families it writes
-// the identities section, the resolved contributors a reader selects from
-// (ADR-0010 clause 2, docs/metrics.md section 14).
+// document from the collect stage's records and the replay stage's state,
+// reading no file and starting no process (clause 5). Every metric family
+// reaches the report through the stage's registry and by no other route:
+// each family's declared inputs are resolved, the families run concurrently
+// (ADR-0052 clause 3), and each section is placed under the namespace its
+// family declares (ADR-0076 clauses 3 and 5, ADR-0040). Every family of
+// ADR-0076 clause 6 is present with a status (ADR-0032 clause 1); a family
+// with no implementation yet is skipped with reason not_implemented.
+// Generation values go to the metadata section alone (ADR-0021 clause 6).
+// Beside the families it writes the identities section, the resolved
+// contributors a reader selects from (ADR-0010 clause 2, docs/metrics.md
+// section 14).
 package aggregate
 
 import (
@@ -30,8 +35,6 @@ func New(clock core.Clock, _ core.Filesystem) *Builder {
 // them where it shows its other warnings.
 func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 	analyzed := in.Analyzed()
-	var warnings []string
-
 	r := &core.Report{
 		DocumentVersion: core.DocumentVersion(),
 		Sections:        core.CurrentSectionVersions(),
@@ -50,34 +53,13 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 	// configured name, and a pseudonym only means something where the reader
 	// can see the entry it names (ADR-0068 clause 4).
 	r.Configuration = core.EmbedConfiguration(in.Config, in.Resolver, r.Identities)
-	f := &r.Families
 
-	routed, err := runFamilies(in, f)
+	warnings, err := route(in, &r.Families, entries())
 	if err != nil {
 		return nil, nil, err
 	}
-	warnings = append(warnings, routed...)
-
-	// The families below have no implementation yet. Each is present, as
-	// skipped, so the document's shape is final and the package that
-	// implements a family replaces one line here (ADR-0032 clause 1).
-	f.StaticAnalysis = core.Skipped[core.StaticAnalysisMetrics](core.Version{}, core.ReasonNotImplemented)
-
-	// An author that cannot be resolved into an identity is neither dropped
-	// nor split: every family attributing values to identities is marked
-	// degraded instead (ADR-0032, docs/metrics.md section 13).
-	if unresolvedAuthor(in, analyzed) {
-		degradeIdentityAttributed(f)
-	}
-
-	// An analysis the operator let proceed on a shallow clone has computed
-	// every family over an incomplete history (docs/metrics.md section 13).
-	if in.Repository.IsShallow {
-		f.Degrade(core.ReasonShallowClone, core.ConfidenceLow)
-	}
-
 	// Every family is present in every report (ADR-0032 clause 1).
-	if missing := f.Unplaced(); len(missing) > 0 {
+	if missing := r.Families.Unplaced(); len(missing) > 0 {
 		return nil, nil, core.Internalf(nil, "the report has no section for the families %v", missing)
 	}
 	return r, warnings, nil

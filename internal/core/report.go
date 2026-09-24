@@ -189,19 +189,3 @@ func familyKey(field reflect.StructField) string {
 	name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 	return name
 }
-
-// Degrade marks every computed family degraded for a condition that affects
-// all of them, such as an incomplete history. Skipped families are left as
-// they are.
-func (f *Families) Degrade(reason Reason, confidence Confidence) {
-	f.Temporal.Degrade(reason, confidence)
-	f.CommitSize.Degrade(reason, confidence)
-	f.Messages.Degrade(reason, confidence)
-	f.Files.Degrade(reason, confidence)
-	f.Coupling.Degrade(reason, confidence)
-	f.Ownership.Degrade(reason, confidence)
-	f.Worktype.Degrade(reason, confidence)
-	f.AIArchaeology.Degrade(reason, confidence)
-	f.Hotspot.Degrade(reason, confidence)
-	f.StaticAnalysis.Degrade(reason, confidence)
-}
