@@ -11,7 +11,6 @@ package aggregate
 import (
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/metrics/commitsize"
-	"github.com/sinanganiz/commitography/internal/metrics/ownership"
 )
 
 // Builder is the aggregate stage. It holds the clock that stamps the report's
@@ -63,9 +62,6 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 
 	progress(in, "metrics", "code", 0, 0)
 	f.CommitSize = commitsize.Build(in, lineScoped)
-
-	progress(in, "metrics", "social", 0, 0)
-	f.Ownership = ownership.Build()
 
 	// The families below have no implementation yet. Each is present, as
 	// skipped, so the document's shape is final and the package that
