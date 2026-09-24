@@ -55,7 +55,17 @@ func entries() []entry {
 			}),
 			progress: "messages",
 		},
-		{family: files.Family{}},
+		{
+			family: files.Family{},
+			// The files family reads the analysed commit's tree as replay
+			// listed it; this stage lists no tree and reads no file
+			// (ADR-0020 clause 3).
+			section: computed(func(in core.Input) (core.Family[core.FilesMetrics], []string) {
+				tree := files.Tree{Tracked: in.Replay.Tracked, TextFileCount: in.Replay.TextFileCount}
+				return files.Build(in, in.LineScoped(), tree), nil
+			}),
+			progress: "code",
+		},
 		{family: coupling.Family{}},
 		{family: ownership.Family{}, identities: true},
 		{family: worktype.Family{}, identities: true},

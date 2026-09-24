@@ -65,11 +65,6 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 
 	progress(in, "metrics", "code", 0, 0)
 	f.CommitSize = commitsize.Build(in, lineScoped)
-	files, err := b.buildFiles(in, lineScoped)
-	if err != nil {
-		return nil, nil, err
-	}
-	f.Files = files
 
 	progress(in, "metrics", "social", 0, 0)
 	scoped := core.ScopedCommits(in, lineScoped)
