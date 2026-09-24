@@ -11,7 +11,6 @@ package aggregate
 import (
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/metrics/commitsize"
-	"github.com/sinanganiz/commitography/internal/metrics/coupling"
 	"github.com/sinanganiz/commitography/internal/metrics/hotspot"
 	"github.com/sinanganiz/commitography/internal/metrics/ownership"
 )
@@ -67,11 +66,7 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 	f.CommitSize = commitsize.Build(in, lineScoped)
 
 	progress(in, "metrics", "social", 0, 0)
-	scoped := core.ScopedCommits(in, lineScoped)
-	var couplingWarnings []string
-	f.Coupling, couplingWarnings = coupling.Build(scoped)
-	warnings = append(warnings, couplingWarnings...)
-	f.Hotspot = hotspot.Build(scoped)
+	f.Hotspot = hotspot.Build(core.ScopedCommits(in, lineScoped))
 	f.Ownership = ownership.Build()
 
 	// The families below have no implementation yet. Each is present, as

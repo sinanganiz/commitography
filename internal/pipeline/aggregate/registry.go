@@ -66,7 +66,13 @@ func entries() []entry {
 			}),
 			progress: "code",
 		},
-		{family: coupling.Family{}},
+		{
+			family: coupling.Family{},
+			section: computed(func(in core.Input) (core.Family[core.CouplingMetrics], []string) {
+				return coupling.Build(core.ScopedCommits(in, in.LineScoped()))
+			}),
+			progress: "social",
+		},
 		{family: ownership.Family{}, identities: true},
 		{family: worktype.Family{}, identities: true},
 		{family: aiarchaeology.Family{}, identities: true},
