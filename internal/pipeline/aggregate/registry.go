@@ -76,7 +76,12 @@ func entries() []entry {
 		{family: ownership.Family{}, identities: true},
 		{family: worktype.Family{}, identities: true},
 		{family: aiarchaeology.Family{}, identities: true},
-		{family: hotspot.Family{}},
+		{
+			family: hotspot.Family{},
+			section: computed(func(in core.Input) (core.Family[core.HotspotMetrics], []string) {
+				return hotspot.Build(core.ScopedCommits(in, in.LineScoped())), nil
+			}),
+		},
 		{family: staticanalysis.Family{}},
 	}
 }
