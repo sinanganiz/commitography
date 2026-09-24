@@ -74,7 +74,7 @@ func entries() []entry {
 			progress: "social",
 		},
 		{family: ownership.Family{}, section: notImplemented[core.OwnershipMetrics](), identities: true},
-		{family: worktype.Family{}, identities: true},
+		{family: worktype.Family{}, section: notImplemented[core.WorktypeMetrics](), identities: true},
 		{family: aiarchaeology.Family{}, identities: true},
 		{
 			family: hotspot.Family{},
