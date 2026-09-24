@@ -13,7 +13,6 @@ import (
 	"github.com/sinanganiz/commitography/internal/metrics/commitsize"
 	"github.com/sinanganiz/commitography/internal/metrics/coupling"
 	"github.com/sinanganiz/commitography/internal/metrics/hotspot"
-	"github.com/sinanganiz/commitography/internal/metrics/messages"
 	"github.com/sinanganiz/commitography/internal/metrics/ownership"
 )
 
@@ -71,9 +70,6 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 		return nil, nil, err
 	}
 	f.Files = files
-
-	progress(in, "metrics", "messages", 0, 0)
-	f.Messages = messages.Build(analyzed)
 
 	progress(in, "metrics", "social", 0, 0)
 	scoped := core.ScopedCommits(in, lineScoped)

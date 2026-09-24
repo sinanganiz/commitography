@@ -48,7 +48,13 @@ func entries() []entry {
 			progress: "temporal",
 		},
 		{family: commitsize.Family{}},
-		{family: messages.Family{}},
+		{
+			family: messages.Family{},
+			section: computed(func(in core.Input) (core.Family[core.MessagesMetrics], []string) {
+				return messages.Build(in.Analyzed()), nil
+			}),
+			progress: "messages",
+		},
 		{family: files.Family{}},
 		{family: coupling.Family{}},
 		{family: ownership.Family{}, identities: true},
