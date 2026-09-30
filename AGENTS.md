@@ -55,7 +55,16 @@ that implemented it.
 
 ## Git
 
-- Work directly on `main`. Do not create a branch for a work package.
+- Work directly on `main`. Do not create a branch for a work package, and do
+  not open a pull request. This holds in a cloud session too, whatever branch
+  the session proposes.
+- Commit as the repository owner. Before the first commit, run
+  `git config user.name "Sinan Ganiz"` and
+  `git config user.email "sinan.ganiz@gmail.com"` in the clone. Claude is a
+  co-author, never the author.
+- End every commit message with a `Co-Authored-By:` trailer naming Claude. Use
+  the one your environment supplies, if it supplies one; otherwise write
+  `Co-Authored-By: Claude <noreply@anthropic.com>`.
 - Commit in logical steps as you go. Do not put a whole package in one commit,
   and do not leave the package uncommitted at the end.
 - Every commit message names its package: `WP-NNNN: <what changed>`.
@@ -65,7 +74,11 @@ that implemented it.
   commit that changes a budget value states the measurement behind it
   (ADR-0054).
 - Do not amend, rebase, reset or force-push a commit that already exists.
-- Do not push without being asked.
+- Push `main` to `origin` when you finish a package, and also when you stop
+  early: every commit leaves the repository working, and a cloud session's
+  unpushed commits are lost with the session. Push nothing to any other
+  branch. If the push is refused because `main` moved, stop and report it; do
+  not rebase or merge.
 
 ## Reporting
 
