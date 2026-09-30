@@ -101,6 +101,8 @@ a superseding record is written first.
 | [0075](0075-files-family-inputs.md) | The files family declares replay state as well as commit records | Superseded by ADR-0076 |
 | [0076](0076-family-contract-three-inputs.md) | Metric families declare three input kinds, and none is the working tree | Accepted |
 | [0077](0077-person-interpretation-at-view-time.md) | Person interpretation is computed at view time | Accepted |
+| [0078](0078-scoped-figures-are-projections-of-cells.md) | Scoped figures are projections of cells the report carries | Accepted |
+| [0079](0079-replay-attributes-lines-to-commits.md) | Replay attributes each line to its authoring commit | Accepted |
 
 ADR-0024 and ADR-0075 are superseded by ADR-0076. ADR-0047 is superseded by ADR-0065. ADR-0056 is superseded by ADR-0063.
 
@@ -121,6 +123,7 @@ schedule (ADR-0004). Records in the same tier have no dependency on each other.
 | 6 | 0023, 0047, 0051, 0054, 0065, 0066, 0067, 0068, 0070, 0071, 0072 |
 | 7 | 0069, 0073 |
 | 8 | 0074, 0075, 0076, 0077 |
+| 9 | 0078, 0079 |
 
 Two records carry partial dependencies stated in prose rather than as a
 whole-record dependency, and are therefore placed earlier than their text
@@ -162,6 +165,11 @@ checked without reading the full set. The governing record is authoritative.
   persisted. (0029, 0033)
 - No report contains a person's interpretation; it is computed on request.
   (0077)
+- No scoped figure is computed except by its family's derivation over the
+  report's cells, and the repository value of a scoped metric is that
+  derivation over every cell. (0078)
+- No selection names the aggregate bucket, and no part of the report
+  represents individually an identity another part folds. (0078)
 - No static HTML generation; the CLI emits one file. (0034)
 - No flag to skip blame exists; replay makes it unnecessary. (0020)
 - No billing, entitlement, licence-key or quota code. (0003)
@@ -216,6 +224,8 @@ checked without reading the full set. The governing record is authoritative.
   tree, and never uses git's diff output for line ownership. (0073)
 - Replay applies no analysis parameter; a rewrite counts once, and the recency
   window is applied in aggregation. (0074)
+- Replay applies no detection rule and no window to a line's authoring
+  commit or to what became of its lines; it records them. (0079)
 - No visualisation renders unbounded cardinality; limits are applied in the
   report. (0053)
 

@@ -146,23 +146,21 @@ to be amended mid-flight.
   switch its family to read those values from the record. WP-0012 also made the
   collect artifact depend on the analysis configuration, so WP-0033 must key its
   cache on the configuration digest. WP-0024 inherits from WP-0014: applying the window to the age histograms, the
-  class counts, the bound at 200, repository shares and the projection checker,
-  and it must **move the top-200 identity selection into `core`** so that the
-  breakdown and the identities section fold exactly the same identities; a copy
-  held equal by a checker is the fallback only. It must also turn the
+  class counts, the bound at 200, repository shares and the projection checker;
+  WP-0063 moves the top-200 identity selection into `core`, so the breakdown
+  folds through it rather than selecting its own. It must also turn the
   `limit_reached_size` reason WP-0014 carries in replay state into the family's
   `degraded` status, and it inherits the year deviation until WP-0017.
   **WP-0034 must key the replay checkpoint on path exclusion, date source and
   identity resolution as well as history** — but not on the recency window.
   ADR-0074's consequences overstate replay's independence; its binding clause 9
   is correct and only says the checkpoint does not depend on the window.
-  **WP-0026 rebuilds `hotspot` on replay state** (ADR-0076): replay must carry
-  what the complexity proxy needs — per-line leading whitespace for each tracked
-  text file at the analysed commit — so that WP-0026 needs replay in its `Files`
-  list or a replay package before it.
+  **WP-0026 rebuilds `hotspot` on replay state** (ADR-0076): WP-0062 makes
+  replay carry the complexity proxy's inputs for each text file at the analysed
+  commit, and WP-0026 defines the proxy over them.
   **WP-0016** carries only the repository's interpretation in the report and
-  exposes interpretation as a function of report, selection and taxonomy version,
-  for the server to call at view time (ADR-0077). It must also define the
+  exposes interpretation as a function of report, scope and taxonomy version,
+  for the server to call at view time (ADR-0077, ADR-0078 clause 11). It must also define the
   interpretation section in `docs/metrics.md`, as WP-0008 did for identities,
   because the catalogue checker admits no undefined section.
   **WP-0017** starts by removing an unrecorded violation of ADR-0034: the command
@@ -170,6 +168,12 @@ to be amended mid-flight.
   the page rendering and the Wrapped HTML but keeps the embedded assets, which
   the server still serves until WP-0046. It also removes `--no-blame`,
   `--per-author` and the year's effect on the analysis, as recorded against it.
+- **A scope is a data requirement.** The catalogue gave temporal metrics a
+  person scope and the taxonomy needed person figures from seven families, while
+  nothing said what the report must carry for a merged selection or a single
+  year to be computed from it alone. Before writing a family, list what every
+  consumer derives from its output, and give the output room for it
+  (ADR-0078).
 - **When a package hits a collision, look for the defect that predates it.**
   Merge candidates drawing on configuration-only addresses contradicted ADR-0007
   from the start; digests merely made it visible. Fixing the visible symptom
@@ -196,17 +200,17 @@ to be amended mid-flight.
 | [0013](0013-replay-stage.md) | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051, ADR-0072, ADR-0073, ADR-0033, ADR-0019, ADR-0052 | WP-0012 | Done |
 | [0014](0014-worktype-classification.md) | pipeline | Work-type classification inputs | ADR-0074, ADR-0020, ADR-0073, ADR-0019, ADR-0062 | WP-0013 | Done |
 | [0015](0015-family-contract.md) | pipeline | Family contract | ADR-0076, ADR-0032, ADR-0031, ADR-0062 | WP-0008 | Done |
-| 0016 | pipeline | Interpret stage | ADR-0020, ADR-0014, ADR-0077 | WP-0061 | Draft |
+| 0016 | pipeline | Interpret stage | ADR-0020, ADR-0014, ADR-0077, ADR-0078 | WP-0061, WP-0063 | Draft |
 | 0017 | pipeline | Render boundary and CLI | ADR-0034, ADR-0021, ADR-0020 | WP-0061, WP-0016 | Draft |
-| 0018 | metrics | temporal family | ADR-0024 | WP-0061 | Draft |
-| 0019 | metrics | commit-size family | ADR-0024 | WP-0061 | Draft |
-| 0020 | metrics | messages family | ADR-0024 | WP-0061 | Draft |
-| 0021 | metrics | files family | ADR-0024 | WP-0061 | Draft |
-| 0022 | metrics | coupling family | ADR-0024, ADR-0053 | WP-0061 | Draft |
-| 0023 | metrics | ownership family | ADR-0024 | WP-0061, WP-0013 | Draft |
-| 0024 | metrics | worktype family output | ADR-0024, ADR-0018, ADR-0074 | WP-0061, WP-0014 | Draft |
-| 0025 | metrics | ai-archaeology family | ADR-0024 | WP-0061, WP-0013 | Draft |
-| 0026 | metrics | hotspot family | ADR-0024 | WP-0061 | Draft |
+| 0018 | metrics | temporal family | ADR-0076, ADR-0078 | WP-0063 | Draft |
+| 0019 | metrics | commit-size family | ADR-0076, ADR-0078 | WP-0063 | Draft |
+| 0020 | metrics | messages family | ADR-0076, ADR-0078 | WP-0063 | Draft |
+| 0021 | metrics | files family | ADR-0076, ADR-0078 | WP-0063 | Draft |
+| 0022 | metrics | coupling family | ADR-0076, ADR-0053 | WP-0061 | Draft |
+| 0023 | metrics | ownership family | ADR-0076, ADR-0078 | WP-0062, WP-0063 | Draft |
+| 0024 | metrics | worktype family output | ADR-0076, ADR-0018, ADR-0074, ADR-0078 | WP-0062, WP-0063 | Draft |
+| 0025 | metrics | ai-archaeology family | ADR-0076, ADR-0078, ADR-0079 | WP-0062, WP-0063 | Draft |
+| 0026 | metrics | hotspot family | ADR-0076 | WP-0062 | Draft |
 | 0027 | metrics | static-analysis placeholder | ADR-0012, ADR-0032 | WP-0061 | Draft |
 | 0028 | interpret | Axis layer | ADR-0030, ADR-0013 | WP-0016, WP-0018, WP-0019, WP-0020, WP-0021, WP-0022, WP-0023, WP-0024, WP-0025, WP-0026 | Draft |
 | 0029 | interpret | Archetype and badge evaluation | ADR-0014, ADR-0030 | WP-0028 | Draft |
@@ -242,6 +246,8 @@ to be amended mid-flight.
 | 0059 | distribution | Release pipeline | ADR-0049, ADR-0057 | WP-0058, WP-0003 | Draft |
 | 0060 | distribution | User documentation rewrite | ADR-0001 | WP-0057, WP-0058 | Draft |
 | [0061](0061-aggregate-stage.md) | pipeline | Aggregate stage and family registry | ADR-0020, ADR-0076, ADR-0052, ADR-0032, ADR-0031, ADR-0062 | WP-0013, WP-0015 | Done |
+| [0062](0062-replay-final-shape.md) | pipeline | Replay state takes its final shape | ADR-0079, ADR-0078, ADR-0076, ADR-0074, ADR-0051, ADR-0054 | WP-0014, WP-0061 | Ready |
+| [0063](0063-scopes-and-cells.md) | core | Scopes, cells and the identity bound in core | ADR-0078, ADR-0018, ADR-0062, ADR-0064 | WP-0061 | Ready |
 
 ---
 
@@ -259,13 +265,14 @@ to be amended mid-flight.
 | 8 | 0012, 0033, 0040, 0046 |
 | 9 | 0013, 0035, 0041, 0047 |
 | 10 | 0014, 0034, 0036, 0044, 0048, 0049, 0061 |
-| 11 | 0016, 0018, 0019, 0020, 0021, 0022, 0023, 0024, 0025, 0026, 0027, 0038, 0050 |
-| 12 | 0017, 0028, 0039, 0042, 0043, 0051, 0052, 0053 |
-| 13 | 0029, 0045 |
-| 14 | 0030, 0031, 0054, 0058 |
-| 15 | 0055, 0056, 0059 |
-| 16 | 0057 |
-| 17 | 0060 |
+| 11 | 0022, 0027, 0038, 0050, 0062, 0063 |
+| 12 | 0016, 0018, 0019, 0020, 0021, 0023, 0024, 0025, 0026, 0039, 0042, 0043, 0052, 0053 |
+| 13 | 0017, 0028, 0045, 0051 |
+| 14 | 0029, 0058 |
+| 15 | 0030, 0031, 0054, 0059 |
+| 16 | 0055, 0056 |
+| 17 | 0057 |
+| 18 | 0060 |
 
 ---
 
@@ -290,15 +297,15 @@ to be amended mid-flight.
 | 0015 | Every family declares inputs, namespace, version and method through one interface; goldens unchanged. |
 | 0016 | A stateless stage assigns archetypes and badges over a stored report. |
 | 0017 | The CLI emits exactly one file, deterministic and identical to server output. |
-| 0018 | Temporal metrics as defined in docs/metrics.md section 2. |
-| 0019 | Commit size metrics as defined in docs/metrics.md section 3. |
-| 0020 | Message metrics, keyword rules file, and confidence degradation. |
-| 0021 | File activity metrics as defined in docs/metrics.md section 5. |
+| 0018 | Temporal metrics as defined in docs/metrics.md section 2, with person and year cells. |
+| 0019 | Commit size metrics as defined in docs/metrics.md section 3, with person and year cells. |
+| 0020 | Message metrics, keyword rules file, confidence degradation, and person and year cells. |
+| 0021 | File activity metrics as defined in docs/metrics.md section 5, with the cells the person axes need. |
 | 0022 | Coupling pairs and bounded graph with cardinality degradation. |
-| 0023 | Line-based bus factor, concentration, code age over all tracked lines. |
-| 0024 | Applies the window, bounds the breakdown at 200, and proves projection equals recomputation. |
-| 0025 | Assisted detection rules file and the assisted versus unassisted comparisons. |
-| 0026 | Indentation-based complexity proxy and hotspot scoring, skipped without a worktree. |
+| 0023 | Line-based bus factor, concentration, code age over all tracked lines, with person cells. |
+| 0024 | Applies the window to editor-by-owner cells by year, and proves projection equals recomputation. |
+| 0025 | Assisted detection rules file, the assisted versus unassisted comparisons, and person and year cells. |
+| 0026 | Indentation-based complexity proxy over replay's inputs, and hotspot scoring. |
 | 0027 | The family is present in every report as skipped with reason not_implemented. |
 | 0028 | Named axes are computed from families per axes.md, including in-repository ranks. |
 | 0029 | Ordered first-match evaluation over taxonomy.yml, with a guaranteed fallback. |
@@ -334,3 +341,5 @@ to be amended mid-flight.
 | 0059 | Release artifacts are reproducible, accompanied by an SBOM and signed. |
 | 0060 | README and user documentation describe what exists, with no invalidated claim. |
 | 0061 | One registry routes every family, keys match the catalogue, and aggregate runs with the repository removed. |
+| 0062 | Lines carry their authoring commit, and replay records authorship, event years and indentation inputs. |
+| 0063 | Scope, cell identity and the one identity bound live in core, with the cell and projection checkers. |
