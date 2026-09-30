@@ -253,7 +253,7 @@ to be amended mid-flight.
 | 0060 | distribution | User documentation rewrite | ADR-0001 | WP-0057, WP-0058 | Draft |
 | [0061](0061-aggregate-stage.md) | pipeline | Aggregate stage and family registry | ADR-0020, ADR-0076, ADR-0052, ADR-0032, ADR-0031, ADR-0062 | WP-0013, WP-0015 | Done |
 | [0062](0062-replay-final-shape.md) | pipeline | Replay state takes its final shape | ADR-0079, ADR-0078, ADR-0076, ADR-0074, ADR-0051, ADR-0054 | WP-0014, WP-0061 | Ready |
-| [0063](0063-scopes-and-cells.md) | core | Scopes, cells and the identity bound in core | ADR-0078, ADR-0018, ADR-0062, ADR-0064 | WP-0061 | Ready |
+| [0063](0063-scopes-and-cells.md) | core | Scopes, cells and the identity bound in core | ADR-0078, ADR-0018, ADR-0062, ADR-0064 | WP-0061 | Done |
 | [0064](0064-collect-message-body.md) | pipeline | Collect records each commit's message body | ADR-0020, ADR-0072, ADR-0065, ADR-0045, ADR-0048, ADR-0033 | WP-0012 | Ready |
 
 ---
