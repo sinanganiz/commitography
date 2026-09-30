@@ -25,6 +25,13 @@ type entry struct {
 	family core.MetricFamily
 	// section produces the family's section.
 	section sectionFunc
+	// project is the family's projection slot (ADR-0078 clauses 5 to 7). It
+	// is nil for a family with no scoped metric, which every family is until
+	// its own package gives it cells, and filled by that package with the
+	// family's derivation. The projection checker in internal/checks drives
+	// every filled slot through Projections, so a family joins the checker by
+	// filling its slot and by nothing else.
+	project Projection
 	// identities marks a family whose values are attributed to identities:
 	// ownership's lines by identity and bus factor, worktype's editor-by-owner
 	// breakdown, and ai-archaeology's identity ratio (docs/metrics.md
@@ -102,6 +109,26 @@ func Registry() []core.MetricFamily {
 	out := make([]core.MetricFamily, 0, len(registered))
 	for _, e := range registered {
 		out = append(out, e.family)
+	}
+	return out
+}
+
+// Projection is a family's projection slot: given the families of a report
+// and a scope, the family's metrics for that scope, which the family derives
+// from the cells its own section carries, by the one derivation that also
+// gives its repository values (ADR-0078 clause 5). It reads the report alone,
+// so calling it is not a recomputation (clause 6).
+type Projection func(families core.Families, scope core.Scope) any
+
+// Projections returns the projection slot of every registered family that
+// fills one, by family name. A family with no scoped metric has no slot and
+// is absent.
+func Projections() map[string]Projection {
+	out := map[string]Projection{}
+	for _, e := range entries() {
+		if e.project != nil {
+			out[e.family.Declaration().Name] = e.project
+		}
 	}
 	return out
 }
