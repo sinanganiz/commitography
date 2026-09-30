@@ -4,14 +4,11 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
-	"time"
 
 	"github.com/sinanganiz/commitography/internal/core"
 	"github.com/sinanganiz/commitography/internal/core/identity"
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
-
-const dateLayout = "2006-01-02"
 
 // addressPattern is the shape of an email address. A resolved name that
 // contains one is not written to the report: the resolver falls back to the
@@ -21,72 +18,38 @@ func addressPattern() *regexp.Regexp {
 	return regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`)
 }
 
-// identityTally is one identity's analysed commits, accumulated.
-type identityTally struct {
-	entry       core.IdentityEntry
-	first, last time.Time
-}
-
 // buildIdentities returns the identities section, docs/metrics.md section 14:
-// every identity with an analysed commit, the most active up to the identity
-// limit individually and the rest folded into one aggregate entry, ordered by
-// first commit date. It is never nil, so an analysis with no analysed commit
-// writes an empty list rather than null.
+// every identity of the input's identity table, those the table represents
+// individually as entries of their own and the rest folded into one aggregate
+// entry, ordered by first commit date. The section selects nothing itself; it
+// folds through the table every family folds through (ADR-0078 clause 9),
+// taking each identity's commit count and dates from it. It is never nil, so
+// an analysis with no analysed commit writes an empty list rather than null.
 func buildIdentities(in core.Input, analyzed []model.Commit) []core.IdentityEntry {
 	address := addressPattern()
-	tallies := map[string]*identityTally{}
-	for _, c := range analyzed {
-		when := in.Date(c)
-		tally, ok := tallies[c.IdentityID]
-		if !ok {
-			tally = &identityTally{
-				entry: core.IdentityEntry{
-					ID:          c.IdentityID,
-					DisplayName: displayName(in, c.IdentityID, address),
-				},
-				first: when,
-				last:  when,
-			}
-			tallies[c.IdentityID] = tally
+	shown, folded := []core.IdentityEntry{}, []core.IdentityEntry(nil)
+	for _, row := range in.Identities.Rows() {
+		entry := core.IdentityEntry{
+			ID:              row.ID,
+			DisplayName:     displayName(in, row.ID, address),
+			FirstCommitDate: row.FirstCommitDate,
+			LastCommitDate:  row.LastCommitDate,
+			CommitCount:     row.CommitCount,
 		}
-		tally.entry.CommitCount++
-		if tally.entry.CommitCount == 1 && in.Resolver != nil {
-			if resolved, ok := in.Resolver.Lookup(c.IdentityID); ok {
-				tally.entry.SourceAddressCount = resolved.SourceAddresses()
+		if in.Resolver != nil {
+			if resolved, ok := in.Resolver.Lookup(row.ID); ok {
+				entry.SourceAddressCount = resolved.SourceAddresses()
 			}
 		}
-		if when.Before(tally.first) {
-			tally.first = when
-		}
-		if when.After(tally.last) {
-			tally.last = when
+		if row.Individual {
+			shown = append(shown, entry)
+		} else {
+			folded = append(folded, entry)
 		}
 	}
 
-	all := make([]core.IdentityEntry, 0, len(tallies))
-	for _, tally := range tallies {
-		tally.entry.FirstCommitDate = tally.first.Format(dateLayout)
-		tally.entry.LastCommitDate = tally.last.Format(dateLayout)
-		all = append(all, tally.entry)
-	}
-
-	// The bound selects by activity; the order the reader sees does not
-	// (ADR-0009 clause 3).
-	sort.Slice(all, func(i, j int) bool {
-		a, b := all[i], all[j]
-		if a.CommitCount != b.CommitCount {
-			return a.CommitCount > b.CommitCount
-		}
-		if a.FirstCommitDate != b.FirstCommitDate {
-			return a.FirstCommitDate < b.FirstCommitDate
-		}
-		return a.ID < b.ID
-	})
-	shown, folded := all, []core.IdentityEntry(nil)
-	if len(all) > core.LimitIdentities {
-		shown, folded = all[:core.LimitIdentities], all[core.LimitIdentities:]
-	}
-
+	// The table selected by activity; the order the reader sees does not
+	// follow it (ADR-0009 clause 3).
 	sort.Slice(shown, func(i, j int) bool {
 		a, b := shown[i], shown[j]
 		if a.FirstCommitDate != b.FirstCommitDate {

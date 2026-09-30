@@ -127,13 +127,16 @@ dispatch:
 // The input names no repository location, because no input kind is the
 // repository (ADR-0076 clause 2). It carries no progress callback, which is
 // the stage's own, and a path filter of its own, because a filter's memo is
-// not safe for concurrent use.
+// not safe for concurrent use. It carries the stage's identity table whatever
+// the family declares: the bound is not an input but the one selection every
+// part of the report folds through (ADR-0078 clause 9).
 func resolve(in core.Input, declared core.FamilyDeclaration) (core.Input, []core.Reason, error) {
 	out := core.Input{
 		Context:    in.Context,
 		Repository: in.Repository,
 		Config:     in.Config,
 		PathFilter: in.PathFilter.Clone(),
+		Identities: in.Identities,
 	}
 	out.Repository.Path = ""
 	var skip []core.Reason

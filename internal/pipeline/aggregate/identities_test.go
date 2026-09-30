@@ -14,7 +14,8 @@ import (
 	"github.com/sinanganiz/commitography/internal/core/model"
 )
 
-// authored builds a commit by name and address on a UTC day of 2026.
+// authored builds a commit by name and address on a UTC day of 2026, with the
+// local time and active date the collect stage would give it.
 func authored(name, email string, day int) model.Commit {
 	when := time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC).AddDate(0, 0, day)
 	return model.Commit{
@@ -23,18 +24,53 @@ func authored(name, email string, day int) model.Commit {
 		AuthorEmail:   email,
 		AuthorDate:    when,
 		CommitterDate: when,
+		LocalTime:     when,
+		ActiveDate:    when.Format("2006-01-02"),
 	}
 }
 
-// identitiesOf resolves commits the way the pipeline does and builds the
-// identities section over all of them.
-func identitiesOf(t *testing.T, cfg config.Analysis, commits []model.Commit) []core.IdentityEntry {
-	t.Helper()
+// resolved returns a resolver over commits and resolves each commit's author
+// with it, the way the pipeline does.
+func resolved(cfg config.Analysis, commits []model.Commit) *identity.Resolver {
 	resolver := identity.NewResolver(cfg, commits)
 	for i := range commits {
 		commits[i].IdentityID = resolver.Resolve(commits[i].AuthorName, commits[i].AuthorEmail)
 	}
-	return buildIdentities(core.Input{Config: cfg, Resolver: resolver}, commits)
+	return resolver
+}
+
+// identitiesOf resolves commits the way the pipeline does and builds the
+// identities section over all of them, through the identity table the stage
+// computes from them.
+func identitiesOf(t *testing.T, cfg config.Analysis, commits []model.Commit) []core.IdentityEntry {
+	t.Helper()
+	resolver := resolved(cfg, commits)
+	in := core.Input{Config: cfg, Resolver: resolver, Identities: core.NewIdentityTable(commits)}
+	return buildIdentities(in, commits)
+}
+
+// beyondTheBound returns the commits of enough identities that the identity
+// table folds extra of them, commitsOf giving the i-th identity's commits. The
+// population grows until the table folds rather than being sized from the
+// limit, because the bound is core's alone to know (ADR-0078 clause 9).
+func beyondTheBound(t *testing.T, extra int, commitsOf func(i int) []model.Commit) []model.Commit {
+	t.Helper()
+	var commits []model.Commit
+	for i := 0; i < 100000; i++ {
+		commits = append(commits, commitsOf(i)...)
+		resolved(config.Default(), commits)
+		folded := 0
+		for _, row := range core.NewIdentityTable(commits).Rows() {
+			if !row.Individual {
+				folded++
+			}
+		}
+		if folded == extra {
+			return commits
+		}
+	}
+	t.Fatalf("the identity table never folded %d identities", extra)
+	return nil
 }
 
 func TestIdentitiesAreOrderedByFirstCommitDateNotVolume(t *testing.T) {
@@ -74,19 +110,18 @@ func TestIdentitiesAreOrderedByFirstCommitDateNotVolume(t *testing.T) {
 func TestIdentitiesAreBoundedWithOneAggregateEntry(t *testing.T) {
 	t.Parallel()
 	const extra = 5
-	var commits []model.Commit
-	for i := 0; i < core.LimitIdentities+extra; i++ {
-		email := fmt.Sprintf("person%03d@example.com", i)
-		// The first identities have one commit; every other identity has two,
-		// so the least active are the ones folded, whatever their dates.
-		commits = append(commits, authored(fmt.Sprintf("Person %03d", i), email, i))
-		if i >= extra {
-			commits = append(commits, authored(fmt.Sprintf("Person %03d", i), email, 400))
+	// The first identities have one commit; every other identity has two, so
+	// the least active are the ones folded, whatever their dates.
+	commits := beyondTheBound(t, extra, func(i int) []model.Commit {
+		name, email := fmt.Sprintf("Person %03d", i), fmt.Sprintf("person%03d@example.com", i)
+		if i < extra {
+			return []model.Commit{authored(name, email, i)}
 		}
-	}
+		return []model.Commit{authored(name, email, i), authored(name, email, 400)}
+	})
 	got := identitiesOf(t, config.Default(), commits)
-	if len(got) != core.LimitIdentities+1 {
-		t.Fatalf("got %d entries, want %d individual and one aggregate", len(got), core.LimitIdentities)
+	if len(got) != (len(commits)-extra)/2+1 {
+		t.Fatalf("got %d entries, want one for each identity with two commits and one aggregate", len(got))
 	}
 	last := got[len(got)-1]
 	if !last.Aggregate || last.ID != "" || last.DisplayName != "5 other identities" || last.CommitCount != extra {
@@ -161,11 +196,8 @@ func TestAnUnresolvableAuthorDegradesTheIdentityAttributedFamilies(t *testing.T)
 	t.Parallel()
 	cfg := config.Default()
 	commits := []model.Commit{authored("Ada", "ada@example.com", 1), authored("Nobody", "  ", 2)}
-	resolver := identity.NewResolver(cfg, commits)
-	for i := range commits {
-		commits[i].IdentityID = resolver.Resolve(commits[i].AuthorName, commits[i].AuthorEmail)
-	}
-	in := core.Input{Config: cfg, Resolver: resolver}
+	resolver := resolved(cfg, commits)
+	in := core.Input{Config: cfg, Resolver: resolver, Identities: core.NewIdentityTable(commits)}
 	if !unresolvedAuthor(in, commits) {
 		t.Fatal("a commit carrying no address was treated as resolved")
 	}
@@ -259,24 +291,54 @@ func TestIdentitiesCarrySourceAddressesAndCandidates(t *testing.T) {
 
 func TestTheAggregateEntrySumsSourceAddressesAndHasNoCandidates(t *testing.T) {
 	t.Parallel()
-	var commits []model.Commit
-	for i := 0; i < core.LimitIdentities+2; i++ {
-		commits = append(commits, authored("Same Name", fmt.Sprintf("p%03d@example.com", i), i))
-	}
+	commits := beyondTheBound(t, 2, func(i int) []model.Commit {
+		return []model.Commit{authored("Same Name", fmt.Sprintf("p%03d@example.com", i), i)}
+	})
 	got := identitiesOf(t, config.Default(), commits)
 	last := got[len(got)-1]
 	if !last.Aggregate || last.SourceAddressCount != 2 || last.MergeCandidates != nil {
 		t.Errorf("aggregate entry = %+v, want two source addresses and no candidate list", last)
 	}
-	for _, e := range got[:len(got)-1] {
+	individual := got[:len(got)-1]
+	for _, e := range individual {
 		for _, c := range e.MergeCandidates {
 			if c.ID == "" {
 				t.Errorf("a candidate names no id: %+v", e)
 			}
 		}
-		if len(e.MergeCandidates) != core.LimitIdentities-1 {
+		if len(e.MergeCandidates) != len(individual)-1 {
 			t.Errorf("entry %s has %d candidates, want one for every other individual entry", e.ID, len(e.MergeCandidates))
 			break
 		}
+	}
+}
+
+// TestScopeIdentitiesSectionFoldsThroughTheTable holds the section to the
+// identity table (ADR-0078 clause 9): each entry's commit count and dates are
+// the table's, the dates being the records' active dates rather than any
+// recomputed from a timestamp, and the section counts no commit the table
+// does not.
+func TestScopeIdentitiesSectionFoldsThroughTheTable(t *testing.T) {
+	t.Parallel()
+	cfg := config.Default()
+	commits := []model.Commit{authored("Ada", "ada@example.com", 1), authored("Ada", "ada@example.com", 5)}
+	// The collect stage decided this commit's active date; the section must
+	// carry it rather than the date its author timestamp would give.
+	commits[1].ActiveDate = "2026-02-01"
+	resolver := resolved(cfg, commits)
+	table := core.NewIdentityTable(commits)
+
+	got := buildIdentities(core.Input{Config: cfg, Resolver: resolver, Identities: table}, commits)
+	row, _ := table.Lookup(core.IdentityDigest("ada@example.com"))
+	if len(got) != 1 || got[0].ID != row.ID || got[0].CommitCount != row.CommitCount ||
+		got[0].FirstCommitDate != row.FirstCommitDate || got[0].LastCommitDate != "2026-02-01" {
+		t.Errorf("identities = %+v, want the table's row %+v, last dated by the record", got, row)
+	}
+
+	// Over a table of none of the commits, the section lists nobody: it
+	// finds its identities in the table, not in the commits.
+	if got := buildIdentities(core.Input{Config: cfg, Resolver: resolver, Identities: core.NewIdentityTable(nil)},
+		commits); got == nil || len(got) != 0 {
+		t.Errorf("identities over an empty table = %#v, want an empty list", got)
 	}
 }

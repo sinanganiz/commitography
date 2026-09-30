@@ -214,3 +214,42 @@ func TestAggregateCarriesTheDeclaredMethod(t *testing.T) {
 			families.Ownership.Method, d.Method, s.Method)
 	}
 }
+
+// TestScopeEveryFamilyReadsTheOneTable is ADR-0078 clause 9 on the route:
+// every family is given the stage's identity table, the same one, whatever
+// inputs it declares, since the bound is the one selection every part of the
+// report folds through rather than an input a family may lack.
+func TestScopeEveryFamilyReadsTheOneTable(t *testing.T) {
+	t.Parallel()
+	in := fullInput()
+	in.Identities = core.NewIdentityTable(in.Filtered.Commits)
+	// Each family writes only its own slot, since the families run at once.
+	given := make([]*core.IdentityTable, 3)
+	registered := []entry{
+		tableRecorder[core.TemporalMetrics]("temporal", &given[0], core.InputCommitRecords),
+		tableRecorder[core.WorktypeMetrics]("worktype", &given[1], core.InputReplayState),
+		tableRecorder[core.FilesMetrics]("files", &given[2], core.InputCommitRecords, core.InputReplayState),
+	}
+	var families core.Families
+	if _, err := route(in, &families, registered); err != nil {
+		t.Fatalf("routing: %v", err)
+	}
+	for i, e := range registered {
+		if given[i] != in.Identities {
+			t.Errorf("the family declaring %v was given the table %p, want the stage's %p",
+				e.family.Declaration().Inputs, given[i], in.Identities)
+		}
+	}
+}
+
+// tableRecorder registers a stand-in under namespace that records the
+// identity table its input carries into given.
+func tableRecorder[M any](namespace string, given **core.IdentityTable, inputs ...core.InputKind) entry {
+	e := computedStandIn[M](namespace, false, inputs...)
+	e.section = computed(func(in core.Input) (core.Family[M], []string) {
+		*given = in.Identities
+		var metrics M
+		return core.Computed(core.Version{Major: 1}, metrics), nil
+	})
+	return e
+}

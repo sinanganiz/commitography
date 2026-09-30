@@ -10,7 +10,8 @@
 // Generation values go to the metadata section alone (ADR-0021 clause 6).
 // Beside the families it writes the identities section, the resolved
 // contributors a reader selects from (ADR-0010 clause 2, docs/metrics.md
-// section 14).
+// section 14). The section and the families fold through one identity table,
+// which the stage computes once per build (ADR-0078 clause 9).
 package aggregate
 
 import (
@@ -35,6 +36,10 @@ func New(clock core.Clock, _ core.Filesystem) *Builder {
 // them where it shows its other warnings.
 func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 	analyzed := in.Analyzed()
+	// The identity bound is selected once, in core, before any family runs;
+	// the identities section and every family fold through this one table
+	// (ADR-0078 clause 9).
+	in.Identities = core.NewIdentityTable(analyzed)
 	r := &core.Report{
 		DocumentVersion: core.DocumentVersion(),
 		Sections:        core.CurrentSectionVersions(),
