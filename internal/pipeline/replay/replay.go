@@ -111,11 +111,10 @@ func (w *walker) run() (*core.ReplayState, error) {
 	if err != nil {
 		return nil, err
 	}
-	tracked, text, err := w.tree(head, ownership)
-	if err != nil {
+	state := &core.ReplayState{Ownership: ownership, Unavailable: unavailable}
+	if err := w.tree(head, state); err != nil {
 		return nil, err
 	}
-	state := &core.ReplayState{Tracked: tracked, TextFileCount: text, Ownership: ownership, Unavailable: unavailable}
 	if ownership != nil {
 		state.Worktype = w.worktypeInputs()
 	}

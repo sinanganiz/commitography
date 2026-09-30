@@ -177,6 +177,83 @@ func TestReplayMapCoversEveryTrackedTextLine(t *testing.T) {
 	}
 }
 
+// exclusionMismatches returns where a replay state's exclusion of its tracked
+// paths departs from the path filter's decision: a number of entries other
+// than one per tracked path, or a path marked otherwise than the filter
+// decides it.
+func exclusionMismatches(state *core.ReplayState, paths *filter.PathFilter) []string {
+	if len(state.Excluded) != len(state.Tracked) {
+		return []string{fmt.Sprintf("the state holds %d exclusions for %d tracked paths", len(state.Excluded),
+			len(state.Tracked))}
+	}
+	var out []string
+	for i, path := range state.Tracked {
+		if want := paths.Excluded(path); state.Excluded[i] != want {
+			out = append(out, fmt.Sprintf("%s is marked excluded %v, and the path filter decides %v", path,
+				state.Excluded[i], want))
+		}
+	}
+	return out
+}
+
+// TestReplayExcludedPaths requires the replay state to carry the exclusion of
+// every tracked path (WP-0062): one entry for each path of Tracked, in its
+// order, each as the path filter of the analysed commit's attributes decides
+// it (docs/metrics.md section 1), so that a family reads a path's exclusion
+// from replay state rather than deciding it again (ADR-0076 clause 4). The
+// filter is built here from the collected attributes, as the pipeline builds
+// it.
+func TestReplayExcludedPaths(t *testing.T) {
+	t.Parallel()
+	repo := openRepository(t)
+	marked := map[bool]int{}
+	for _, fixture := range collectedFixtures(t, repo) {
+		run := replayFixture(t, fixtureDir(t, repo, fixture), config.DefaultMaxFileBytes)
+		paths, err := filter.NewPathFilterFromAttributes(config.Default(), []byte(run.history.Attributes))
+		if err != nil {
+			fatal(t, 76, "%s: building the path filter: %v", fixture, err)
+		}
+		for _, problem := range exclusionMismatches(run.state, paths) {
+			report(t, 76, "%s: %s", fixture, problem)
+		}
+		for _, excluded := range run.state.Excluded {
+			marked[excluded]++
+		}
+	}
+	if marked[true] == 0 || marked[false] == 0 {
+		fatal(t, 64, "the fixtures track %d excluded and %d other paths; a check of exclusion needs both",
+			marked[true], marked[false])
+	}
+}
+
+// TestReplayExclusionCheckRejectsAMismatch is the failure demonstration
+// ADR-0064 clause 6 requires: a missing exclusion, an excluded path marked as
+// included and an included path marked as excluded are each found.
+func TestReplayExclusionCheckRejectsAMismatch(t *testing.T) {
+	t.Parallel()
+	paths, err := filter.NewPathFilterFromAttributes(config.Default(), nil)
+	if err != nil {
+		fatal(t, 64, "building the demonstration's path filter: %v", err)
+	}
+	tracked := []string{"main.go", "vendor/lib.go"}
+	for name, excluded := range map[string][]bool{
+		"an exclusion missing":              {false},
+		"a vendored path marked included":   {false, false},
+		"a source path marked excluded":     {true, true},
+		"the exclusions in another order":   {true, false},
+		"an exclusion beyond every path":    {false, true, false},
+		"no exclusion for any tracked path": nil,
+	} {
+		if len(exclusionMismatches(&core.ReplayState{Tracked: tracked, Excluded: excluded}, paths)) == 0 {
+			report(t, 64, "the exclusion check accepted %s", name)
+		}
+	}
+	agreeing := &core.ReplayState{Tracked: tracked, Excluded: []bool{false, true}}
+	if found := exclusionMismatches(agreeing, paths); len(found) != 0 {
+		report(t, 76, "the exclusion check refused a state the path filter agrees with: %v", found)
+	}
+}
+
 // commitsOldestFirst returns the records in the order they were committed.
 func commitsOldestFirst(h *model.History) []model.Commit {
 	out := append([]model.Commit(nil), h.Commits...)

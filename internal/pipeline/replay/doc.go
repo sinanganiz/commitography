@@ -43,6 +43,12 @@
 // binary has no lines to lose, and is binary whatever its size. Excluded paths
 // (docs/metrics.md section 1) are never read.
 //
+// The stage also lists the analysed commit's tree (tree.go): every tracked
+// path, whether each is an excluded path, decided with the path filter the
+// walk decides excluded paths with, and the number of tracked text files. A
+// family reads a tracked path's exclusion there rather than deciding it again
+// (ADR-0076 clause 4).
+//
 // Where the collected history does not reach the analysed commit and all its
 // ancestors, as the date bounds can leave it, no state can be derived and the
 // ownership map is absent, with the reason. The tree is listed regardless.

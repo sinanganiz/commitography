@@ -27,6 +27,13 @@ type ReplayState struct {
 	// Tracked is every path in the analysed commit's tree, files and
 	// submodules alike, in the order git lists the tree.
 	Tracked []string
+	// Excluded says, for each path of Tracked and in the same order, whether
+	// it is an excluded path (docs/metrics.md section 1), as the path filter
+	// of the analysed commit's attributes decides. It is shared derived data
+	// from an earlier stage (ADR-0076 clause 4): a family reads a tracked
+	// path's exclusion here rather than deciding it again. Like Tracked, it is
+	// present whether or not Ownership is.
+	Excluded []bool
 	// TextFileCount is the number of tracked text files at the analysed
 	// commit (docs/metrics.md section 1): paths of Tracked that are not
 	// excluded, hold a file, and are not binary.
