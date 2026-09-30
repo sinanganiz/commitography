@@ -8,8 +8,9 @@
 Replay state carries everything the replay-based families need, and nothing a
 family decides: every line carries its authoring commit, each authoring
 commit's written lines and removal ages are recorded, the work-type inputs
-carry the editing commit's year, and every text file at the analysed commit
-carries the inputs of the complexity proxy. No report changes.
+carry the editing commit's year, every tracked path carries its exclusion, and
+every text file at the analysed commit carries the inputs of the complexity
+proxy. No report changes.
 
 ## In scope
 1. **The authoring commit of a line** (ADR-0079 clauses 1, 2, 5 and 6).
@@ -20,14 +21,17 @@ carries the inputs of the complexity proxy. No report changes.
    so no second copy of the history is made. The map it returns at the
    analysed commit holds only the commits its lines reference, numbered in the
    order the lines first reference them, files by path and lines in order, and
-   every line's index points into that table. `Encode` and `DecodeOwnership`
-   round-trip the new fields.
+   every line's index points into that table. The map also gains `Day`, JSON
+   `day`: the analysed commit's own day, in the form a line's day has, so that
+   a line's age at the analysed commit needs nothing but the map. `Encode` and
+   `DecodeOwnership` round-trip the new fields.
 2. **What became of each commit's lines** (ADR-0079 clauses 3 and 4). Add
    `core.AuthorshipInputs` and the field `ReplayState.Authorship`, nil exactly
    where `Ownership` is nil:
    - `Commits`: one entry for each commit that wrote a line or whose line a
      counted commit removed, ordered by commit object name, holding the commit
-     object name, `Written`, and the two age histograms `Replaced` and
+     object name, the commit's identity digest and the year of its
+     `ActiveDate`, `Written`, and the two age histograms `Replaced` and
      `Deleted`, in the form `core.AgeCount` already has;
    - `Written` counts every line whose derivation gave it its commit as owner,
      whether or not that commit is counted (ADR-0073 clause 6): bulk commits
@@ -61,6 +65,11 @@ carries the inputs of the complexity proxy. No report changes.
    version, read through the object reader the walk uses. A binary or degraded
    file has no lines and no entry. Replay applies no unit and no cap to these;
    WP-0026 defines the proxy over them.
+4a. **The exclusion of every tracked path.** Add `ReplayState.Excluded`: for
+   each path of `Tracked`, in the same order, whether it is an excluded path
+   (`docs/metrics.md` section 1), decided with the path filter replay already
+   holds. It is present whether or not `Ownership` is, as `Tracked` is. The
+   `files` family reads it rather than deciding exclusion again (WP-0021).
 5. **The memory budgets** (ADR-0079 clause 7). `TestReplayMemoryBudget`
    counts the index with every line, which the line's size already does, and
    measures the map's commit table as its own budget,
@@ -130,6 +139,8 @@ above, `cmd/**`, `docs/decisions/**`, `docs/report-schema.json`, `testdata/**`.
 - Every work-type pair and addition carries a year.
 - Every file of every fixture's map with lines has one indentation entry whose
   counts agree.
+- On every fixture, `Excluded` has one entry per tracked path, and the paths it
+  marks not excluded are exactly those the path filter admits.
 - `budgets.txt` holds `replay-bytes-per-line` no more than 4.00 above its value
   before this package, and a measured `replay-commit-table-bytes`.
 - Every new checker was observed failing and has a rejection test.

@@ -174,6 +174,12 @@ to be amended mid-flight.
   year to be computed from it alone. Before writing a family, list what every
   consumer derives from its output, and give the output room for it
   (ADR-0078).
+- **Check a metric's inputs against its family's declaration.** Section 6
+  defined `coupled_file_ratio` over the files at the analysed commit, which is
+  replay state, while `coupling` declares commit records alone; section 7's
+  directory scope and orphaned lines need commit-derived values `ownership`
+  does not declare. Before a family package computes a metric, trace every
+  value it reads to a declared input or to shared derived data in `core`.
 - **When a package hits a collision, look for the defect that predates it.**
   Merge candidates drawing on configuration-only addresses contradicted ADR-0007
   from the start; digests merely made it visible. Fixing the visible symptom
@@ -200,17 +206,17 @@ to be amended mid-flight.
 | [0013](0013-replay-stage.md) | pipeline | Replay stage and ownership map | ADR-0020, ADR-0051, ADR-0072, ADR-0073, ADR-0033, ADR-0019, ADR-0052 | WP-0012 | Done |
 | [0014](0014-worktype-classification.md) | pipeline | Work-type classification inputs | ADR-0074, ADR-0020, ADR-0073, ADR-0019, ADR-0062 | WP-0013 | Done |
 | [0015](0015-family-contract.md) | pipeline | Family contract | ADR-0076, ADR-0032, ADR-0031, ADR-0062 | WP-0008 | Done |
-| 0016 | pipeline | Interpret stage | ADR-0020, ADR-0014, ADR-0077, ADR-0078 | WP-0061, WP-0063 | Draft |
+| [0016](0016-interpret-stage.md) | pipeline | Interpret stage | ADR-0020, ADR-0014, ADR-0030, ADR-0077, ADR-0078, ADR-0070, ADR-0031, ADR-0032, ADR-0062 | WP-0061, WP-0063 | Ready |
 | 0017 | pipeline | Render boundary and CLI | ADR-0034, ADR-0021, ADR-0020 | WP-0061, WP-0016 | Draft |
-| 0018 | metrics | temporal family | ADR-0076, ADR-0078 | WP-0063 | Draft |
-| 0019 | metrics | commit-size family | ADR-0076, ADR-0078 | WP-0063 | Draft |
-| 0020 | metrics | messages family | ADR-0076, ADR-0078 | WP-0063 | Draft |
-| 0021 | metrics | files family | ADR-0076, ADR-0078 | WP-0063 | Draft |
-| 0022 | metrics | coupling family | ADR-0076, ADR-0053 | WP-0061 | Draft |
-| 0023 | metrics | ownership family | ADR-0076, ADR-0078 | WP-0062, WP-0063 | Draft |
-| 0024 | metrics | worktype family output | ADR-0076, ADR-0018, ADR-0074, ADR-0078 | WP-0062, WP-0063 | Draft |
-| 0025 | metrics | ai-archaeology family | ADR-0076, ADR-0078, ADR-0079 | WP-0062, WP-0063 | Draft |
-| 0026 | metrics | hotspot family | ADR-0076 | WP-0062 | Draft |
+| [0018](0018-temporal-family.md) | metrics | temporal family | ADR-0076, ADR-0078, ADR-0062, ADR-0031, ADR-0032 | WP-0063 | Ready |
+| [0019](0019-commit-size-family.md) | metrics | commit-size family | ADR-0076, ADR-0078, ADR-0062, ADR-0031, ADR-0032 | WP-0018, WP-0063 | Ready |
+| [0020](0020-messages-family.md) | metrics | messages family | ADR-0076, ADR-0078, ADR-0062, ADR-0031, ADR-0032 | WP-0018, WP-0063, WP-0064 | Ready |
+| [0021](0021-files-family.md) | metrics | files family | ADR-0076, ADR-0078, ADR-0040, ADR-0053, ADR-0062, ADR-0031, ADR-0032 | WP-0018, WP-0062, WP-0063 | Ready |
+| [0022](0022-coupling-family.md) | metrics | coupling family | ADR-0076, ADR-0053, ADR-0048, ADR-0062, ADR-0031, ADR-0032 | WP-0061 | Ready |
+| [0023](0023-ownership-family.md) | metrics | ownership family | ADR-0076, ADR-0078, ADR-0020, ADR-0018, ADR-0009, ADR-0053, ADR-0062, ADR-0031, ADR-0032 | WP-0018, WP-0021, WP-0062, WP-0063 | Ready |
+| [0024](0024-worktype-family.md) | metrics | worktype family output | ADR-0076, ADR-0018, ADR-0074, ADR-0078, ADR-0019, ADR-0062, ADR-0031, ADR-0032 | WP-0018, WP-0062, WP-0063 | Ready |
+| [0025](0025-ai-archaeology-family.md) | metrics | ai-archaeology family | ADR-0076, ADR-0078, ADR-0079, ADR-0033, ADR-0062, ADR-0031, ADR-0032 | WP-0018, WP-0023, WP-0062, WP-0063, WP-0064 | Ready |
+| [0026](0026-hotspot-family.md) | metrics | hotspot family | ADR-0076, ADR-0053, ADR-0062, ADR-0031, ADR-0032 | WP-0022, WP-0062 | Ready |
 | 0027 | metrics | static-analysis placeholder | ADR-0012, ADR-0032 | WP-0061 | Draft |
 | 0028 | interpret | Axis layer | ADR-0030, ADR-0013 | WP-0016, WP-0018, WP-0019, WP-0020, WP-0021, WP-0022, WP-0023, WP-0024, WP-0025, WP-0026 | Draft |
 | 0029 | interpret | Archetype and badge evaluation | ADR-0014, ADR-0030 | WP-0028 | Draft |
@@ -248,6 +254,7 @@ to be amended mid-flight.
 | [0061](0061-aggregate-stage.md) | pipeline | Aggregate stage and family registry | ADR-0020, ADR-0076, ADR-0052, ADR-0032, ADR-0031, ADR-0062 | WP-0013, WP-0015 | Done |
 | [0062](0062-replay-final-shape.md) | pipeline | Replay state takes its final shape | ADR-0079, ADR-0078, ADR-0076, ADR-0074, ADR-0051, ADR-0054 | WP-0014, WP-0061 | Ready |
 | [0063](0063-scopes-and-cells.md) | core | Scopes, cells and the identity bound in core | ADR-0078, ADR-0018, ADR-0062, ADR-0064 | WP-0061 | Ready |
+| [0064](0064-collect-message-body.md) | pipeline | Collect records each commit's message body | ADR-0020, ADR-0072, ADR-0065, ADR-0045, ADR-0048, ADR-0033 | WP-0012 | Ready |
 
 ---
 
@@ -263,16 +270,19 @@ to be amended mid-flight.
 | 6 | 0008, 0011, 0032 |
 | 7 | 0009, 0010, 0015, 0037 |
 | 8 | 0012, 0033, 0040, 0046 |
-| 9 | 0013, 0035, 0041, 0047 |
+| 9 | 0013, 0035, 0041, 0047, 0064 |
 | 10 | 0014, 0034, 0036, 0044, 0048, 0049, 0061 |
 | 11 | 0022, 0027, 0038, 0050, 0062, 0063 |
-| 12 | 0016, 0018, 0019, 0020, 0021, 0023, 0024, 0025, 0026, 0039, 0042, 0043, 0052, 0053 |
-| 13 | 0017, 0028, 0045, 0051 |
-| 14 | 0029, 0058 |
-| 15 | 0030, 0031, 0054, 0059 |
-| 16 | 0055, 0056 |
-| 17 | 0057 |
-| 18 | 0060 |
+| 12 | 0016, 0018, 0026, 0039, 0042, 0043, 0052, 0053 |
+| 13 | 0017, 0019, 0020, 0021, 0024, 0045 |
+| 14 | 0023, 0051, 0058 |
+| 15 | 0025, 0059 |
+| 16 | 0028 |
+| 17 | 0029 |
+| 18 | 0030, 0031, 0054 |
+| 19 | 0055, 0056 |
+| 20 | 0057 |
+| 21 | 0060 |
 
 ---
 
@@ -343,3 +353,4 @@ to be amended mid-flight.
 | 0061 | One registry routes every family, keys match the catalogue, and aggregate runs with the repository removed. |
 | 0062 | Lines carry their authoring commit, and replay records authorship, event years and indentation inputs. |
 | 0063 | Scope, cell identity and the one identity bound live in core, with the cell and projection checkers. |
+| 0064 | Every commit record carries its message body, read through unforgeable framing. |
