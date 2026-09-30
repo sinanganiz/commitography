@@ -26,6 +26,12 @@ type Input struct {
 	// line ownership (ADR-0020 clause 3). Aggregation reads the tree from here
 	// and never lists it itself.
 	Replay *ReplayState
+	// Identities is the identity table, which the aggregate stage computes
+	// once per build from the analysed commits, before any family runs. The
+	// identities section and every family's cells fold through it, and every
+	// family is given this one table whatever inputs it declares
+	// (ADR-0078 clause 9).
+	Identities *IdentityTable
 
 	// Progress, when set, is called as each stage begins.
 	Progress func(stage, detail string, current, total int)
