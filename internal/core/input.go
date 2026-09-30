@@ -64,6 +64,27 @@ func (in Input) Analyzed() []model.Commit {
 	return out
 }
 
+// RestrictToYear returns the input with every commit of another year marked
+// as not analysed, by the year its figures belong to (CommitYear), so that a
+// family built over it computes that year alone. The identity table is kept
+// rather than recomputed, so the bound stays the whole analysis's and a
+// year's cells fold as the report's do (ADR-0078 clause 9).
+//
+// Replay state is not restricted yet: each replay-based family package
+// extends this for the replay inputs its family reads, in the same change as
+// the family (WP-0063).
+func (in Input) RestrictToYear(year int) Input {
+	commits := make([]model.Commit, len(in.Filtered.Commits))
+	copy(commits, in.Filtered.Commits)
+	for i := range commits {
+		if CommitYear(commits[i]) != year {
+			commits[i].Excluded = true
+		}
+	}
+	in.Filtered = filter.Summarize(commits)
+	return in
+}
+
 // LineScoped returns the commits that count toward line-based, coupling and
 // churn metrics: analyzed commits minus bulk outliers.
 func (in Input) LineScoped() []model.Commit {

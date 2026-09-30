@@ -140,3 +140,13 @@ func (t *IdentityTable) Individual(id string) bool {
 	row, ok := t.Lookup(id)
 	return ok && row.Individual
 }
+
+// Cell returns the identity a cell of the identity with the given id is keyed
+// by: the identity itself where the table represents it individually, and the
+// aggregate bucket otherwise (ADR-0078 clause 3).
+func (t *IdentityTable) Cell(id string) CellIdentity {
+	if t.Individual(id) {
+		return CellIdentity{ID: id}
+	}
+	return CellIdentity{Aggregate: true}
+}
