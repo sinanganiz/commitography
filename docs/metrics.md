@@ -40,6 +40,33 @@ smallest commit hash wins. This rule exists to keep output deterministic
 with the family marked `degraded` and reason `empty_population`. It is never
 reported as zero (ADR-0032 clause 3).
 
+### Scopes and cells
+
+Governed by ADR-0078. A **scope** is what a figure is computed for: an identity
+selection and a year. The selection is every identity, or a set of
+individually represented identities named by their `id`; the year is every
+year, or one calendar year. The repository's figures are the figures of the
+scope of every identity and every year.
+
+| Term | Definition |
+|---|---|
+| **Scoped metric** | A metric its family section marks `person`, `year` or `person, year` in the `Scope` column of its `Metric` table. A metric not so marked is a repository metric only. |
+| **Cell** | One entry of a family's metric `cells`: the family's inputs for one key. The key is a cell identity and a year; a family whose figures relate two identities keys its cells by both identities and a year. A family carries cells when, and only when, it has a scoped metric. |
+| **Cell identity** | An individually represented identity, written `{"id": "<id>"}`, or the aggregate bucket, written `{"aggregate": true}`, the fields named as section 14 names them. A cell keyed by one identity carries these fields beside its `year`; a cell keyed by two carries each under a field of its own. |
+| **Year of a cell** | The local calendar year, by the configured date source, of the analysed commit a commit figure counts, or of the editing commit a line event belongs to: the year of that commit's active date. A figure about the state at the analysed commit, such as surviving lines, has no event year; where its cells carry a year, it is the year the line was last written, and the family section says so. |
+| **Additivity** | Every cell field has an exact sum. Counts and histograms add; date lists merge, adding the counts of equal dates; a maximum keeps the greater under the tie rule above; a list bounded at N keeps the first N of both lists under its ordering. A value whose sum is not exact is not a cell field, and a metric whose inputs cannot be summed exactly has no scoped form. |
+| **One derivation** | A scoped figure is one derivation over the sum of the cells its scope includes, exported by the family package as one pure function of the family's section and a scope. The repository value of a scoped metric is that derivation over every cell. Nothing computes a scoped figure any other way. |
+| **Aggregate bucket** | The cell identity of every identity the identity bound does not represent individually. Its cells enter the scope of every identity and no other; no selection names it. |
+| **Identity bound** | The individually represented identities of section 14, selected once for the analysis. The identities section and every family's cells use that one selection, so an identity is individual in every part of the report or in none. |
+
+A family section with a scoped metric follows two conventions:
+
+- Its `Metric` table has a third column, `Scope`, holding `repository`,
+  `person`, `year` or `person, year` on every row. A `Metric` table without
+  the column is repository-only.
+- It has a table headed `Cell field`, defining every field of one cell, key
+  fields included, and its `Metric` table lists `cells`.
+
 ---
 
 ## 2. `temporal`
