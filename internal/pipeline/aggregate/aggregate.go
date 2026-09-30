@@ -59,15 +59,44 @@ func (b *Builder) Build(in core.Input) (*core.Report, []string, error) {
 	// can see the entry it names (ADR-0068 clause 4).
 	r.Configuration = core.EmbedConfiguration(in.Config, in.Resolver, r.Identities)
 
-	warnings, err := route(in, &r.Families, entries())
+	warnings, err := buildFamilies(in, &r.Families)
 	if err != nil {
 		return nil, nil, err
 	}
-	// Every family is present in every report (ADR-0032 clause 1).
-	if missing := r.Families.Unplaced(); len(missing) > 0 {
-		return nil, nil, core.Internalf(nil, "the report has no section for the families %v", missing)
-	}
 	return r, warnings, nil
+}
+
+// BuildFamilies builds every registered family's section over in, as Build
+// builds them into a report, and returns the sections with the warnings the
+// families raised. The input carries the identity table the families fold
+// through (ADR-0078 clause 9): Build computes it once from the analysed
+// commits, and an input restricted from one Build ran over keeps it, as
+// core.Input.RestrictToYear does. The projection checker in internal/checks
+// builds a family's sections for one year this way.
+func BuildFamilies(in core.Input) (*core.Families, []string, error) {
+	if in.Identities == nil {
+		return nil, nil, core.Internalf(nil, "building the families over an input without the identity table "+
+			"they fold through")
+	}
+	var families core.Families
+	warnings, err := buildFamilies(in, &families)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &families, warnings, nil
+}
+
+// buildFamilies routes every registered family over in into families, after
+// which every family is present (ADR-0032 clause 1).
+func buildFamilies(in core.Input, families *core.Families) ([]string, error) {
+	warnings, err := route(in, families, entries())
+	if err != nil {
+		return nil, err
+	}
+	if missing := families.Unplaced(); len(missing) > 0 {
+		return nil, core.Internalf(nil, "the report has no section for the families %v", missing)
+	}
+	return warnings, nil
 }
 
 // progress reports that a stage has begun, when the caller asked to hear.

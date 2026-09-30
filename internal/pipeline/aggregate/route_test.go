@@ -253,3 +253,14 @@ func tableRecorder[M any](namespace string, given **core.IdentityTable, inputs .
 	})
 	return e
 }
+
+// TestScopeFamiliesAreNotBuiltWithoutTheTable keeps BuildFamilies from
+// building sections that fold through no identity table: every family's cells
+// fold through the one the stage computed (ADR-0078 clause 9), so an input
+// without it is a defect of composition.
+func TestScopeFamiliesAreNotBuiltWithoutTheTable(t *testing.T) {
+	t.Parallel()
+	if _, _, err := BuildFamilies(fullInput()); err == nil || core.ClassOf(err) != core.ClassInternal {
+		t.Errorf("building the families without the identity table gave %v, want an internal error", err)
+	}
+}
